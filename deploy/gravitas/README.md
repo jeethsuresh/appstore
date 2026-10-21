@@ -4,6 +4,13 @@ The backend runs at `https://apps.gravitas.cool` in namespace `appstore` on
 `do-tor1-gravitas-k8s-services`. Enter that root URL in the Android client.
 The API requires device enrollment; the public health endpoint is `/healthz`.
 
+The October 21, 2026 deployment uses source commit
+`4e1c30186829f8ffc1df90ad501734caabc69583` and image
+`ghcr.io/jeethsuresh/appstore@sha256:3eb40fac0f2cf2bff46e08cd4f64860dc105bb3f0b8f905173804c12d2700ba8`.
+Live verification covered both APK downloads, enrollment/revocation, signed
+GitHub webhook delivery, pod replacement with retained credentials/catalog, and
+cross-namespace network isolation. See [validation](../../docs/VALIDATION.md).
+
 The existing Traefik ingress, wildcard DNS and automatically renewed wildcard
 certificate provide HTTPS. This deployment does not create another load balancer,
 copy certificate keys, or change DNS and other applications.

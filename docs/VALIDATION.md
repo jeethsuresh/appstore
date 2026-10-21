@@ -1,6 +1,6 @@
 # Validation
 
-Validation completed on October 21, 2026. The deployable server was tested locally; no public deployment was created.
+Validation completed on October 21, 2026, including local deployment tests and the live Gravitas Kubernetes deployment.
 
 ## Backend
 
@@ -48,3 +48,11 @@ python3 tools/e2e/compose-smoke.py --compose docker
 Podman is supported by the helpers. For Compose on macOS with Podman, pass `--podman --compose /path/to/docker-compose`.
 
 GitHub Actions workflows pass static validation. Daybreak's integration PR passed its existing CI. The app signing workflows require protected environment secrets before they can execute; no private keys were uploaded during this work.
+
+## Live Kubernetes deployment
+
+The backend is live at `https://apps.gravitas.cool`. [CI for the deployed image](https://github.com/jeethsuresh/appstore/actions/runs/39611584975) passed backend race tests/vet, Android builds/tests/lint, Compose validation, and production image publication. The anonymously pullable AMD64 image is pinned to `ghcr.io/jeethsuresh/appstore@sha256:3eb40fac0f2cf2bff46e08cd4f64860dc105bb3f0b8f905173804c12d2700ba8`, built from source commit `4e1c30186829f8ffc1df90ad501734caabc69583`.
+
+The live checks passed trusted HTTPS, HTTP-to-HTTPS redirection, anonymous API/download denial, invalid/exhausted invitation rejection, single-use enrollment, current Daybreak/Spacetime ingestion, full authenticated APK hashes, range responses, webhook HMAC validation, and immediate revocation. GitHub delivered signed pings successfully for both configured release webhooks.
+
+A real pod replacement preserved the device credential, catalog release identities and APK storage. A temporary unprivileged pod in another namespace resolved the store Service but could not connect; it was deleted afterward. Existing RSS and Spacetime health endpoints remained healthy, and Office retained its 401 access gate. The store is Ready with no container restarts, matching 100m/256Mi requests and limits, a read-only non-root container and retained storage. Runtime secrets and the owner's unused enrollment invitation remain outside Git with mode 0600.
