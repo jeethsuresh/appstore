@@ -1,0 +1,20 @@
+[
+  {
+    "id": "daybreak",
+    "name": "Daybreak",
+    "packageName": "dev.jeeth.local_weather",
+    "repository": "jeethsuresh/weather",
+    "assetName": "daybreak-android-arm64.apk",
+    "certificateSha256": "18cb4dbf5d8b3ed41336acd2c1f6dc12bd7aba2d8f5a6dcaf9339e42b6af683a",
+    "description": "Private weather forecasts and home-screen widgets. ARM64 phones."
+  },
+  {
+    "id": "spacetime",
+    "name": "Spacetime",
+    "packageName": "com.jeethsuresh.spacetime",
+    "repository": "jeethsuresh/spacetime",
+    "assetName": "spacetime-{tag}-android.apk",
+    "certificateSha256": "f5714ad3d2b3d82b283efd61b2d99f5eaad5ec9efe67b644a62efc79fec94582",
+    "description": "Calendar, events, tasks, and occasions."
+  }
+]

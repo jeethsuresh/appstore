@@ -1,0 +1,11 @@
+.git
+.env
+.signing
+**/*.jks
+**/*.keystore
+**/*.apk
+**/build
+**/.gradle
+**/.kotlin
+android
+data
