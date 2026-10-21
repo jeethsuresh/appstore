@@ -2,7 +2,7 @@
 
 A personal Android app distribution platform with invitation-based device enrollment, GitHub release ingestion, and a native Kotlin/Jetpack Compose client. Daybreak and Spacetime are the first two supported apps.
 
-Download the signed **appstore-android.apk** from [Releases](https://github.com/jeethsuresh/appstore/releases). The server must be deployed separately; the app asks for its HTTPS address and a device invitation. Deployment configuration is included, and no hosted server is provisioned by this repository.
+Download the signed **appstore-android.apk** from [Releases](https://github.com/jeethsuresh/appstore/releases). The app asks for an HTTPS server address and a device invitation. The Gravitas backend uses `https://apps.gravitas.cool`; see [Kubernetes deployment](deploy/gravitas/README.md). Docker/Caddy remains available for independent installations.
 
 ## Included
 
@@ -12,7 +12,7 @@ Download the signed **appstore-android.apk** from [Releases](https://github.com/
 - Release polling at startup/every 15 minutes and HMAC-validated GitHub webhooks. Unchanged assets are cached; transient GitHub failures retry, and missing cached files are repaired.
 - APK signature verification, pinned release certificates and package IDs, digest/size checks, real APK metadata extraction, and immutable increasing version codes.
 - Native Android enrollment, AndroidKeyStore credential encryption, release notes, download progress, installation prompts, and six-hour WorkManager update checks for installed apps.
-- Docker/Caddy deployment with HTTPS, persistent storage, non-root/read-only backend, health checks, an administration CLI, CI, and signed-build workflows.
+- Kubernetes/Traefik and Docker/Caddy deployment with HTTPS, persistent storage, non-root/read-only backend, health checks, an administration CLI, CI, and signed-build workflows.
 
 Background updates request installation without interaction when Android permits. Otherwise a notification opens Android's confirmation. Enable installation permission and notifications. Android controls scheduling and whether confirmation or a Play Protect scan is needed.
 
@@ -24,6 +24,8 @@ Background updates request installation without interaction when Android permits
 Their application source is Flutter; this store's client is native Kotlin. Repository visibility is independent of store authentication: the platform restricts its API/cached downloads and can ingest private repositories, but it does not make an upstream public GitHub release private.
 
 ## Deploy
+
+For the Gravitas Kubernetes cluster, use the [deployment files and operational notes](deploy/gravitas/README.md). The following instructions cover an independent Docker/Caddy installation.
 
 Requires Docker Compose on a Linux host, a hostname pointing to it, and inbound ports 80/443:
 
