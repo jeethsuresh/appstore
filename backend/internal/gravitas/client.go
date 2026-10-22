@@ -15,6 +15,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -235,38 +236,64 @@ func (c *Client) Callback(w http.ResponseWriter, r *http.Request) (Identity, str
 	if len(q["code"]) != 1 || q.Get("code") == "" {
 		return identity, "", errors.New("missing authorization code")
 	}
+	identity, err = c.exchange(q.Get("code"), f.Verifier, c.AppURL+"/auth/gravitas/callback")
+	return identity, SafeNext(f.Next), err
+}
+
+var proofPattern = regexp.MustCompile(`^[A-Za-z0-9_-]{43}$`)
+
+func (c *Client) NativeRedirect() string { return c.AppURL + "/auth/android/callback" }
+func (c *Client) NativeStart(state, challenge string) (string, error) {
+	if !proofPattern.MatchString(state) || !proofPattern.MatchString(challenge) {
+		return "", errors.New("invalid native login proof")
+	}
 	m, err := c.discovery()
 	if err != nil {
-		return identity, "", err
+		return "", err
 	}
-	form := url.Values{"grant_type": {"authorization_code"}, "code": {q.Get("code")}, "code_verifier": {f.Verifier}, "redirect_uri": {c.AppURL + "/auth/gravitas/callback"}}
+	q := url.Values{"callerURL": {c.AppURL}, "redirectURL": {c.NativeRedirect()}, "codeChallenge": {challenge}, "codeChallengeMethod": {"S256"}, "scope": {"profile.name"}, "state": {state}}
+	return m.Browser + "?" + q.Encode(), nil
+}
+func (c *Client) NativeExchange(code, verifier string) (Identity, error) {
+	if code == "" || len(code) > 2048 || !proofPattern.MatchString(verifier) {
+		return Identity{}, errors.New("invalid native authorization code or verifier")
+	}
+	return c.exchange(code, verifier, c.NativeRedirect())
+}
+func (c *Client) exchange(code, verifier, redirect string) (Identity, error) {
+	var identity Identity
+	m, err := c.discovery()
+	if err != nil {
+		return identity, err
+	}
+	form := url.Values{"grant_type": {"authorization_code"}, "code": {code}, "code_verifier": {verifier}, "redirect_uri": {redirect}}
 	req, err := http.NewRequest(http.MethodPost, m.Token, bytes.NewBufferString(form.Encode()))
 	if err != nil {
-		return identity, "", err
+		return identity, err
 	}
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	resp, err := c.HTTP.Do(req)
 	if err != nil {
-		return identity, "", errors.New("IAM is unavailable")
+		return identity, errors.New("IAM is unavailable")
 	}
 	var tokens struct {
 		AccessToken string `json:"access_token"`
 		TokenType   string `json:"token_type"`
 	}
 	if err = readJSON(resp, &tokens); err != nil {
-		return identity, "", err
+		return identity, err
 	}
 	if tokens.AccessToken == "" || !strings.EqualFold(tokens.TokenType, "Bearer") {
-		return identity, "", errors.New("invalid IAM token response")
+		return identity, errors.New("invalid IAM token response")
 	}
 	if err = c.getJSON(m.Profile, tokens.AccessToken, &identity); err != nil {
-		return identity, "", err
+		return identity, err
 	}
 	if identity.Subject == "" || len(identity.Subject) > 256 || identity.Username == "" || identity.Domain != m.Domain || identity.UserID != "@"+identity.Username+":"+m.Domain {
-		return Identity{}, "", errors.New("invalid IAM identity")
+		return Identity{}, errors.New("invalid IAM identity")
 	}
 	identity.Issuer = c.Issuer
-	return identity, SafeNext(f.Next), nil
+	return identity, nil
 }
 func (c *Client) SetSession(w http.ResponseWriter, identity Identity) error {
 	value, err := c.seal("session", session{Identity: identity, Expires: time.Now().Add(SessionLifetime).Unix()})

@@ -16,7 +16,7 @@ import javax.crypto.KeyGenerator
 import javax.crypto.SecretKey
 import javax.crypto.spec.GCMParameterSpec
 
-data class Session(val baseUrl: String, val token: String)
+data class Session(val baseUrl: String, val token: String, val account: String = "")
 data class StoreRelease(val id: Long, val versionCode: Long, val versionName: String, val sha256: String, val size: Long, val minSdk: Int, val notes: String)
 data class StoreApp(val id: String, val name: String, val packageName: String, val certificate: String, val description: String, val release: StoreRelease?)
 
@@ -42,7 +42,7 @@ class SessionVault(context: Context) {
     }
     fun save(session: Session) {
         val cipher = Cipher.getInstance("AES/GCM/NoPadding").apply { init(Cipher.ENCRYPT_MODE, key()) }
-        val json = JSONObject().put("baseUrl", session.baseUrl).put("token", session.token).toString()
+        val json = JSONObject().put("baseUrl", session.baseUrl).put("token", session.token).put("account", session.account).toString()
         val encrypted = cipher.doFinal(json.toByteArray(Charsets.UTF_8))
         check(prefs.edit().putString("iv", Base64.encodeToString(cipher.iv, Base64.NO_WRAP)).putString("data", Base64.encodeToString(encrypted, Base64.NO_WRAP)).commit())
     }
@@ -50,9 +50,25 @@ class SessionVault(context: Context) {
         val data = prefs.getString("data", null) ?: return null
         val cipher = Cipher.getInstance("AES/GCM/NoPadding").apply { init(Cipher.DECRYPT_MODE, key(), GCMParameterSpec(128, Base64.decode(prefs.getString("iv", ""), Base64.NO_WRAP))) }
         val json = JSONObject(String(cipher.doFinal(Base64.decode(data, Base64.NO_WRAP)), Charsets.UTF_8))
-        return Session(Versions.baseUrl(json.getString("baseUrl")), json.getString("token"))
+        return Session(Versions.baseUrl(json.getString("baseUrl")), json.getString("token"), json.optString("account", ""))
     }
-    fun clear() { prefs.edit().clear().commit() }
+    private val pendingPrefs = context.getSharedPreferences("gravitas-pending", Context.MODE_PRIVATE)
+    fun savePending(value: PendingLogin) {
+        val cipher = Cipher.getInstance("AES/GCM/NoPadding").apply { init(Cipher.ENCRYPT_MODE, key()); updateAAD("gravitas-pending-v1".toByteArray()) }
+        val json = JSONObject().put("baseUrl", value.baseUrl).put("state", value.state).put("verifier", value.verifier).put("deviceName", value.deviceName).put("expiresAt", value.expiresAt).put("authorizationUrl", value.authorizationUrl)
+        val encrypted = cipher.doFinal(json.toString().toByteArray(Charsets.UTF_8))
+        check(pendingPrefs.edit().putString("iv", Base64.encodeToString(cipher.iv, Base64.NO_WRAP)).putString("data", Base64.encodeToString(encrypted, Base64.NO_WRAP)).commit())
+    }
+    fun pending(): PendingLogin? {
+        val data = pendingPrefs.getString("data", null) ?: return null
+        val cipher = Cipher.getInstance("AES/GCM/NoPadding").apply { init(Cipher.DECRYPT_MODE, key(), GCMParameterSpec(128, Base64.decode(pendingPrefs.getString("iv", ""), Base64.NO_WRAP))); updateAAD("gravitas-pending-v1".toByteArray()) }
+        val json = JSONObject(String(cipher.doFinal(Base64.decode(data, Base64.NO_WRAP)), Charsets.UTF_8))
+        val value = PendingLogin(Versions.baseUrl(json.getString("baseUrl")), json.getString("state"), json.getString("verifier"), json.getString("deviceName"), json.getLong("expiresAt"), json.getString("authorizationUrl"))
+        if (value.expiresAt <= System.currentTimeMillis()) { clearPending(); return null }
+        return value
+    }
+    fun clearPending() { check(pendingPrefs.edit().clear().commit()) }
+    fun clear() { prefs.edit().clear().commit(); clearPending() }
 }
 class ApiException(val code: Int, message: String) : Exception(message)
 class StoreApi(private val session: Session) {
@@ -66,7 +82,7 @@ class StoreApi(private val session: Session) {
         try {
             if (body != null) { conn.doOutput = true; conn.setRequestProperty("Content-Type", "application/json"); conn.outputStream.use { it.write(body.toString().toByteArray()) } }
             val code = conn.responseCode
-            if (code !in 200..299) throw ApiException(code, when (code) { 401 -> if (path == "/v1/enroll") "Invitation is invalid, expired, or already used." else "Access expired or was revoked. Enroll again with a new invitation."; else -> "Server request failed ($code)." })
+            if (code !in 200..299) throw ApiException(code, when (code) { 401 -> if (path == "/v1/enroll") "Invitation is invalid, expired, or already used." else "Access expired or was revoked. Sign in with Gravitas again, or use a new invitation."; else -> "Server request failed ($code)." })
             if (code == 204) return JSONObject()
             return conn.inputStream.bufferedReader().use { reader ->
                 val buffer = CharArray(4096); val result = StringBuilder()
@@ -78,6 +94,15 @@ class StoreApi(private val session: Session) {
     fun enroll(invite: String, name: String): Session {
         val result = json("/v1/enroll", "POST", JSONObject().put("invite", invite.trim()).put("deviceName", name.trim()))
         return session.copy(token = result.getString("token"))
+    }
+    fun startLogin(pending: PendingLogin): PendingLogin {
+        val result = json("/v1/auth/gravitas/start", "POST", JSONObject().put("state", pending.state).put("codeChallenge", GravitasLogin.challenge(pending.verifier)))
+        val address = GravitasLogin.authorization(pending, result.getString("authorizationUrl"), result.getString("redirectUri"))
+        return pending.copy(authorizationUrl = address)
+    }
+    fun finishLogin(pending: PendingLogin, code: String): Session {
+        val result = json("/v1/auth/gravitas/exchange", "POST", JSONObject().put("code", code).put("codeVerifier", pending.verifier).put("deviceName", pending.deviceName))
+        return Session(pending.baseUrl, result.getString("token"), result.getString("account"))
     }
     fun revoke() { json("/v1/device", "DELETE") }
     fun apps(): List<StoreApp> {

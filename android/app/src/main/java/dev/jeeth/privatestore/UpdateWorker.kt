@@ -39,7 +39,7 @@ class UpdateWorker(context: Context, params: WorkerParameters) : CoroutineWorker
                 if (failed) Result.retry() else Result.success()
             } catch (e: ApiException) {
                 prefs.edit().putString("status", e.message).apply()
-                if (e.code == 401) { Notices.show(context, 101, "Private Store needs enrollment", e.message ?: "Enroll again"); Result.success() } else Result.retry()
+                if (e.code == 401) { Notices.show(context, 101, "Private Store needs sign-in", e.message ?: "Sign in again"); Result.success() } else Result.retry()
             } catch (e: Exception) { prefs.edit().putString("status", "Update check failed: ${e.message}").apply(); Result.retry() }
         }
     }

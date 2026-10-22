@@ -22,6 +22,20 @@ class DeviceSmokeTest {
         } finally { vault.clear() }
         assertNull(vault.load())
     }
+    @Test fun gravitasPendingProofSurvivesReloadAndIsEncrypted() {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val vault = SessionVault(context)
+        val pending = GravitasLogin.create(GravitasLogin.STORE, "Test phone").copy(authorizationUrl = "https://gravitas.cool/oauth/start")
+        try {
+            vault.savePending(pending)
+            assertEquals(pending, SessionVault(context).pending())
+            val encrypted = context.getSharedPreferences("gravitas-pending", 0).getString("data", "")!!
+            assertFalse(encrypted.contains(pending.verifier));assertFalse(encrypted.contains(pending.state))
+            val account = Session(GravitasLogin.STORE,"test-token","@reader:gravitas.cool")
+            vault.save(account);assertEquals(account,SessionVault(context).load())
+            vault.clearPending();assertNull(vault.pending());assertEquals(account,vault.load())
+        } finally { vault.clear() }
+    }
     @Test fun enrollmentScreenLaunches() {
         val instrumentation = InstrumentationRegistry.getInstrumentation()
         val activity = instrumentation.startActivitySync(Intent(instrumentation.targetContext, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))

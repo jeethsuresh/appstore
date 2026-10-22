@@ -22,14 +22,15 @@ import (
 )
 
 type Server struct {
-	cfg      Config
-	db       *sql.DB
-	mux      *http.ServeMux
-	client   *http.Client
-	api      string
-	inspect  func(context.Context, string) (APKInfo, error)
-	syncGate chan struct{}
-	queue    chan string
+	cfg        Config
+	db         *sql.DB
+	mux        *http.ServeMux
+	client     *http.Client
+	api        string
+	inspect    func(context.Context, string) (APKInfo, error)
+	syncGate   chan struct{}
+	nativeGate chan struct{}
+	queue      chan string
 }
 
 func New(cfg Config) (*Server, error) {
@@ -50,6 +51,7 @@ func New(cfg Config) (*Server, error) {
 	db.SetMaxOpenConns(1)
 	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS invites(hash TEXT PRIMARY KEY, label TEXT NOT NULL, expires INTEGER NOT NULL, uses INTEGER NOT NULL CHECK(uses>=0));
  CREATE TABLE IF NOT EXISTS devices(id TEXT PRIMARY KEY, name TEXT NOT NULL, token_hash TEXT UNIQUE NOT NULL, expires INTEGER NOT NULL, revoked INTEGER NOT NULL DEFAULT 0, created TEXT NOT NULL);
+ CREATE TABLE IF NOT EXISTS device_identities(device_id TEXT PRIMARY KEY REFERENCES devices(id) ON DELETE CASCADE, issuer TEXT NOT NULL, subject TEXT NOT NULL, username TEXT NOT NULL);
  CREATE TABLE IF NOT EXISTS releases(id INTEGER PRIMARY KEY, app_id TEXT NOT NULL, tag TEXT NOT NULL, version_code INTEGER NOT NULL, version_name TEXT NOT NULL, sha256 TEXT NOT NULL, size INTEGER NOT NULL, min_sdk INTEGER NOT NULL, notes TEXT NOT NULL, created TEXT NOT NULL, UNIQUE(app_id,version_code));`)
 	if err != nil {
 		db.Close()
@@ -72,7 +74,7 @@ func New(cfg Config) (*Server, error) {
 		db.Close()
 		return nil, err
 	}
-	s := &Server{cfg: cfg, db: db, mux: http.NewServeMux(), client: &http.Client{Timeout: 5 * time.Minute}, api: "https://api.github.com", queue: make(chan string, 32), syncGate: make(chan struct{}, 1)}
+	s := &Server{cfg: cfg, db: db, mux: http.NewServeMux(), client: &http.Client{Timeout: 5 * time.Minute}, api: "https://api.github.com", queue: make(chan string, 32), syncGate: make(chan struct{}, 1), nativeGate: make(chan struct{}, 4)}
 	s.inspect = s.inspectAPK
 	if err := s.registerWeb(); err != nil {
 		db.Close()
@@ -86,6 +88,10 @@ func New(cfg Config) (*Server, error) {
 		reply(w, 200, map[string]string{"status": "ok"})
 	})
 	s.mux.HandleFunc("POST /v1/enroll", s.enroll)
+	s.mux.HandleFunc("POST /v1/auth/gravitas/start", s.nativeStart)
+	s.mux.HandleFunc("POST /v1/auth/gravitas/exchange", s.nativeExchange)
+	s.mux.HandleFunc("GET /auth/android/callback", s.nativeReturn)
+	s.mux.HandleFunc("GET /.well-known/assetlinks.json", s.assetLinks)
 	s.mux.Handle("GET /v1/apps", s.device(http.HandlerFunc(s.catalog)))
 	s.mux.Handle("GET /v1/releases/{id}/apk", s.device(http.HandlerFunc(s.download)))
 	s.mux.Handle("DELETE /v1/device", s.device(http.HandlerFunc(s.logout)))
@@ -230,7 +236,7 @@ func (s *Server) internal(w http.ResponseWriter, err error) {
 	fail(w, 500, "internal server error")
 }
 func (s *Server) devices(w http.ResponseWriter, r *http.Request) {
-	rows, err := s.db.QueryContext(r.Context(), "SELECT id,name,expires,revoked,created FROM devices ORDER BY created DESC")
+	rows, err := s.db.QueryContext(r.Context(), "SELECT d.id,d.name,d.expires,d.revoked,d.created,COALESCE(i.username,'') FROM devices d LEFT JOIN device_identities i ON i.device_id=d.id ORDER BY d.created DESC")
 	if err != nil {
 		s.internal(w, err)
 		return
@@ -238,14 +244,14 @@ func (s *Server) devices(w http.ResponseWriter, r *http.Request) {
 	defer rows.Close()
 	out := []map[string]any{}
 	for rows.Next() {
-		var id, name, created string
+		var id, name, created, account string
 		var expires int64
 		var revoked bool
-		if err = rows.Scan(&id, &name, &expires, &revoked, &created); err != nil {
+		if err = rows.Scan(&id, &name, &expires, &revoked, &created, &account); err != nil {
 			s.internal(w, err)
 			return
 		}
-		out = append(out, map[string]any{"id": id, "name": name, "expiresAt": expires, "revoked": revoked, "createdAt": created})
+		out = append(out, map[string]any{"id": id, "name": name, "expiresAt": expires, "revoked": revoked, "createdAt": created, "account": account})
 	}
 	if rows.Err() != nil {
 		s.internal(w, rows.Err())
