@@ -1,8 +1,8 @@
 # Appstore on Gravitas
 
 The backend runs at `https://apps.gravitas.cool` in namespace `appstore` on
-`do-tor1-gravitas-k8s-services`. Enter that root URL in the Android client.
-The API requires device enrollment; the public health endpoint is `/healthz`.
+`do-tor1-gravitas-k8s-services`. The Android client connects here by default.
+Gravitas sign-in creates an account-bound device credential; the public health endpoint is `/healthz`.
 
 The initial October 21, 2026 backend deployment used source commit
 `4e1c30186829f8ffc1df90ad501734caabc69583` and image
@@ -41,6 +41,20 @@ public HTTPS health, and requires anonymous catalog access to return 401.
 The image contains the Daybreak and Spacetime package/certificate pins.
 Both current repositories are public, so `GITHUB_TOKEN` is empty. A read-only
 repository token can be added to the runtime Secret if private apps are added.
+
+## Android Gravitas sign-in
+
+The native client uses the same pinned issuer and app origin as the website,
+with a distinct fixed `/auth/android/callback` redirect, S256 PKCE, and only
+`profile.name` scope. The server exchanges the one-use code with IAM, validates
+its account identity, and creates or links a revocable one-year device credential.
+No IAM access/refresh tokens are sent to Android. Existing device credentials
+continue working. Independent stores can still use invitation enrollment.
+
+`/.well-known/assetlinks.json` publishes the permanent store signing certificate
+for Android's verified HTTPS links. Preserve that certificate on every client
+update. The app persists pending sign-in proofs encrypted in AndroidKeyStore;
+cancellation clears them. No IAM registration or additional client secret is needed.
 
 ## Access and operation
 

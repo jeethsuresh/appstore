@@ -16,7 +16,9 @@ import javax.crypto.KeyGenerator
 import javax.crypto.SecretKey
 import javax.crypto.spec.GCMParameterSpec
 
-data class Session(val baseUrl: String, val token: String, val account: String = "")
+data class Session(val baseUrl: String, val token: String, val account: String = "") {
+    override fun toString() = "Session(baseUrl=$baseUrl, account=$account, token=redacted)"
+}
 data class StoreRelease(val id: Long, val versionCode: Long, val versionName: String, val sha256: String, val size: Long, val minSdk: Int, val notes: String)
 data class StoreApp(val id: String, val name: String, val packageName: String, val certificate: String, val description: String, val release: StoreRelease?)
 
@@ -95,10 +97,10 @@ class StoreApi(private val session: Session) {
         val result = json("/v1/enroll", "POST", JSONObject().put("invite", invite.trim()).put("deviceName", name.trim()))
         return session.copy(token = result.getString("token"))
     }
-    fun startLogin(pending: PendingLogin): PendingLogin {
+    fun startLogin(pending: PendingLogin, register: Boolean = false): PendingLogin {
         val result = json("/v1/auth/gravitas/start", "POST", JSONObject().put("state", pending.state).put("codeChallenge", GravitasLogin.challenge(pending.verifier)))
         val address = GravitasLogin.authorization(pending, result.getString("authorizationUrl"), result.getString("redirectUri"))
-        return pending.copy(authorizationUrl = address)
+        return pending.copy(authorizationUrl = if (register) "$address&screen=register" else address)
     }
     fun finishLogin(pending: PendingLogin, code: String): Session {
         val result = json("/v1/auth/gravitas/exchange", "POST", JSONObject().put("code", code).put("codeVerifier", pending.verifier).put("deviceName", pending.deviceName))

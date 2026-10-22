@@ -66,12 +66,12 @@ class MainActivity : ComponentActivity() {
         val permission = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { installAllowed = packageManager.canRequestPackageInstalls(); message = if (installAllowed) "App installation enabled. Tap Install again." else "Enable app installation to continue." }
         fun refresh() { val current = session ?: return; busy = true; scope.launch { try { apps = withContext(Dispatchers.IO) { StoreApi(current).apps() }; message = prefs.getString("status", "") ?: "" } catch (e: Exception) { message = e.message ?: "Could not refresh"; if (e is ApiException && e.code == 401) { vault.clear(); session = null; apps = emptyList(); UpdateWorker.cancel(this@MainActivity) } } finally { busy = false } } }
         fun openLogin(address: String) { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(address)).addCategory(Intent.CATEGORY_BROWSABLE)) }
-        fun signIn() {
+        fun signIn(register: Boolean = false) {
             val current = session ?: Session(GravitasLogin.STORE, "")
             if (current.baseUrl != GravitasLogin.STORE) { message = "Gravitas sign-in is available at ${GravitasLogin.STORE}. Use an invitation for this other store."; return }
             busy = true; message = "Opening Gravitas sign-in…"
             scope.launch { try {
-                val request = withContext(Dispatchers.IO) { StoreApi(current).startLogin(GravitasLogin.create(current.baseUrl, name)) }
+                val request = withContext(Dispatchers.IO) { StoreApi(current).startLogin(GravitasLogin.create(current.baseUrl, name), register) }
                 vault.savePending(request); pending = request
                 openLogin(request.authorizationUrl)
                 message = "Finish signing in in your browser, then return to Private Store."
@@ -114,7 +114,7 @@ class MainActivity : ComponentActivity() {
                 Text("Sign in with your Gravitas account to browse, install and update your apps. Your browser handles sign-in; Private Store never asks for your password.")
                 OutlinedTextField(name, { name = it }, label = { Text("Device name") }, singleLine = true, modifier = Modifier.fillMaxWidth())
                 Button(enabled = !busy && name.isNotBlank(), onClick = { signIn() }, modifier = Modifier.fillMaxWidth()) { Text("Sign in with Gravitas") }
-                TextButton(enabled = !busy, onClick = { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://gravitas.cool/register"))) }) { Text("Create a Gravitas account") }
+                TextButton(enabled = !busy && name.isNotBlank(), onClick = { signIn(true) }) { Text("Create a Gravitas account") }
                 TextButton(enabled = !busy, onClick = { advanced = !advanced }) { Text(if (advanced) "Hide invitation setup" else "Use an invitation or another store") }
                 if (advanced) {
                 Text("For an independent store, enter its HTTPS address and a device invitation from its owner.")

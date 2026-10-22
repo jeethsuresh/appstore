@@ -30,7 +30,7 @@
           {{else if .Enabled}}
           <a class="button" href="/auth/gravitas/start?next={{.Next}}">Sign in to get the store <span aria-hidden="true">↗</span></a>
           {{else}}<p class="notice" role="status">Store downloads will be available when Gravitas sign-in is configured.</p>{{end}}
-          <p class="button-note">Install {{.Selected.Name}} inside Private Store.<br>The store requires Android 8.0+ and a device invitation.</p>
+          <p class="button-note">Install {{.Selected.Name}} inside Private Store.<br>Android 8.0+ · Sign in with your Gravitas account.</p>
         </div>
         <aside class="app-facts" aria-label="App information">
           <p class="eyebrow">AT A GLANCE</p>
@@ -53,7 +53,7 @@
         <div><h3>When it connects</h3><p>{{.Selected.Connection}}</p><p class="account-note">Gravitas signs you in to this website to download the store. Device enrollment and any account inside {{.Selected.Name}} are separate steps.</p></div>
       </section>{{end}}
       {{if .Selected.Release}}{{if .Selected.Release.Notes}}<details class="release-notes"><summary>What’s new in v{{.Selected.Release.VersionName}} <span>Release notes</span></summary><div>{{.Selected.Release.Notes}}</div></details>{{end}}{{end}}
-      {{if .SignedIn}}<section class="details" aria-labelledby="details-heading"><div><p class="eyebrow">YOUR NEXT STEP</p><h2 id="details-heading">Make yourself at home.</h2><p>Download Private Store above, enter this address and your device invitation, then choose {{.Selected.Name}} to install it.</p></div><div class="server-address"><code id="server-url">{{.StoreURL}}</code><button class="copy-button" id="copy">Copy address</button></div></section>{{end}}
+      {{if .SignedIn}}<section class="details" aria-labelledby="details-heading"><div><p class="eyebrow">YOUR NEXT STEP</p><h2 id="details-heading">Make yourself at home.</h2><p>Download Private Store above, sign in with your Gravitas account, then choose {{.Selected.Name}} to install it.</p></div><div class="server-address"><code id="server-url">{{.StoreURL}}</code><button class="copy-button" id="copy">Copy address</button></div></section>{{end}}
       <section class="more-apps" aria-labelledby="more-heading"><h2 id="more-heading">A little more to explore.</h2>{{range .Apps}}{{if ne .ID $.Selected.ID}}<a href="/apps/{{.ID}}"><img src="/assets/{{.Icon}}" alt="" width="42" height="42"><span><strong>{{.Name}}</strong><small>{{.Tagline}}</small></span><span aria-hidden="true">↗</span></a>{{end}}{{end}}<a class="back-to-store" href="/#apps">Back to the collection <span aria-hidden="true">←</span></a></section>
       <p id="feedback" role="status" aria-live="polite"></p>
     </main>

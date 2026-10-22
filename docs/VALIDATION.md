@@ -1,6 +1,6 @@
 # Validation
 
-Validation completed on October 21, 2026, including local deployment tests and the live Gravitas Kubernetes deployment.
+Validation completed October 21–22, 2026, including local deployment tests, the live Gravitas Kubernetes deployment, web login and native Gravitas sign-in.
 
 ## Backend
 
@@ -51,8 +51,27 @@ GitHub Actions workflows pass static validation. Daybreak's integration PR passe
 
 ## Live Kubernetes deployment
 
-The backend is live at `https://apps.gravitas.cool`. [CI for the deployed image](https://github.com/jeethsuresh/appstore/actions/runs/39611584975) passed backend race tests/vet, Android builds/tests/lint, Compose validation, and production image publication. The anonymously pullable AMD64 image is pinned to `ghcr.io/jeethsuresh/appstore@sha256:3eb40fac0f2cf2bff46e08cd4f64860dc105bb3f0b8f905173804c12d2700ba8`, built from source commit `4e1c30186829f8ffc1df90ad501734caabc69583`.
+The backend is live at `https://apps.gravitas.cool`. [Verify store CI](https://github.com/jeethsuresh/appstore/actions/workflows/ci.yml) runs backend race tests/vet, Android builds/tests/lint, Compose validation and production image publication. Rollouts use the successful main-branch build's immutable, anonymously pullable AMD64 image digest. The deployment script checks the intended cluster, readiness, public HTTPS health and anonymous API denial.
 
 The live checks passed trusted HTTPS, HTTP-to-HTTPS redirection, anonymous API/download denial, invalid/exhausted invitation rejection, single-use enrollment, current Daybreak/Spacetime ingestion, full authenticated APK hashes, range responses, webhook HMAC validation, and immediate revocation. GitHub delivered signed pings successfully for both configured release webhooks.
 
 A real pod replacement preserved the device credential, catalog release identities and APK storage. A temporary unprivileged pod in another namespace resolved the store Service but could not connect; it was deleted afterward. Existing RSS and Spacetime health endpoints remained healthy, and Office retained its 401 access gate. The store is Ready with no container restarts, matching 100m/256Mi requests and limits, a read-only non-root container and retained storage. Runtime secrets and the owner's unused enrollment invitation remain outside Git with mode 0600.
+
+
+## Gravitas portal and Android 0.2.0
+
+Backend tests additionally cover pinned issuer/redirect/identity validation, native code replay and invalid proof rejection, account-bound device creation without an invitation, linking/rotating existing enrollment, immediate revocation, public Android domain association and escaped browser fallback. The public app-page tests cover trusted release metadata, removed/unknown app 404s, escaping and sign-in return paths. The complete Go race suite and vet pass.
+
+Android JVM PKCE/state/URL tests, release lint and the permanently signed 0.2.0 build pass. A real emulator update from the signed 0.1.0 APK to 0.2.0 succeeds in place. Android's domain verifier reports `apps.gravitas.cool: verified` for the permanent package and certificate, without forcing verification state.
+
+`tools/e2e/native-login.py` exercises the real app sign-in UI and deployed IAM/store endpoints with an existing test account. It checks cancellation, a fresh proof on restart, encrypted pending state after activity recreation, rejection of a mismatched callback state, account credential persistence, both real catalog apps, a signed Daybreak download and immediate revocation. The host harness handles the existing account password and browser HTTP session; only the public authorization URL and PKCE-protected callback cross the isolated test control channel. The verifier stays on Android. No account is created, and the test credential is revoked afterward. Browser page rendering/typing is not automated by this harness.
+
+```sh
+export JAVA_HOME=/path/to/jdk
+export ANDROID_HOME=/path/to/android-sdk
+python3 tools/e2e/native-login.py --serial emulator-5554 --iam-login-env /secure/path/existing-test-account.env
+```
+
+The private env file supplies `IAM_USERNAME` and `IAM_PASSWORD`. The harness requires a disposable emulator and uses only the isolated `.testbed` package and a temporary test-only CA. It neither changes production trust nor bundles credentials in an APK.
+
+Live web verification visits both app pages, signs in through real Gravitas with profile-only scope, returns to the selected page, downloads the signed bootstrap APK with a matching SHA-256, checks range responses, logs out and confirms anonymous GET/HEAD/range requests are denied. Desktop and 320/390-pixel layouts were checked in the browser without horizontal overflow.

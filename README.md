@@ -1,15 +1,15 @@
 # Private Store
 
-A personal Android app distribution platform with invitation-based device enrollment, GitHub release ingestion, and a native Kotlin/Jetpack Compose client. Daybreak and Spacetime are the first two supported apps.
+A personal Android app distribution platform with Gravitas account sign-in, optional invitation-based device enrollment, GitHub release ingestion, and a native Kotlin/Jetpack Compose client. Daybreak and Spacetime are the first two supported apps.
 
-Visit [apps.gravitas.cool](https://apps.gravitas.cool) and sign in with Gravitas to download the signed **appstore-android.apk**. The app asks for an HTTPS server address and a device invitation. The Gravitas backend uses `https://apps.gravitas.cool`; see [Kubernetes deployment](deploy/gravitas/README.md). Docker/Caddy remains available for independent installations.
+Visit [apps.gravitas.cool](https://apps.gravitas.cool) and sign in with Gravitas to download the signed **appstore-android.apk**. Open the app and sign in with Gravitas; no separate device invitation is needed. The app connects automatically to `https://apps.gravitas.cool`; see [Kubernetes deployment](deploy/gravitas/README.md). Docker/Caddy remains available for independent installations.
 
 Browse the collection at [apps.gravitas.cool](https://apps.gravitas.cool), with dedicated [Daybreak](https://apps.gravitas.cool/apps/daybreak) and [Spacetime](https://apps.gravitas.cool/apps/spacetime) pages. App descriptions are public; downloading the store requires Gravitas sign-in. Each page explains features, Android compatibility, local data and optional connections, with current verified release details.
 
 ## Included
 
 - Go backend, SQLite, and local APK storage.
-- Single-use or limited-use device invitations, hashed credentials, one-year sessions, and immediate revocation.
+- Browser-based Gravitas sign-in with PKCE, verified Android App Links, account-bound device credentials, and immediate revocation. Optional device invitations support independent stores.
 - Authenticated catalog and APK downloads; GitHub credentials stay on the server.
 - Release polling at startup/every 15 minutes and HMAC-validated GitHub webhooks. Unchanged assets are cached; transient GitHub failures retry, and missing cached files are repaired.
 - APK signature verification, pinned release certificates and package IDs, digest/size checks, real APK metadata extraction, and immutable increasing version codes.
@@ -42,9 +42,11 @@ Caddy obtains HTTPS certificates. The backend has no public host port. `.env` is
 
 The `store_data` volume holds the SQLite database and APKs. Back it up while the service is stopped, or use SQLite's online backup API plus an APK snapshot. Preserve Caddy's certificate volume. Restore with the same app configuration and signing pins. Old APKs are retained so clients with an earlier catalog can finish downloading; storage pruning is not included.
 
-## Invite a phone
+## Connect a phone
 
-In a trusted terminal, export `ADMIN_TOKEN` from your private deployment environment without placing it in shell history:
+At apps.gravitas.cool, install the signed store and choose **Sign in with Gravitas**. Existing enrollments remain valid; **Connect Gravitas account** links them in place. Creating a Gravitas account follows the central login system's registration policy.
+
+Independent stores can continue using device invitations. In a trusted terminal, export `ADMIN_TOKEN` from your private deployment environment without placing it in shell history:
 
 ```sh
 export STORE_URL=https://store.example.com
@@ -55,9 +57,9 @@ python3 scripts/storectl.py devices
 python3 scripts/storectl.py revoke DEVICE_ID
 ```
 
-Install the signed store APK once, enter the server address/invitation/device name, and enroll. Enable app installation and notifications, then install the apps you want. Background checks update installed apps only. Certificates must match existing installations; a development-signed copy may need to be removed once after backing up any app data.
+For an independent store, choose **Use an invitation or another store**, enter its HTTPS address/invitation/device name, and enroll. Enable app installation and notifications, then install the apps you want. Background checks update installed apps only. Certificates must match existing installations; a development-signed copy may need to be removed once after backing up any app data.
 
-Admin tokens never belong on phones. Device sessions expire after one year; use a fresh invitation to enroll again. Friends can receive separate device invitations. User accounts and invitation emails are not included in this initial version.
+Admin tokens never belong on phones. Device sessions expire after one year; sign in again with Gravitas, or use a fresh invitation for an independent store. All authorized devices share the same catalog. Gravitas manages user accounts; the store requests only `profile.name`.
 
 ## GitHub webhooks
 

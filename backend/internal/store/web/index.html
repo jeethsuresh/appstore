@@ -72,11 +72,11 @@
         <ol class="steps">
           <li><span class="step-number">01</span><h3>Get the store</h3><p>Sign in with Gravitas, then download the signed Android APK on your phone.</p></li>
           <li><span class="step-number">02</span><h3>Make it yours</h3><p>Open the APK and allow installation from your browser when Android asks.</p></li>
-          <li><span class="step-number">03</span><h3>Find your favorites</h3><p>Open Private Store, enter the server below and your device invitation, then explore.</p></li>
+          <li><span class="step-number">03</span><h3>Find your favorites</h3><p>Open Private Store, sign in with your Gravitas account, then choose your apps.</p></li>
         </ol>
       </section>
       {{if .SignedIn}}
-      <section class="details" aria-labelledby="details-heading"><div><p class="eyebrow">READY WHEN YOU ARE</p><h2 id="details-heading">Your store address.</h2><p>Paste this into Private Store. Ask the owner for a device invitation to enroll your phone.</p></div><div class="server-address"><code id="server-url">{{.StoreURL}}</code><button class="copy-button" id="copy">Copy address</button></div></section>
+      <section class="details" aria-labelledby="details-heading"><div><p class="eyebrow">READY WHEN YOU ARE</p><h2 id="details-heading">Your store address.</h2><p>Private Store connects here automatically. Sign in with the same Gravitas account you use on the web.</p></div><div class="server-address"><code id="server-url">{{.StoreURL}}</code><button class="copy-button" id="copy">Copy address</button></div></section>
       <details class="checksum"><summary>Verify your download <span>SHA-256</span></summary><p>The published APK is signed with the permanent Private Store release key.</p><code>{{.Digest}}</code></details>
       {{end}}
       <p id="feedback" role="status" aria-live="polite"></p>

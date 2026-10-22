@@ -1,12 +1,11 @@
-Private Store 0.1.0 provides personal Android app distribution with Daybreak and Spacetime as the initial catalog.
+Private Store 0.2.0 adds Gravitas account sign-in on Android and a web home for the app collection.
 
-- Go/SQLite backend with local APK storage, GitHub release polling/webhooks, invitation enrollment and revocable device credentials.
-- APK signature/package/certificate verification, authenticated downloads, version/digest protection and cached ingestion.
-- Native Kotlin/Jetpack Compose client with encrypted enrollment, download progress, installation prompts and periodic updates.
-- Docker/Caddy deployment, health checks, administration CLI, CI and optional signed-release workflows.
+- Sign in in your browser, then return to Private Store through a verified Android App Link. No separate device invitation is required at apps.gravitas.cool.
+- PKCE and encrypted pending state protect the sign-in and allow it to resume after the activity is recreated. Passwords and Gravitas access tokens stay out of the Android app.
+- Existing enrollments keep working and can connect a Gravitas account in place. Sign-out immediately revokes device access.
+- Browse Daybreak and Spacetime pages with features, compatibility and verified release information. Gravitas sign-in gates the website's store APK download.
+- Existing signed app installation, release ingestion/webhooks and periodic updates remain available. Independent stores retain invitation enrollment.
 
-Download **appstore-android.apk** and verify it using **SHA256SUMS**. It is signed with the permanent store release key. Deploy the included backend separately, then enter its HTTPS address and a device invitation in the app.
+Download **appstore-android.apk** and verify it with **SHA256SUMS**. It uses the same permanent signing certificate as 0.1.0 and updates that release in place. The live backend is at **https://apps.gravitas.cool**. The repository includes Kubernetes and Docker/Caddy deployment configuration; private credentials and signing keys are excluded.
 
-Validation includes real GitHub APK ingestion, Android UI enrollment, initial installation, a background-worker upgrade from Daybreak 1.4.1 to 1.4.2, revocation, and the actual non-root/read-only container and Compose/Caddy HTTPS stack.
-
-No hosted server is included. Android may require installation confirmation or a Play Protect scan, and controls background scheduling. Existing development-signed store APKs must be removed before installing this release. Private signing keys and credentials are not included in this release.
+Android controls background scheduling and may require installation confirmation or a Play Protect scan. Development-signed store copies use a different key and require reinstalling after preserving any needed data.

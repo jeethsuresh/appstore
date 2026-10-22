@@ -10,11 +10,17 @@ The optional Daybreak and Spacetime signed-release workflows are saved locally a
 
 The backend is deployed at **https://apps.gravitas.cool** on the existing Gravitas Kubernetes cluster. It uses its own `appstore` namespace and retained 20Gi volume, with the existing shared Traefik ingress and wildcard TLS. Both app releases were ingested and downloaded over authenticated HTTPS; credentials/catalog survived pod replacement, revocation passed, and cross-namespace Service access was denied. Existing RSS, Spacetime and Office endpoints still respond normally.
 
-Signed release webhooks are configured in both app repositories, and GitHub's ping deliveries returned 200. Polling remains enabled for recovery. The owner's local handoff contains a one-use phone invitation valid for seven days and a separate mode-0600 administrator/webhook environment, outside this repository. The phone needs only the server URL and invitation. See [Kubernetes operations](../deploy/gravitas/README.md) for updates, persistence and backup instructions. CI publishes backend images; cluster rollout remains an explicit operation.
+Signed release webhooks are configured in both app repositories, and GitHub's ping deliveries returned 200. Polling remains enabled for recovery. The administrator/webhook environment remains outside this repository with mode 0600. Phones sign in with Gravitas; manual invitations remain available for independent stores. See [Kubernetes operations](../deploy/gravitas/README.md) for updates, persistence and backup instructions. CI publishes backend images; cluster rollout remains an explicit operation.
 
 
 The web portal now links to dedicated Daybreak and Spacetime pages with features,
 compatibility, current verified release information and installation guidance.
 Visitors can browse the descriptions before login; Gravitas sign-in unlocks the
-store APK download and returns them to the app page they were viewing. Device
-invitations remain a separate enrollment step in the Android client.
+store APK download and returns them to the app page they were viewing.
+
+The Android client signs in through the system browser using PKCE and verified
+HTTPS App Links. Pending sign-in proofs and account-bound device credentials are
+encrypted with AndroidKeyStore. Existing invitation enrollments survive the
+update and can connect a Gravitas account in place. Sign-out revokes the device
+credential; central Gravitas sign-in remains active. The app requests only the
+profile name, never the password or central access/refresh tokens.

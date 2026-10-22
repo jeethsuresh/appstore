@@ -6,7 +6,9 @@ import java.security.MessageDigest
 import java.security.SecureRandom
 import java.util.Base64
 
-data class PendingLogin(val baseUrl: String, val state: String, val verifier: String, val deviceName: String, val expiresAt: Long, val authorizationUrl: String = "")
+data class PendingLogin(val baseUrl: String, val state: String, val verifier: String, val deviceName: String, val expiresAt: Long, val authorizationUrl: String = "") {
+    override fun toString() = "PendingLogin(baseUrl=$baseUrl, expiresAt=$expiresAt, proof=redacted)"
+}
 object GravitasLogin {
     const val STORE = "https://apps.gravitas.cool"
     const val CALLBACK = "/auth/android/callback"
@@ -27,7 +29,7 @@ object GravitasLogin {
     }
     fun code(pending: PendingLogin, callback: String, now: Long = System.currentTimeMillis()): String {
         require(now < pending.expiresAt && pending.expiresAt <= now + 601_000) { "Sign-in expired. Start again." }
-        val uri = URI(callback); val origin = URI(pending.baseUrl); val q = query(uri)
+        val uri = try { URI(callback) } catch (_: Exception) { throw IllegalArgumentException("Unexpected sign-in return address") }; val origin = URI(pending.baseUrl); val q = query(uri)
         require(uri.scheme == "https" && uri.host == origin.host && uri.port == origin.port && uri.userInfo == null && uri.fragment == null && uri.path == CALLBACK) { "Unexpected sign-in return address" }
         require(q["state"]?.size == 1 && MessageDigest.isEqual(q["state"]!![0].toByteArray(), pending.state.toByteArray())) { "This sign-in belongs to another request. Start again." }
         require(q["error"].isNullOrEmpty()) { "Sign-in was cancelled. You can try again." }
