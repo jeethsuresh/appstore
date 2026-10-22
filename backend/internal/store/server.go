@@ -74,6 +74,10 @@ func New(cfg Config) (*Server, error) {
 	}
 	s := &Server{cfg: cfg, db: db, mux: http.NewServeMux(), client: &http.Client{Timeout: 5 * time.Minute}, api: "https://api.github.com", queue: make(chan string, 32), syncGate: make(chan struct{}, 1)}
 	s.inspect = s.inspectAPK
+	if err := s.registerWeb(); err != nil {
+		db.Close()
+		return nil, err
+	}
 	s.mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) {
 		if err := s.db.PingContext(r.Context()); err != nil {
 			fail(w, 503, "database unavailable")

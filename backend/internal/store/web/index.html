@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f5f4ee">
+  <meta name="description" content="A small home for independent Android apps. Get Private Store with your Gravitas account.">
+  <title>Private Store · Gravitas</title>
+  <link rel="icon" type="image/svg+xml" href="/assets/icon.svg">
+  <link rel="stylesheet" href="/assets/style.css">
+  <script src="/assets/app.js" defer></script>
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+  <div class="page">
+    <header>
+      <a class="brand" href="/" aria-label="Private Store home"><img src="/assets/icon.svg" width="36" height="36" alt=""><span>private store<span class="brand-sub">BY GRAVITAS</span></span></a>
+      {{if .SignedIn}}<button class="text-button" id="logout">Sign out <span aria-hidden="true">↗</span></button>{{else}}<span class="header-note"><span class="status-dot"></span> A more personal app store</span>{{end}}
+    </header>
+    <main id="main">
+      <div class="hero">
+        <section class="intro">
+          <p class="eyebrow"><span class="tiny-grid" aria-hidden="true">▦</span> INDEPENDENT APPS. YOUR ANDROID.</p>
+          <h1>Good apps.<br>A little closer<br>to <em>home.</em></h1>
+          <p class="lede">A small home for the apps we make.<br>Download once. Keep your favorites up to date.</p>
+          {{if .Error}}<p class="notice" role="alert">Sign-in couldn’t be completed. Please start again.</p>{{end}}
+          {{if .SignedIn}}
+          <div class="session"><span class="status-dot"></span> Signed in as <strong>{{.Username}}</strong></div>
+          <a class="button" href="/download/appstore.apk">Download for Android <span aria-hidden="true">↓</span></a>
+          <p class="button-note">v0.1.0 <span>·</span> 7.6 MB <span>·</span> Android 8.0+</p>
+          {{else if .Enabled}}
+          <a class="button" href="/auth/gravitas/start">Sign in with Gravitas <span aria-hidden="true">↗</span></a>
+          <p class="button-note">Your Gravitas account unlocks the download.</p>
+          <p class="register">New around here? <a href="/auth/gravitas/register">Create an account <span aria-hidden="true">↗</span></a></p>
+          {{else}}
+          <p class="notice" role="status">Downloads will be available when Gravitas sign-in is configured.</p>
+          {{end}}
+          <div class="trust"><span aria-hidden="true">◇</span> Signed releases <span class="trust-divider">/</span> No ads <span class="trust-divider">/</span> Built for Android</div>
+        </section>
+        <section class="showcase" aria-label="Private Store preview">
+          <span class="orbit orbit-one" aria-hidden="true"></span><span class="orbit orbit-two" aria-hidden="true"></span>
+          <div class="showcase-caption"><span class="status-dot"></span> SMALL STORE, GOOD COMPANY</div>
+          <div class="phone">
+            <div class="phone-bar"><span>9:41</span><span class="camera" aria-hidden="true"></span><span>▰</span></div>
+            <div class="phone-content">
+              <div class="phone-label">YOUR COLLECTION <span>02</span></div>
+              <h2>Make yourself<br>at home.</h2>
+              <p>Thoughtfully made. Always yours.</p>
+              <div class="app-preview"><span class="app-icon daybreak" aria-hidden="true">☀</span><div><h3>Daybreak</h3><p>A clearer kind of weather.</p><span class="app-category">WEATHER</span></div><span class="app-arrow" aria-hidden="true">↗</span></div>
+              <div class="app-preview"><span class="app-icon spacetime" aria-hidden="true">✳</span><div><h3>Spacetime</h3><p>A little more time for life.</p><span class="app-category">CALENDAR</span></div><span class="app-arrow" aria-hidden="true">↗</span></div>
+              <div class="phone-update"><span class="status-dot"></span> A home for your next favorite.</div>
+            </div>
+            <div class="phone-nav"><span>▦<small>Discover</small></span><span>↓<small>Updates</small></span><span>◉<small>Settings</small></span></div>
+            <span class="home-indicator" aria-hidden="true"></span>
+          </div>
+          <div class="floating-note"><span aria-hidden="true">↙</span> Less searching.<br>More making yourself at home.</div>
+          <div class="showcase-bottom"><span>PRIVATE STORE / ANDROID</span><span>01 — 02</span></div>
+        </section>
+      </div>
+      <section class="getting-started" aria-labelledby="start-heading">
+        <div class="section-heading"><p class="eyebrow">A FEW SMALL STEPS</p><h2 id="start-heading">Settle in.</h2><p>From your browser to your home screen.</p></div>
+        <ol class="steps">
+          <li><span class="step-number">01</span><h3>Get the store</h3><p>Sign in with Gravitas, then download the signed Android APK on your phone.</p></li>
+          <li><span class="step-number">02</span><h3>Make it yours</h3><p>Open the APK and allow installation from your browser when Android asks.</p></li>
+          <li><span class="step-number">03</span><h3>Find your favorites</h3><p>Open Private Store, enter the server below and your device invitation, then explore.</p></li>
+        </ol>
+      </section>
+      {{if .SignedIn}}
+      <section class="details" aria-labelledby="details-heading"><div><p class="eyebrow">READY WHEN YOU ARE</p><h2 id="details-heading">Your store address.</h2><p>Paste this into Private Store. Ask the owner for a device invitation to enroll your phone.</p></div><div class="server-address"><code id="server-url">https://apps.gravitas.cool</code><button class="copy-button" id="copy">Copy address</button></div></section>
+      <details class="checksum"><summary>Verify your download <span>SHA-256</span></summary><p>The published APK is signed with the permanent Private Store release key.</p><code>{{.Digest}}</code></details>
+      {{end}}
+      <p id="feedback" role="status" aria-live="polite"></p>
+    </main>
+    <footer><span>Small by design. Independent by choice.</span><span>PART OF <a href="https://gravitas.cool">GRAVITAS <span aria-hidden="true">↗</span></a></span></footer>
+  </div>
+</body>
+</html>

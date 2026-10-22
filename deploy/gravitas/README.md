@@ -71,3 +71,30 @@ migrations are forward-only; confirm an older binary supports the current schema
 Persistent retention is not a backup. Stop the app before snapshotting/copying
 the database and APKs together, or use SQLite's online backup API with a consistent
 APK snapshot. No automatic offsite backup is configured.
+
+## Browser downloads with Gravitas
+
+The root page now provides a responsive download and installation UI. Sign-in
+and registration use the same pinned-issuer PKCE flow as News and Office.
+The server exchanges codes directly with `https://gravitas.cool`; passwords and
+IAM access tokens are never exposed to the page. Host-only Secure/HttpOnly
+cookies hold encrypted eight-hour app sessions. Local logout clears the app
+session and leaves the central Gravitas login active.
+
+`GRAVITAS_REQUIRED=true`, `GRAVITAS_ISSUER=https://gravitas.cool`,
+`GRAVITAS_APP_URL=https://apps.gravitas.cool` and a persistent 32-byte base64url
+`GRAVITAS_SESSION_KEY` in `appstore-runtime` enable the UI. Missing configuration
+never enables anonymous downloads. The existing enrolled-device API, invitations
+and administrative credentials continue to work independently.
+
+`GET /download/appstore.apk` requires a valid app session, including for HEAD
+and Range requests, and serves the APK directly with private/no-store headers.
+The image fetches the signed v0.1.0 client at build time, verifies its pinned
+SHA-256, and verifies it again before starting an IAM-enabled server. Future
+client releases require updating the URL/hash in Dockerfile and the hash/size
+and displayed version in the web source. `CLIENT_APK` can select the same verified
+file for native development. The public upstream GitHub release remains public;
+this gate protects downloads served by apps.gravitas.cool.
+
+Network policy additionally allows HTTPS through the existing shared Traefik
+path to IAM. No IAM registration, new public service or new ingress is needed.

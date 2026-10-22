@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"private-store/internal/gravitas"
 	"private-store/internal/store"
 	"syscall"
 	"time"
@@ -37,7 +38,18 @@ func main() {
 		slog.Error("load apps", "error", err)
 		os.Exit(1)
 	}
-	s, err := store.New(store.Config{DataDir: env("DATA_DIR", "data"), AdminToken: os.Getenv("ADMIN_TOKEN"), WebhookSecret: os.Getenv("WEBHOOK_SECRET"), GitHubToken: os.Getenv("GITHUB_TOKEN"), AAPT: env("AAPT", "aapt"), APKSigner: env("APKSIGNER", "apksigner"), Apps: apps})
+	var federation *gravitas.Client
+	if issuer := os.Getenv("GRAVITAS_ISSUER"); issuer != "" {
+		federation, err = gravitas.New(issuer, os.Getenv("GRAVITAS_APP_URL"), os.Getenv("GRAVITAS_SESSION_KEY"))
+		if err != nil {
+			slog.Error("configure Gravitas login", "error", err)
+			os.Exit(1)
+		}
+	} else if os.Getenv("GRAVITAS_REQUIRED") == "true" {
+		slog.Error("GRAVITAS_ISSUER is required")
+		os.Exit(1)
+	}
+	s, err := store.New(store.Config{DataDir: env("DATA_DIR", "data"), AdminToken: os.Getenv("ADMIN_TOKEN"), WebhookSecret: os.Getenv("WEBHOOK_SECRET"), GitHubToken: os.Getenv("GITHUB_TOKEN"), AAPT: env("AAPT", "aapt"), APKSigner: env("APKSIGNER", "apksigner"), Apps: apps, Federation: federation, ClientAPK: env("CLIENT_APK", "/usr/local/share/store/appstore.apk")})
 	if err != nil {
 		slog.Error("start", "error", err)
 		os.Exit(1)

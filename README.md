@@ -2,7 +2,7 @@
 
 A personal Android app distribution platform with invitation-based device enrollment, GitHub release ingestion, and a native Kotlin/Jetpack Compose client. Daybreak and Spacetime are the first two supported apps.
 
-Download the signed **appstore-android.apk** from [Releases](https://github.com/jeethsuresh/appstore/releases). The app asks for an HTTPS server address and a device invitation. The Gravitas backend uses `https://apps.gravitas.cool`; see [Kubernetes deployment](deploy/gravitas/README.md). Docker/Caddy remains available for independent installations.
+Visit [apps.gravitas.cool](https://apps.gravitas.cool) and sign in with Gravitas to download the signed **appstore-android.apk**. The app asks for an HTTPS server address and a device invitation. The Gravitas backend uses `https://apps.gravitas.cool`; see [Kubernetes deployment](deploy/gravitas/README.md). Docker/Caddy remains available for independent installations.
 
 ## Included
 

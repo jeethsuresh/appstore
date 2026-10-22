@@ -154,6 +154,27 @@
                   {
                     "name": "JAVA_TOOL_OPTIONS",
                     "value": "-Xms16m -Xmx96m -XX:ActiveProcessorCount=1"
+                  },
+                  {
+                    "name": "GRAVITAS_REQUIRED",
+                    "value": "true"
+                  },
+                  {
+                    "name": "GRAVITAS_ISSUER",
+                    "value": "https://gravitas.cool"
+                  },
+                  {
+                    "name": "GRAVITAS_APP_URL",
+                    "value": "https://apps.gravitas.cool"
+                  },
+                  {
+                    "name": "GRAVITAS_SESSION_KEY",
+                    "valueFrom": {
+                      "secretKeyRef": {
+                        "name": "appstore-runtime",
+                        "key": "GRAVITAS_SESSION_KEY"
+                      }
+                    }
                   }
                 ],
                 "envFrom": [
@@ -295,6 +316,43 @@
               {
                 "protocol": "TCP",
                 "port": 443
+              }
+            ]
+          },
+          {
+            "to": [
+              {
+                "ipBlock": {
+                  "cidr": "209.38.8.79/32"
+                }
+              }
+            ],
+            "ports": [
+              {
+                "protocol": "TCP",
+                "port": 443
+              }
+            ]
+          },
+          {
+            "to": [
+              {
+                "namespaceSelector": {
+                  "matchLabels": {
+                    "kubernetes.io/metadata.name": "traefik"
+                  }
+                },
+                "podSelector": {
+                  "matchLabels": {
+                    "app.kubernetes.io/name": "traefik"
+                  }
+                }
+              }
+            ],
+            "ports": [
+              {
+                "protocol": "TCP",
+                "port": 8443
               }
             ]
           }

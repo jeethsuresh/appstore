@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"private-store/internal/gravitas"
 	"regexp"
 	"strings"
 )
@@ -34,6 +35,8 @@ type Release struct {
 type Config struct {
 	DataDir, AdminToken, WebhookSecret, GitHubToken, AAPT, APKSigner string
 	Apps                                                             []App
+	Federation                                                       *gravitas.Client
+	ClientAPK                                                        string
 }
 
 var hexDigest = regexp.MustCompile(`^[a-f0-9]{64}$`)
