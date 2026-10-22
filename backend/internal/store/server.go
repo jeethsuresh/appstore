@@ -15,6 +15,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"private-store/internal/gravitas"
 	"strings"
 	"time"
 
@@ -52,6 +53,7 @@ func New(cfg Config) (*Server, error) {
 	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS invites(hash TEXT PRIMARY KEY, label TEXT NOT NULL, expires INTEGER NOT NULL, uses INTEGER NOT NULL CHECK(uses>=0));
  CREATE TABLE IF NOT EXISTS devices(id TEXT PRIMARY KEY, name TEXT NOT NULL, token_hash TEXT UNIQUE NOT NULL, expires INTEGER NOT NULL, revoked INTEGER NOT NULL DEFAULT 0, created TEXT NOT NULL);
  CREATE TABLE IF NOT EXISTS device_identities(device_id TEXT PRIMARY KEY REFERENCES devices(id) ON DELETE CASCADE, issuer TEXT NOT NULL, subject TEXT NOT NULL, username TEXT NOT NULL);
+ CREATE TABLE IF NOT EXISTS device_sessions(device_id TEXT PRIMARY KEY REFERENCES devices(id) ON DELETE CASCADE, proof TEXT NOT NULL);
  CREATE TABLE IF NOT EXISTS releases(id INTEGER PRIMARY KEY, app_id TEXT NOT NULL, tag TEXT NOT NULL, version_code INTEGER NOT NULL, version_name TEXT NOT NULL, sha256 TEXT NOT NULL, size INTEGER NOT NULL, min_sdk INTEGER NOT NULL, notes TEXT NOT NULL, created TEXT NOT NULL, UNIQUE(app_id,version_code));`)
 	if err != nil {
 		db.Close()
@@ -155,8 +157,8 @@ type deviceKey struct{}
 
 func (s *Server) device(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		var id string
-		err := s.db.QueryRowContext(r.Context(), "SELECT id FROM devices WHERE token_hash=? AND revoked=0 AND expires>?", hash(bearer(r)), time.Now().Unix()).Scan(&id)
+		var id, linked, proof string
+		err := s.db.QueryRowContext(r.Context(), "SELECT d.id,COALESCE(i.device_id,''),COALESCE(p.proof,'') FROM devices d LEFT JOIN device_identities i ON i.device_id=d.id LEFT JOIN device_sessions p ON p.device_id=d.id WHERE d.token_hash=? AND d.revoked=0 AND d.expires>?", hash(bearer(r)), time.Now().Unix()).Scan(&id, &linked, &proof)
 		if err != nil {
 			if err != sql.ErrNoRows {
 				slog.Error("device authentication", "error", err)
@@ -165,6 +167,33 @@ func (s *Server) device(next http.Handler) http.Handler {
 			}
 			fail(w, 401, "device authentication required")
 			return
+		}
+		// Local device logout remains available during IAM outages. Invite-only
+		// enrollments have no central account and keep their existing behavior.
+		if linked != "" && !(r.Method == http.MethodDelete && r.URL.Path == "/v1/device") {
+			if s.cfg.Federation == nil {
+				fail(w, 503, "Gravitas is temporarily unavailable")
+				return
+			}
+			identity, err := s.cfg.Federation.OpenDevice(proof)
+			checked := err == nil
+			if err == nil {
+				err = s.cfg.Federation.CheckIdentity(r.Context(), identity)
+			}
+			if err != nil {
+				if errors.Is(err, gravitas.ErrUnavailable) {
+					fail(w, 503, "Gravitas is temporarily unavailable")
+					return
+				}
+				if checked && errors.Is(err, gravitas.ErrLoginRequired) {
+					if _, dbErr := s.db.ExecContext(r.Context(), "UPDATE devices SET revoked=1 WHERE id=?", id); dbErr != nil {
+						fail(w, 503, "authentication temporarily unavailable")
+						return
+					}
+				}
+				fail(w, 401, "Sign in with Gravitas again")
+				return
+			}
 		}
 		next.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), deviceKey{}, id)))
 	})

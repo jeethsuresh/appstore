@@ -61,13 +61,14 @@ func (s *Server) registerWeb() error {
 	s.mux.HandleFunc("GET /auth/gravitas/register", func(w http.ResponseWriter, r *http.Request) { s.webStart(w, r, true) })
 	s.mux.HandleFunc("GET /auth/gravitas/callback", s.webCallback)
 	s.mux.HandleFunc("POST /auth/gravitas/logout", s.webLogout)
+	s.mux.HandleFunc("GET /auth/gravitas/session", s.webSession)
 	s.mux.HandleFunc("GET /download/appstore.apk", s.webDownload)
 	return nil
 }
 func (s *Server) webHome(w http.ResponseWriter, r *http.Request) {
-	data, err := s.webData(r)
+	data, err := s.webData(w, r)
 	if err != nil {
-		s.internal(w, err)
+		s.webError(w, err)
 		return
 	}
 	s.renderWeb(w, "index.html", data)
@@ -88,6 +89,10 @@ func (s *Server) webCallback(w http.ResponseWriter, r *http.Request) {
 	}
 	identity, next, err := s.cfg.Federation.Callback(w, r)
 	if err != nil {
+		if errors.Is(err, gravitas.ErrUnavailable) {
+			fail(w, 503, "Gravitas is temporarily unavailable")
+			return
+		}
 		http.Redirect(w, r, "/login?error=signin", http.StatusSeeOther)
 		return
 	}
@@ -115,6 +120,11 @@ func (s *Server) webDownload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if _, err := s.cfg.Federation.Session(r); err != nil {
+		if errors.Is(err, gravitas.ErrUnavailable) {
+			fail(w, 503, "Gravitas is temporarily unavailable")
+			return
+		}
+		s.cfg.Federation.ClearSession(w)
 		fail(w, 401, "Sign in with Gravitas to download Private Store")
 		return
 	}
@@ -133,4 +143,30 @@ func (s *Server) webDownload(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Disposition", `attachment; filename="appstore-android.apk"`)
 	w.Header().Set("Cache-Control", "private, no-store")
 	http.ServeContent(w, r, "appstore-android.apk", info.ModTime(), f)
+}
+
+func (s *Server) webError(w http.ResponseWriter, err error) {
+	if errors.Is(err, gravitas.ErrUnavailable) {
+		fail(w, 503, "Gravitas is temporarily unavailable")
+		return
+	}
+	s.internal(w, err)
+}
+
+func (s *Server) webSession(w http.ResponseWriter, r *http.Request) {
+	if s.cfg.Federation == nil {
+		fail(w, 503, "Gravitas is temporarily unavailable")
+		return
+	}
+	identity, expiry, err := s.cfg.Federation.SessionInfo(r)
+	if err != nil {
+		if errors.Is(err, gravitas.ErrUnavailable) {
+			fail(w, 503, "Gravitas is temporarily unavailable")
+			return
+		}
+		s.cfg.Federation.ClearSession(w)
+		fail(w, 401, "Sign in with Gravitas again")
+		return
+	}
+	reply(w, 200, map[string]any{"active": true, "account": identity.Username, "expiresAt": expiry.Unix()})
 }

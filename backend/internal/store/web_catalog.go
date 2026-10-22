@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"private-store/internal/gravitas"
@@ -89,11 +90,20 @@ func (s *Server) webApps(ctx context.Context) ([]webApp, error) {
 	}
 	return apps, nil
 }
-func (s *Server) webData(r *http.Request) (webView, error) {
+func (s *Server) webData(w http.ResponseWriter, r *http.Request) (webView, error) {
 	data := webView{Enabled: s.cfg.Federation != nil, Error: r.URL.Query().Get("error") != "", Digest: clientSHA256, ClientVersion: clientVersion, ClientSize: fmt.Sprintf("%.1f MB", float64(clientSize)/1e6), Title: "Private Store · Gravitas", Description: "A small home for independent Android apps. Get Private Store with your Gravitas account.", Next: "/", StoreURL: "https://apps.gravitas.cool"}
 	if s.cfg.Federation != nil {
 		var identity gravitas.Identity
-		identity, _ = s.cfg.Federation.Session(r)
+		var err error
+		identity, err = s.cfg.Federation.Session(r)
+		if errors.Is(err, gravitas.ErrUnavailable) {
+			return data, err
+		}
+		if err != nil {
+			if _, cookieErr := r.Cookie(gravitas.SessionCookie); cookieErr == nil {
+				s.cfg.Federation.ClearSession(w)
+			}
+		}
 		data.SignedIn, data.Username, data.StoreURL = identity.Subject != "", identity.Username, s.cfg.Federation.AppURL
 	}
 	var err error
@@ -101,9 +111,9 @@ func (s *Server) webData(r *http.Request) (webView, error) {
 	return data, err
 }
 func (s *Server) webAppPage(w http.ResponseWriter, r *http.Request) {
-	data, err := s.webData(r)
+	data, err := s.webData(w, r)
 	if err != nil {
-		s.internal(w, err)
+		s.webError(w, err)
 		return
 	}
 	for i := range data.Apps {

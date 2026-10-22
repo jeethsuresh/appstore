@@ -11,6 +11,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 )
 
 type nativeTransport func(*http.Request) (*http.Response, error)
@@ -24,6 +25,7 @@ func nativeFixture(t *testing.T) *Server {
 		t.Fatal(err)
 	}
 	used := map[string]bool{}
+	expiry := time.Now().Add(24 * time.Hour).Unix()
 	var mu sync.Mutex
 	c.HTTP.Transport = nativeTransport(func(r *http.Request) (*http.Response, error) {
 		mu.Lock()
@@ -34,21 +36,36 @@ func nativeFixture(t *testing.T) *Server {
 		}
 		switch r.URL.Path {
 		case "/.well-known/iam-configuration":
-			body = `{"issuer":"https://gravitas.cool","identity_domain":"gravitas.cool","browser_initiation_endpoint":"https://gravitas.cool/oauth/start","token_endpoint":"https://gravitas.cool/oauth/token","userinfo_endpoint":"https://gravitas.cool/app/v1/me"}`
+			body = `{"issuer":"https://gravitas.cool","identity_domain":"gravitas.cool","browser_initiation_endpoint":"https://gravitas.cool/oauth/start","token_endpoint":"https://gravitas.cool/oauth/token","userinfo_endpoint":"https://gravitas.cool/app/v1/me","session_check_endpoint":"https://gravitas.cool/oauth/session"}`
 		case "/oauth/token":
 			_ = r.ParseForm()
 			code := r.Form.Get("code")
-			if (code != "first" && code != "link") || used[code] || r.Form.Get("code_verifier") != strings.Repeat("v", 43) || r.Form.Get("redirect_uri") != "https://apps.gravitas.cool/auth/android/callback" {
+			if (code != "first" && code != "link" && code != "broker") || used[code] || r.Form.Get("code_verifier") != strings.Repeat("v", 43) || r.Form.Get("redirect_uri") != "https://apps.gravitas.cool/auth/android/callback" {
 				status, body = 400, `{"error":"invalid_grant"}`
 			} else {
 				used[code] = true
-				body = `{"access_token":"opaque-iam-access","token_type":"Bearer"}`
+				data := map[string]any{"access_token": "opaque-iam-access", "token_type": "Bearer", "session_id": "family-1", "session_check_token": strings.Repeat("p", 43), "session_check_expires_in": 86400, "scope": "profile.name"}
+				if code == "broker" {
+					data["access_token"] = strings.Repeat("a", 43)
+					data["refresh_token"] = strings.Repeat("r", 43)
+					data["scope"] = "profile.name native.broker"
+					data["expires_in"] = 3600
+				}
+				encoded, _ := json.Marshal(data)
+				body = string(encoded)
 			}
 		case "/app/v1/me":
-			if r.Header.Get("Authorization") != "Bearer opaque-iam-access" {
+			if r.Header.Get("Authorization") != "Bearer opaque-iam-access" && r.Header.Get("Authorization") != "Bearer "+strings.Repeat("a", 43) {
 				t.Fatal("missing IAM proof")
 			}
 			body = `{"sub":"stable-user","username":"native-user","domain":"gravitas.cool","user_id":"@native-user:gravitas.cool"}`
+		case "/oauth/session":
+			if r.Header.Get("Authorization") != "Bearer "+strings.Repeat("p", 43) {
+				status = 401
+			} else {
+				encoded, _ := json.Marshal(map[string]any{"active": true, "iss": "https://gravitas.cool", "sub": "stable-user", "app_origin": "https://apps.gravitas.cool", "session_id": "family-1", "exp": expiry})
+				body = string(encoded)
+			}
 		default:
 			t.Fatal("unexpected IAM endpoint", r.URL.Path)
 		}

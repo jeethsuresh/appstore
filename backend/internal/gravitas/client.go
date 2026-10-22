@@ -3,6 +3,7 @@ package gravitas
 
 import (
 	"bytes"
+	"context"
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/rand"
@@ -11,7 +12,6 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
 	"net/http"
 	"net/url"
@@ -29,18 +29,22 @@ var ErrLoginRequired = errors.New("login required")
 var ErrConsentRequired = errors.New("consent required")
 
 type Identity struct {
-	Issuer   string `json:"issuer"`
-	Subject  string `json:"sub"`
-	Username string `json:"username"`
-	Domain   string `json:"domain"`
-	UserID   string `json:"user_id"`
+	Issuer         string `json:"issuer"`
+	Subject        string `json:"sub"`
+	Username       string `json:"username"`
+	Domain         string `json:"domain"`
+	UserID         string `json:"user_id"`
+	SessionID      string `json:"session_id,omitempty"`
+	CheckToken     string `json:"session_check_token,omitempty"`
+	SessionExpires int64  `json:"session_expires_at,omitempty"`
 }
 type metadata struct {
-	Issuer  string `json:"issuer"`
-	Domain  string `json:"identity_domain"`
-	Browser string `json:"browser_initiation_endpoint"`
-	Token   string `json:"token_endpoint"`
-	Profile string `json:"userinfo_endpoint"`
+	Issuer       string `json:"issuer"`
+	Domain       string `json:"identity_domain"`
+	Browser      string `json:"browser_initiation_endpoint"`
+	Token        string `json:"token_endpoint"`
+	Profile      string `json:"userinfo_endpoint"`
+	SessionCheck string `json:"session_check_endpoint"`
 }
 type flow struct {
 	State    string
@@ -100,7 +104,7 @@ func (c *Client) discovery() (metadata, error) {
 	if m.Issuer != c.Issuer || m.Domain != origin.Hostname() {
 		return m, errors.New("IAM discovery issuer/domain mismatch")
 	}
-	for _, raw := range []string{m.Browser, m.Token, m.Profile} {
+	for _, raw := range []string{m.Browser, m.Token, m.Profile, m.SessionCheck} {
 		u, err := url.Parse(raw)
 		if err != nil || u.Scheme != origin.Scheme || u.Host != origin.Host || u.User != nil || u.Fragment != "" || u.RawQuery != "" {
 			return m, errors.New("IAM discovery endpoint must belong to the configured issuer")
@@ -113,13 +117,19 @@ func (c *Client) discovery() (metadata, error) {
 func readJSON(resp *http.Response, out any) error {
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("IAM request failed (HTTP %d)", resp.StatusCode)
+		if resp.StatusCode == 400 || resp.StatusCode == 401 {
+			return ErrLoginRequired
+		}
+		return ErrUnavailable
 	}
 	raw, err := io.ReadAll(io.LimitReader(resp.Body, (1<<20)+1))
 	if err != nil || len(raw) > 1<<20 {
-		return errors.New("invalid IAM response")
+		return ErrUnavailable
 	}
-	return json.Unmarshal(raw, out)
+	if json.Unmarshal(raw, out) != nil {
+		return ErrUnavailable
+	}
+	return nil
 }
 func (c *Client) getJSON(endpoint, token string, out any) error {
 	req, err := http.NewRequest(http.MethodGet, endpoint, nil)
@@ -132,7 +142,7 @@ func (c *Client) getJSON(endpoint, token string, out any) error {
 	}
 	resp, err := c.HTTP.Do(req)
 	if err != nil {
-		return errors.New("IAM is unavailable")
+		return ErrUnavailable
 	}
 	return readJSON(resp, out)
 }
@@ -244,6 +254,9 @@ var proofPattern = regexp.MustCompile(`^[A-Za-z0-9_-]{43}$`)
 
 func (c *Client) NativeRedirect() string { return c.AppURL + "/auth/android/callback" }
 func (c *Client) NativeStart(state, challenge string) (string, error) {
+	return c.NativeStartBroker(state, challenge, false)
+}
+func (c *Client) NativeStartBroker(state, challenge string, broker bool) (string, error) {
 	if !proofPattern.MatchString(state) || !proofPattern.MatchString(challenge) {
 		return "", errors.New("invalid native login proof")
 	}
@@ -252,6 +265,9 @@ func (c *Client) NativeStart(state, challenge string) (string, error) {
 		return "", err
 	}
 	q := url.Values{"callerURL": {c.AppURL}, "redirectURL": {c.NativeRedirect()}, "codeChallenge": {challenge}, "codeChallengeMethod": {"S256"}, "scope": {"profile.name"}, "state": {state}}
+	if broker {
+		q.Set("scope", "profile.name native.broker")
+	}
 	return m.Browser + "?" + q.Encode(), nil
 }
 func (c *Client) NativeExchange(code, verifier string) (Identity, error) {
@@ -261,46 +277,62 @@ func (c *Client) NativeExchange(code, verifier string) (Identity, error) {
 	return c.exchange(code, verifier, c.NativeRedirect())
 }
 func (c *Client) exchange(code, verifier, redirect string) (Identity, error) {
+	identity, _, err := c.exchangeGrant(code, verifier, redirect)
+	return identity, err
+}
+func (c *Client) exchangeGrant(code, verifier, redirect string) (Identity, issuedTokens, error) {
+	var tokens issuedTokens
 	var identity Identity
 	m, err := c.discovery()
 	if err != nil {
-		return identity, err
+		return identity, tokens, err
 	}
 	form := url.Values{"grant_type": {"authorization_code"}, "code": {code}, "code_verifier": {verifier}, "redirect_uri": {redirect}}
 	req, err := http.NewRequest(http.MethodPost, m.Token, bytes.NewBufferString(form.Encode()))
 	if err != nil {
-		return identity, err
+		return identity, tokens, err
 	}
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	resp, err := c.HTTP.Do(req)
 	if err != nil {
-		return identity, errors.New("IAM is unavailable")
+		return identity, tokens, ErrUnavailable
 	}
-	var tokens struct {
-		AccessToken string `json:"access_token"`
-		TokenType   string `json:"token_type"`
-	}
+
 	if err = readJSON(resp, &tokens); err != nil {
-		return identity, err
+		return identity, tokens, err
 	}
 	if tokens.AccessToken == "" || !strings.EqualFold(tokens.TokenType, "Bearer") {
-		return identity, errors.New("invalid IAM token response")
+		return identity, tokens, ErrUnavailable
 	}
 	if err = c.getJSON(m.Profile, tokens.AccessToken, &identity); err != nil {
-		return identity, err
+		return identity, tokens, err
 	}
 	if identity.Subject == "" || len(identity.Subject) > 256 || identity.Username == "" || identity.Domain != m.Domain || identity.UserID != "@"+identity.Username+":"+m.Domain {
-		return Identity{}, errors.New("invalid IAM identity")
+		return Identity{}, tokens, ErrLoginRequired
 	}
 	identity.Issuer = c.Issuer
-	return identity, nil
+	identity.SessionID = tokens.SessionID
+	identity.CheckToken = tokens.CheckToken
+	identity.SessionExpires = 0
+	if tokens.CheckExpiresIn < 1 || tokens.CheckExpiresIn > int64(FamilyLifetime.Seconds()) {
+		return Identity{}, tokens, ErrLoginRequired
+	}
+	identity.SessionExpires, err = c.proofStatus(context.Background(), identity)
+	if err != nil {
+		return Identity{}, tokens, err
+	}
+	return identity, tokens, nil
 }
 func (c *Client) SetSession(w http.ResponseWriter, identity Identity) error {
-	value, err := c.seal("session", session{Identity: identity, Expires: time.Now().Add(SessionLifetime).Unix()})
+	if identity.SessionExpires <= time.Now().Unix() || identity.CheckToken == "" {
+		return ErrLoginRequired
+	}
+	expires := min(time.Now().Add(SessionLifetime).Unix(), identity.SessionExpires)
+	value, err := c.seal("session", session{Identity: identity, Expires: expires})
 	if err != nil {
 		return err
 	}
-	cookie(w, SessionCookie, value, int(SessionLifetime.Seconds()))
+	cookie(w, SessionCookie, value, int(expires-time.Now().Unix()))
 	return nil
 }
 func (c *Client) Session(r *http.Request) (Identity, error) {
@@ -318,6 +350,9 @@ func (c *Client) SessionInfo(r *http.Request) (Identity, time.Time, error) {
 	}
 	if s.Expires <= time.Now().Unix() || s.Expires > time.Now().Add(SessionLifetime+time.Minute).Unix() || s.Identity.Issuer != c.Issuer || s.Identity.Subject == "" {
 		return Identity{}, time.Time{}, ErrLoginRequired
+	}
+	if err := c.CheckIdentity(r.Context(), s.Identity); err != nil {
+		return Identity{}, time.Time{}, err
 	}
 	return s.Identity, time.Unix(s.Expires, 0), nil
 }

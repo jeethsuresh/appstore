@@ -25,6 +25,7 @@
           <p class="lede">A small home for the apps we make.<br>Download once. Keep your favorites up to date.</p>
           {{if .Error}}<p class="notice" role="alert">Sign-in couldn’t be completed. Please start again.</p>{{end}}
           {{if .SignedIn}}
+          <p id="session-feedback" class="notice" role="status" hidden></p>
           <div class="session"><span class="status-dot"></span> Signed in as <strong>{{.Username}}</strong></div>
           <a class="button" href="/download/appstore.apk">Download for Android <span aria-hidden="true">↓</span></a>
           <p class="button-note">v{{.ClientVersion}} <span>·</span> {{.ClientSize}} <span>·</span> Android 8.0+</p>

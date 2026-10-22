@@ -4,7 +4,10 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
+	"encoding/json"
+	"fmt"
 	"html"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -14,6 +17,7 @@ import (
 	"regexp"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestWebDownloadRequiresGravitasSession(t *testing.T) {
@@ -39,7 +43,7 @@ func TestWebDownloadRequiresGravitasSession(t *testing.T) {
 		t.Fatal("unsafe login shell")
 	}
 	session := httptest.NewRecorder()
-	if err := c.SetSession(session, gravitas.Identity{Issuer: c.Issuer, Subject: "test-subject", Username: "<script>alert(1)</script>"}); err != nil {
+	if err := c.SetSession(session, webTestIdentity(c, "test-subject", "<script>alert(1)</script>")); err != nil {
 		t.Fatal(err)
 	}
 	cookie := session.Result().Cookies()[0]
@@ -154,7 +158,7 @@ func TestAppPagesBrowsePubliclyButKeepDownloadsGated(t *testing.T) {
 		t.Fatal("release with stale trust exposed")
 	}
 	session := httptest.NewRecorder()
-	if err := c.SetSession(session, gravitas.Identity{Issuer: c.Issuer, Subject: "verified-subject", Username: "reader"}); err != nil {
+	if err := c.SetSession(session, webTestIdentity(c, "verified-subject", "reader")); err != nil {
 		t.Fatal(err)
 	}
 	r := httptest.NewRequest("GET", "https://apps.gravitas.cool/apps/spacetime", nil)
@@ -182,4 +186,22 @@ func TestAppPagesBrowsePubliclyButKeepDownloadsGated(t *testing.T) {
 	if !strings.Contains(w.Body.String(), `id="apps"`) || !strings.Contains(w.Body.String(), `href="/apps/daybreak"`) {
 		t.Fatal("app pages are not discoverable")
 	}
+}
+
+func webTestIdentity(c *gravitas.Client, subject, username string) gravitas.Identity {
+	identity := gravitas.Identity{Issuer: c.Issuer, Subject: subject, Username: username, SessionID: "web-family", CheckToken: strings.Repeat("p", 43), SessionExpires: time.Now().Add(time.Hour).Unix()}
+	c.HTTP.Transport = nativeTransport(func(r *http.Request) (*http.Response, error) {
+		var data any
+		switch r.URL.Path {
+		case "/.well-known/iam-configuration":
+			data = map[string]any{"issuer": c.Issuer, "identity_domain": "gravitas.cool", "browser_initiation_endpoint": c.Issuer + "/oauth/start", "token_endpoint": c.Issuer + "/oauth/token", "userinfo_endpoint": c.Issuer + "/app/v1/me", "session_check_endpoint": c.Issuer + "/oauth/session"}
+		case "/oauth/session":
+			data = map[string]any{"active": true, "iss": c.Issuer, "sub": subject, "app_origin": c.AppURL, "session_id": identity.SessionID, "exp": identity.SessionExpires}
+		default:
+			return nil, fmt.Errorf("unexpected fixture endpoint")
+		}
+		raw, _ := json.Marshal(data)
+		return &http.Response{StatusCode: 200, Header: make(http.Header), Body: io.NopCloser(strings.NewReader(string(raw)))}, nil
+	})
+	return identity
 }

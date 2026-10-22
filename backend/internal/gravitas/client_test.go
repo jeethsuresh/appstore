@@ -18,9 +18,10 @@ func fixture(t *testing.T) (*Client, *atomic.Int32) {
 	calls := &atomic.Int32{}
 	var issuer string
 	mux := http.NewServeMux()
+	expiry := time.Now().Add(24 * time.Hour).Unix()
 	mux.HandleFunc("GET /.well-known/iam-configuration", func(w http.ResponseWriter, r *http.Request) {
 		u, _ := url.Parse(issuer)
-		_ = json.NewEncoder(w).Encode(metadata{Issuer: issuer, Domain: u.Hostname(), Browser: issuer + "/oauth/start", Token: issuer + "/oauth/token", Profile: issuer + "/app/v1/me"})
+		_ = json.NewEncoder(w).Encode(metadata{Issuer: issuer, Domain: u.Hostname(), Browser: issuer + "/oauth/start", Token: issuer + "/oauth/token", Profile: issuer + "/app/v1/me", SessionCheck: issuer + "/oauth/session"})
 	})
 	mux.HandleFunc("POST /oauth/token", func(w http.ResponseWriter, r *http.Request) {
 		_ = r.ParseForm()
@@ -29,7 +30,7 @@ func fixture(t *testing.T) (*Client, *atomic.Int32) {
 			w.WriteHeader(400)
 			return
 		}
-		_ = json.NewEncoder(w).Encode(map[string]string{"access_token": "private-opaque-token", "token_type": "Bearer"})
+		_ = json.NewEncoder(w).Encode(issuedTokens{AccessToken: "private-opaque-token", TokenType: "Bearer", SessionID: "family-1", CheckToken: strings.Repeat("p", 43), CheckExpiresIn: 86400})
 	})
 	mux.HandleFunc("GET /app/v1/me", func(w http.ResponseWriter, r *http.Request) {
 		if r.Header.Get("Authorization") != "Bearer private-opaque-token" {
@@ -38,6 +39,13 @@ func fixture(t *testing.T) (*Client, *atomic.Int32) {
 		}
 		u, _ := url.Parse(issuer)
 		_ = json.NewEncoder(w).Encode(Identity{Subject: "stable-subject", Username: "alice", Domain: u.Hostname(), UserID: "@alice:" + u.Hostname()})
+	})
+	mux.HandleFunc("GET /oauth/session", func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("Authorization") != "Bearer "+strings.Repeat("p", 43) {
+			w.WriteHeader(401)
+			return
+		}
+		_ = json.NewEncoder(w).Encode(familyStatus{Active: true, Issuer: issuer, Subject: "stable-subject", Origin: "https://app.example", SessionID: "family-1", Expires: expiry})
 	})
 	iam := httptest.NewTLSServer(mux)
 	t.Cleanup(iam.Close)

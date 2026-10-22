@@ -2,9 +2,11 @@ package store
 
 import (
 	"database/sql"
+	"errors"
 	"html/template"
 	"net/http"
 	"net/url"
+	"private-store/internal/gravitas"
 	"strings"
 	"time"
 )
@@ -17,11 +19,12 @@ func (s *Server) nativeStart(w http.ResponseWriter, r *http.Request) {
 	var in struct {
 		State     string `json:"state"`
 		Challenge string `json:"codeChallenge"`
+		Broker    bool   `json:"broker"`
 	}
 	if !decode(w, r, &in) {
 		return
 	}
-	target, err := s.cfg.Federation.NativeStart(in.State, in.Challenge)
+	target, err := s.cfg.Federation.NativeStartBroker(in.State, in.Challenge, in.Broker)
 	if err != nil {
 		fail(w, 400, "Unable to start Gravitas sign-in")
 		return
@@ -37,6 +40,7 @@ func (s *Server) nativeExchange(w http.ResponseWriter, r *http.Request) {
 		Code     string `json:"code"`
 		Verifier string `json:"codeVerifier"`
 		Name     string `json:"deviceName"`
+		Broker   bool   `json:"broker"`
 	}
 	if !decode(w, r, &in) {
 		return
@@ -53,8 +57,19 @@ func (s *Server) nativeExchange(w http.ResponseWriter, r *http.Request) {
 		fail(w, 429, "Too many sign-ins. Try again shortly.")
 		return
 	}
-	identity, err := s.cfg.Federation.NativeExchange(in.Code, in.Verifier)
+	var identity gravitas.Identity
+	var broker *gravitas.BrokerBundle
+	var err error
+	if in.Broker {
+		identity, broker, err = s.cfg.Federation.NativeBrokerExchange(in.Code, in.Verifier)
+	} else {
+		identity, err = s.cfg.Federation.NativeExchange(in.Code, in.Verifier)
+	}
 	if err != nil {
+		if errors.Is(err, gravitas.ErrUnavailable) {
+			fail(w, 503, "Gravitas is temporarily unavailable")
+			return
+		}
 		fail(w, 401, "Sign-in expired or was not completed. Start again.")
 		return
 	}
@@ -73,7 +88,7 @@ func (s *Server) nativeExchange(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	credential := token()
-	expires := time.Now().Add(365 * 24 * time.Hour).Unix()
+	expires := min(time.Now().Add(365*24*time.Hour).Unix(), identity.SessionExpires)
 	if id == "" {
 		id = token()
 		_, err = tx.ExecContext(r.Context(), "INSERT INTO devices(id,name,token_hash,expires,created) VALUES(?,?,?,?,?)", id, in.Name, hash(credential), expires, time.Now().UTC().Format(time.RFC3339))
@@ -89,11 +104,24 @@ func (s *Server) nativeExchange(w http.ResponseWriter, r *http.Request) {
 		s.internal(w, err)
 		return
 	}
+	proof, err := s.cfg.Federation.SealDevice(identity)
+	if err != nil {
+		s.internal(w, err)
+		return
+	}
+	if _, err = tx.ExecContext(r.Context(), "INSERT INTO device_sessions(device_id,proof) VALUES(?,?) ON CONFLICT(device_id) DO UPDATE SET proof=excluded.proof", id, proof); err != nil {
+		s.internal(w, err)
+		return
+	}
 	if err = tx.Commit(); err != nil {
 		s.internal(w, err)
 		return
 	}
-	reply(w, 201, map[string]any{"deviceId": id, "token": credential, "expiresAt": expires, "account": identity.UserID})
+	out := map[string]any{"deviceId": id, "token": credential, "expiresAt": expires, "account": identity.UserID}
+	if broker != nil {
+		out["broker"] = broker
+	}
+	reply(w, 201, out)
 }
 func (s *Server) assetLinks(w http.ResponseWriter, r *http.Request) {
 	// This is the public certificate of the permanently signed Android client.

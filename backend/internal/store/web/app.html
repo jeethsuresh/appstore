@@ -25,6 +25,7 @@
           <div class="app-identity"><img src="/assets/{{.Selected.Icon}}" width="76" height="76" alt=""><div><p class="eyebrow">{{.Selected.Category}}</p><h1 id="app-name">{{.Selected.Name}}</h1></div></div>
           <h2>{{.Selected.Tagline}}</h2><p class="app-summary">{{.Selected.Summary}}</p>
           {{if .SignedIn}}
+          <p id="session-feedback" class="notice" role="status" hidden></p>
           <p class="session"><span class="status-dot"></span> Signed in as <strong>{{.Username}}</strong></p>
           <a class="button" href="/download/appstore.apk">Get Private Store <span aria-hidden="true">↓</span></a>
           {{else if .Enabled}}
