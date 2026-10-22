@@ -1,34 +1,52 @@
 # Signed release integrations
 
-The initial apps were integrated using their actual repositories, manifests, existing signed release assets, and release certificates. Their existing application code and signing keys were preserved.
+Both app workflows are merged and their `android-release` environments contain the original signing keys and credentials, with access restricted to the `main` branch:
 
-- Daybreak: `jeethsuresh/weather`, package `dev.jeeth.local_weather`. The optional workflow is proposed in [PR #1](https://github.com/jeethsuresh/weather/pull/1); its existing GitHub CI passed. The current local release script and published-APK verification workflow remain available.
-- Spacetime: `jeethsuresh/spacetime`, package `com.jeethsuresh.spacetime`. The optional workflow is proposed in [PR #1](https://github.com/jeethsuresh/spacetime/pull/1). Its existing release signing configuration is retained.
+- Daybreak: [jeethsuresh/weather PR #1](https://github.com/jeethsuresh/weather/pull/1), package `dev.jeeth.local_weather`, ARM64 APK `daybreak-android-arm64.apk`.
+- Spacetime: [jeethsuresh/spacetime PR #1](https://github.com/jeethsuresh/spacetime/pull/1), package `com.jeethsuresh.spacetime`, universal APK `spacetime-vVERSION-android.apk`.
 
-Mirrored workflow files and portable patches are in `integrations/`. Both pull requests are drafts for review; they have not been merged. Current published releases can already be ingested without merging them.
+Each existing keystore's certificate and private-key password were validated locally before provisioning. The permanent app signing certificates are unchanged. Existing source work, published releases, and local release processes were retained. Mirrored workflows, instructions and portable patches are in `integrations/`.
 
-## App workflow setup
+## Verify a signed build
 
-For each app, configure a GitHub environment named `android-release` with:
+Run **Build signed store release** on `main`, with `create_draft` unchecked. This analyzes/tests, builds and verifies a signed APK, then saves the APK and `SHA256SUMS` as a 14-day run artifact. It works with the current published version and leaves all releases and tags untouched.
 
-- `RELEASE_KEYSTORE_BASE64`: base64 of that app's existing keystore
+```sh
+gh workflow run store-release.yml --repo jeethsuresh/weather --ref main -f create_draft=false
+gh workflow run store-release.yml --repo jeethsuresh/spacetime --ref main -f create_draft=false
+```
+
+Verification artifacts are build evidence, not replacements for already-published APKs.
+
+The first signed runs passed, and their downloaded APKs independently passed signature, permanent-certificate, package/version and SHA-256 verification:
+
+- [Daybreak signed GitHub build](https://github.com/jeethsuresh/weather/actions/runs/39856942780) — 1.4.2 / code 7.
+- [Spacetime signed GitHub build](https://github.com/jeethsuresh/spacetime/actions/runs/39857018980) — 0.2.0 / code 2.
+
+## Create an app release
+
+Increase both the version name and build number in the app's `pubspec.yaml` (`frontend/pubspec.yaml` for Spacetime), commit and merge to `main`, then run with `create_draft=true`. The workflow refuses existing releases/tags, builds with the original key, verifies the package/version/certificate, saves the verified artifact and creates a draft release with checksums. Review and publish the draft to trigger the existing store webhook or periodic ingestion. Published versions are never overwritten.
+
+## Signing maintenance
+
+Each environment has four encrypted secrets:
+
+- `RELEASE_KEYSTORE_BASE64`
 - `RELEASE_STORE_PASSWORD`
 - `RELEASE_KEY_PASSWORD`
-- `RELEASE_KEY_ALIAS` (Spacetime requires `spacetime-release`)
+- `RELEASE_KEY_ALIAS` (`spacetime-release` for Spacetime)
 
-Use the existing app key. The workflow verifies the established signing fingerprint, package, version name and version code; an unrelated key fails. Adding the workflow does not upload any private key or password. Those secrets were not automatically provisioned.
+Use the existing app key for all future updates. Keep the original local keystores and credentials backed up securely. The release workflow loads signing material only after analysis/tests and removes temporary files immediately after the build, including on failure, before artifact upload. Actions and the Flutter SDK are pinned to exact commits. No signing material appears in Git, patches, artifacts or release assets.
 
-Bump the version name and build number in `pubspec.yaml`, commit on `main`, and run **Build signed store release**. It analyzes/tests with the existing Flutter SDK, builds and verifies the APK, and creates a draft release with checksums. Review and publish the draft to trigger store ingestion. Existing release tags are never overwritten.
-
-Daybreak retains `daybreak-android-arm64.apk`. Spacetime retains `spacetime-vVERSION-android.apk`. A reused version code cannot replace an existing verified release.
+The secrets were provisioned on October 22, 2026. Environment branch restrictions prevent other branches and tags from receiving them. Do not broaden that allowlist merely to run a branch build.
 
 ## Store client workflow
 
-The store's optional signed-build workflow uses these `android-release` environment secrets:
+The separate store client's optional signed-build workflow uses these `android-release` secrets:
 
 - `STORE_KEYSTORE_BASE64`
 - `STORE_STORE_PASSWORD`
 - `STORE_KEY_ALIAS`
 - `STORE_KEY_PASSWORD`
 
-It verifies against `android/release-certificate.sha256` and uploads a signed APK artifact. Local builds keep the key on the original machine. `scripts/release.py --publish` publishes a tested local build and checksums after source/identity verification; it never uploads signing material.
+This is independent of the two app environments above. The store client continues to use the protected local key and `scripts/release.py --publish`; those local builds verify `android/release-certificate.sha256`. No store-client key upload was needed to configure Daybreak and Spacetime.

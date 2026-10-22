@@ -47,7 +47,7 @@ python3 tools/e2e/compose-smoke.py --compose docker
 
 Podman is supported by the helpers. For Compose on macOS with Podman, pass `--podman --compose /path/to/docker-compose`.
 
-GitHub Actions workflows pass static validation. Daybreak's integration PR passed its existing CI. The app signing workflows require protected environment secrets before they can execute; no private keys were uploaded during this work.
+GitHub Actions workflows pass actionlint and embedded-helper checks. Both app integration PRs passed their existing CI and were merged. Original app signing keys and passwords were locally validated, then provisioned as encrypted GitHub environment secrets restricted to `main`. Verification-only signed builds exercise the configured secrets without modifying published releases; see [integrations](INTEGRATIONS.md).
 
 ## Live Kubernetes deployment
 
@@ -75,3 +75,8 @@ python3 tools/e2e/native-login.py --serial emulator-5554 --iam-login-env /secure
 The private env file supplies `IAM_USERNAME` and `IAM_PASSWORD`. The harness requires a disposable emulator and uses only the isolated `.testbed` package and a temporary test-only CA. It neither changes production trust nor bundles credentials in an APK.
 
 Live web verification visits both app pages, signs in through real Gravitas with profile-only scope, returns to the selected page, downloads the signed bootstrap APK with a matching SHA-256, checks range responses, logs out and confirms anonymous GET/HEAD/range requests are denied. Desktop and 320/390-pixel layouts were checked in the browser without horizontal overflow.
+
+
+## Signed app release workflows
+
+On October 22, both configured main-only GitHub workflows passed full analysis/tests, original-key signing, APK verification and artifact upload: [Daybreak](https://github.com/jeethsuresh/weather/actions/runs/39856942780) and [Spacetime](https://github.com/jeethsuresh/spacetime/actions/runs/39857018980). The downloaded artifacts were independently verified with `apksigner`, `aapt2` and SHA-256: original certificates, correct packages, Daybreak 1.4.2/code 7 and Spacetime 0.2.0/code 2. Each artifact contained only its APK and `SHA256SUMS`. Both runs removed temporary signing material successfully and skipped draft creation. The actual release preflight also refused both existing published versions during read-only checks. No published app version was replaced.
