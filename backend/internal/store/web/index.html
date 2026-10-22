@@ -27,7 +27,7 @@
           {{if .SignedIn}}
           <div class="session"><span class="status-dot"></span> Signed in as <strong>{{.Username}}</strong></div>
           <a class="button" href="/download/appstore.apk">Download for Android <span aria-hidden="true">↓</span></a>
-          <p class="button-note">v0.1.0 <span>·</span> 7.6 MB <span>·</span> Android 8.0+</p>
+          <p class="button-note">v{{.ClientVersion}} <span>·</span> {{.ClientSize}} <span>·</span> Android 8.0+</p>
           {{else if .Enabled}}
           <a class="button" href="/auth/gravitas/start">Sign in with Gravitas <span aria-hidden="true">↗</span></a>
           <p class="button-note">Your Gravitas account unlocks the download.</p>

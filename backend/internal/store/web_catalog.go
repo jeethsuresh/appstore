@@ -21,6 +21,7 @@ type webApp struct {
 type webView struct {
 	SignedIn, Enabled, Error                             bool
 	Username, Digest, Title, Description, Next, StoreURL string
+	ClientVersion, ClientSize                            string
 	Apps                                                 []webApp
 	Selected                                             *webApp
 }
@@ -89,7 +90,7 @@ func (s *Server) webApps(ctx context.Context) ([]webApp, error) {
 	return apps, nil
 }
 func (s *Server) webData(r *http.Request) (webView, error) {
-	data := webView{Enabled: s.cfg.Federation != nil, Error: r.URL.Query().Get("error") != "", Digest: clientSHA256, Title: "Private Store · Gravitas", Description: "A small home for independent Android apps. Get Private Store with your Gravitas account.", Next: "/", StoreURL: "https://apps.gravitas.cool"}
+	data := webView{Enabled: s.cfg.Federation != nil, Error: r.URL.Query().Get("error") != "", Digest: clientSHA256, ClientVersion: clientVersion, ClientSize: fmt.Sprintf("%.1f MB", float64(clientSize)/1e6), Title: "Private Store · Gravitas", Description: "A small home for independent Android apps. Get Private Store with your Gravitas account.", Next: "/", StoreURL: "https://apps.gravitas.cool"}
 	if s.cfg.Federation != nil {
 		var identity gravitas.Identity
 		identity, _ = s.cfg.Federation.Session(r)

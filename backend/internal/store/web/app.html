@@ -50,7 +50,7 @@
       </section>{{end}}
       {{if .Selected.LocalData}}<section class="app-local" aria-labelledby="local-heading">
         <div><p class="eyebrow">ON YOUR TERMS</p><h2 id="local-heading">At home on your device.</h2><p>{{.Selected.LocalData}}</p></div>
-        <div><h3>When it connects</h3><p>{{.Selected.Connection}}</p><p class="account-note">Gravitas signs you in to this website to download the store. Device enrollment and any account inside {{.Selected.Name}} are separate steps.</p></div>
+        <div><h3>When it connects</h3><p>{{.Selected.Connection}}</p><p class="account-note">Use Gravitas to download and sign in to Private Store. Any optional account inside {{.Selected.Name}} is managed by that app.</p></div>
       </section>{{end}}
       {{if .Selected.Release}}{{if .Selected.Release.Notes}}<details class="release-notes"><summary>What’s new in v{{.Selected.Release.VersionName}} <span>Release notes</span></summary><div>{{.Selected.Release.Notes}}</div></details>{{end}}{{end}}
       {{if .SignedIn}}<section class="details" aria-labelledby="details-heading"><div><p class="eyebrow">YOUR NEXT STEP</p><h2 id="details-heading">Make yourself at home.</h2><p>Download Private Store above, sign in with your Gravitas account, then choose {{.Selected.Name}} to install it.</p></div><div class="server-address"><code id="server-url">{{.StoreURL}}</code><button class="copy-button" id="copy">Copy address</button></div></section>{{end}}

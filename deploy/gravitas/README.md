@@ -103,10 +103,10 @@ and administrative credentials continue to work independently.
 
 `GET /download/appstore.apk` requires a valid app session, including for HEAD
 and Range requests, and serves the APK directly with private/no-store headers.
-The image fetches the signed v0.1.0 client at build time, verifies its pinned
+The image fetches the signed v0.2.0 client at build time, verifies its pinned
 SHA-256, and verifies it again before starting an IAM-enabled server. Future
 client releases require updating the URL/hash in Dockerfile and the hash/size
-and displayed version in the web source. `CLIENT_APK` can select the same verified
+and version in `backend/internal/store/web.go`; the displayed version/size use those values. `CLIENT_APK` can select the same verified
 file for native development. The public upstream GitHub release remains public;
 this gate protects downloads served by apps.gravitas.cool.
 

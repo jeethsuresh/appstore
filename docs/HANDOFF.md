@@ -24,3 +24,10 @@ encrypted with AndroidKeyStore. Existing invitation enrollments survive the
 update and can connect a Gravitas account in place. Sign-out revokes the device
 credential; central Gravitas sign-in remains active. The app requests only the
 profile name, never the password or central access/refresh tokens.
+
+The signed [0.2.0 release](https://github.com/jeethsuresh/appstore/releases/tag/v0.2.0)
+updates 0.1.0 in place. The portal image pins its exact published APK hash and
+size, validates both at build/startup, and serves it only to signed-in browsers.
+The Android emulator passed real Gravitas sign-in, encrypted state restoration,
+signed app download and revocation; Android verified the production App Link.
+See [validation](VALIDATION.md) for repeatable test instructions.
