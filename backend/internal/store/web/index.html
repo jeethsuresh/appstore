@@ -4,8 +4,8 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#f5f4ee">
-  <meta name="description" content="A small home for independent Android apps. Get Private Store with your Gravitas account.">
-  <title>Private Store · Gravitas</title>
+  <meta name="description" content="{{.Description}}">
+  <title>{{.Title}}</title>
   <link rel="icon" type="image/svg+xml" href="/assets/icon.svg">
   <link rel="stylesheet" href="/assets/style.css">
   <script src="/assets/app.js" defer></script>
@@ -15,11 +15,11 @@
   <div class="page">
     <header>
       <a class="brand" href="/" aria-label="Private Store home"><img src="/assets/icon.svg" width="36" height="36" alt=""><span>private store<span class="brand-sub">BY GRAVITAS</span></span></a>
-      {{if .SignedIn}}<button class="text-button" id="logout">Sign out <span aria-hidden="true">↗</span></button>{{else}}<span class="header-note"><span class="status-dot"></span> A more personal app store</span>{{end}}
+      <nav class="site-nav" aria-label="Main"><a href="/#apps">The apps</a><a href="/#get-store">Get the store</a>{{if .SignedIn}}<button class="text-button" id="logout">Sign out <span aria-hidden="true">↗</span></button>{{end}}</nav>
     </header>
     <main id="main">
       <div class="hero">
-        <section class="intro">
+        <section class="intro" id="get-store">
           <p class="eyebrow"><span class="tiny-grid" aria-hidden="true">▦</span> INDEPENDENT APPS. YOUR ANDROID.</p>
           <h1>Good apps.<br>A little closer<br>to <em>home.</em></h1>
           <p class="lede">A small home for the apps we make.<br>Download once. Keep your favorites up to date.</p>
@@ -46,8 +46,8 @@
               <div class="phone-label">YOUR COLLECTION <span>02</span></div>
               <h2>Make yourself<br>at home.</h2>
               <p>Thoughtfully made. Always yours.</p>
-              <div class="app-preview"><span class="app-icon daybreak" aria-hidden="true">☀</span><div><h3>Daybreak</h3><p>A clearer kind of weather.</p><span class="app-category">WEATHER</span></div><span class="app-arrow" aria-hidden="true">↗</span></div>
-              <div class="app-preview"><span class="app-icon spacetime" aria-hidden="true">✳</span><div><h3>Spacetime</h3><p>A little more time for life.</p><span class="app-category">CALENDAR</span></div><span class="app-arrow" aria-hidden="true">↗</span></div>
+              <a class="app-preview" href="/apps/daybreak" aria-label="About Daybreak"><span class="app-icon daybreak" aria-hidden="true">☀</span><div><h3>Daybreak</h3><p>A clearer kind of weather.</p><span class="app-category">WEATHER</span></div><span class="app-arrow" aria-hidden="true">↗</span></a>
+              <a class="app-preview" href="/apps/spacetime" aria-label="About Spacetime"><span class="app-icon spacetime" aria-hidden="true">✳</span><div><h3>Spacetime</h3><p>A little more time for life.</p><span class="app-category">CALENDAR</span></div><span class="app-arrow" aria-hidden="true">↗</span></a>
               <div class="phone-update"><span class="status-dot"></span> A home for your next favorite.</div>
             </div>
             <div class="phone-nav"><span>▦<small>Discover</small></span><span>↓<small>Updates</small></span><span>◉<small>Settings</small></span></div>
@@ -57,6 +57,16 @@
           <div class="showcase-bottom"><span>PRIVATE STORE / ANDROID</span><span>01 — 02</span></div>
         </section>
       </div>
+      <section class="catalog" id="apps" aria-labelledby="apps-heading">
+        <div class="catalog-heading"><div><p class="eyebrow">MEET THE COLLECTION</p><h2 id="apps-heading">A little more useful. Every day.</h2></div><p>Small, independent apps.<br>Get to know your next favorite.</p></div>
+        <div class="catalog-grid">
+          {{range .Apps}}<article class="catalog-card">
+            <div class="card-top"><img class="catalog-icon" src="/assets/{{.Icon}}" alt="" width="56" height="56"><span class="category">{{.Category}}</span></div>
+            <h3><a href="/apps/{{.ID}}">{{.Name}}</a></h3><p class="card-tagline">{{.Tagline}}</p><p class="card-summary">{{.Summary}}</p>
+            <div class="card-bottom"><span>{{if .Release}}v{{.Release.VersionName}}{{else}}Android app{{end}}</span><a href="/apps/{{.ID}}">Explore {{.Name}} <span aria-hidden="true">↗</span></a></div>
+          </article>{{end}}
+        </div>
+      </section>
       <section class="getting-started" aria-labelledby="start-heading">
         <div class="section-heading"><p class="eyebrow">A FEW SMALL STEPS</p><h2 id="start-heading">Settle in.</h2><p>From your browser to your home screen.</p></div>
         <ol class="steps">
@@ -66,7 +76,7 @@
         </ol>
       </section>
       {{if .SignedIn}}
-      <section class="details" aria-labelledby="details-heading"><div><p class="eyebrow">READY WHEN YOU ARE</p><h2 id="details-heading">Your store address.</h2><p>Paste this into Private Store. Ask the owner for a device invitation to enroll your phone.</p></div><div class="server-address"><code id="server-url">https://apps.gravitas.cool</code><button class="copy-button" id="copy">Copy address</button></div></section>
+      <section class="details" aria-labelledby="details-heading"><div><p class="eyebrow">READY WHEN YOU ARE</p><h2 id="details-heading">Your store address.</h2><p>Paste this into Private Store. Ask the owner for a device invitation to enroll your phone.</p></div><div class="server-address"><code id="server-url">{{.StoreURL}}</code><button class="copy-button" id="copy">Copy address</button></div></section>
       <details class="checksum"><summary>Verify your download <span>SHA-256</span></summary><p>The published APK is signed with the permanent Private Store release key.</p><code>{{.Digest}}</code></details>
       {{end}}
       <p id="feedback" role="status" aria-live="polite"></p>

@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f5f4ee">
+  <meta name="description" content="{{.Description}}">
+  <title>{{.Title}}</title>
+  <link rel="icon" type="image/svg+xml" href="/assets/icon.svg">
+  <link rel="stylesheet" href="/assets/style.css">
+  <script src="/assets/app.js" defer></script>
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+  <div class="page">
+    <header>
+      <a class="brand" href="/" aria-label="Private Store home"><img src="/assets/icon.svg" width="36" height="36" alt=""><span>private store<span class="brand-sub">BY GRAVITAS</span></span></a>
+      <nav class="site-nav" aria-label="Main"><a href="/#apps">The apps</a><a href="/#get-store">Get the store</a>{{if .SignedIn}}<button class="text-button" id="logout">Sign out <span aria-hidden="true">↗</span></button>{{end}}</nav>
+    </header>
+    <main id="main">
+      <nav class="breadcrumbs" aria-label="Breadcrumb"><a href="/#apps">The collection</a><span aria-hidden="true">/</span><span aria-current="page">{{.Selected.Name}}</span></nav>
+      {{if .Error}}<p class="notice" role="alert">Sign-in couldn’t be completed. Please start again.</p>{{end}}
+      <section class="app-hero {{.Selected.ID}}-theme" aria-labelledby="app-name">
+        <div class="app-intro">
+          <div class="app-identity"><img src="/assets/{{.Selected.Icon}}" width="76" height="76" alt=""><div><p class="eyebrow">{{.Selected.Category}}</p><h1 id="app-name">{{.Selected.Name}}</h1></div></div>
+          <h2>{{.Selected.Tagline}}</h2><p class="app-summary">{{.Selected.Summary}}</p>
+          {{if .SignedIn}}
+          <p class="session"><span class="status-dot"></span> Signed in as <strong>{{.Username}}</strong></p>
+          <a class="button" href="/download/appstore.apk">Get Private Store <span aria-hidden="true">↓</span></a>
+          {{else if .Enabled}}
+          <a class="button" href="/auth/gravitas/start?next={{.Next}}">Sign in to get the store <span aria-hidden="true">↗</span></a>
+          {{else}}<p class="notice" role="status">Store downloads will be available when Gravitas sign-in is configured.</p>{{end}}
+          <p class="button-note">Install {{.Selected.Name}} inside Private Store.<br>The store requires Android 8.0+ and a device invitation.</p>
+        </div>
+        <aside class="app-facts" aria-label="App information">
+          <p class="eyebrow">AT A GLANCE</p>
+          <dl>
+            <div><dt>Category</dt><dd>{{.Selected.Category}}</dd></div>
+            <div><dt>App compatibility</dt><dd>{{.Selected.MinimumAndroid}}</dd></div>
+            <div><dt>Devices</dt><dd>{{.Selected.Architecture}}</dd></div>
+            {{if .Selected.Release}}<div><dt>Latest store release</dt><dd>v{{.Selected.Release.VersionName}} <span>· {{.Selected.Size}}</span></dd></div>{{end}}
+            <div><dt>Available through</dt><dd>Private Store for Android</dd></div>
+          </dl>
+          <a class="source-link" href="https://github.com/{{.Selected.Repo}}" target="_blank" rel="noopener noreferrer">View source on GitHub <span aria-hidden="true">↗</span></a>
+        </aside>
+      </section>
+      {{if .Selected.Features}}<section class="app-features" aria-labelledby="features-heading">
+        <div class="catalog-heading"><div><p class="eyebrow">MADE FOR THE EVERYDAY</p><h2 id="features-heading">What you can do.</h2></div></div>
+        <div class="feature-grid">{{range $i, $feature := .Selected.Features}}<article><span class="feature-number" aria-hidden="true">0{{addOne $i}}</span><h3>{{$feature.Title}}</h3><p>{{$feature.Description}}</p></article>{{end}}</div>
+      </section>{{end}}
+      {{if .Selected.LocalData}}<section class="app-local" aria-labelledby="local-heading">
+        <div><p class="eyebrow">ON YOUR TERMS</p><h2 id="local-heading">At home on your device.</h2><p>{{.Selected.LocalData}}</p></div>
+        <div><h3>When it connects</h3><p>{{.Selected.Connection}}</p><p class="account-note">Gravitas signs you in to this website to download the store. Device enrollment and any account inside {{.Selected.Name}} are separate steps.</p></div>
+      </section>{{end}}
+      {{if .Selected.Release}}{{if .Selected.Release.Notes}}<details class="release-notes"><summary>What’s new in v{{.Selected.Release.VersionName}} <span>Release notes</span></summary><div>{{.Selected.Release.Notes}}</div></details>{{end}}{{end}}
+      {{if .SignedIn}}<section class="details" aria-labelledby="details-heading"><div><p class="eyebrow">YOUR NEXT STEP</p><h2 id="details-heading">Make yourself at home.</h2><p>Download Private Store above, enter this address and your device invitation, then choose {{.Selected.Name}} to install it.</p></div><div class="server-address"><code id="server-url">{{.StoreURL}}</code><button class="copy-button" id="copy">Copy address</button></div></section>{{end}}
+      <section class="more-apps" aria-labelledby="more-heading"><h2 id="more-heading">A little more to explore.</h2>{{range .Apps}}{{if ne .ID $.Selected.ID}}<a href="/apps/{{.ID}}"><img src="/assets/{{.Icon}}" alt="" width="42" height="42"><span><strong>{{.Name}}</strong><small>{{.Tagline}}</small></span><span aria-hidden="true">↗</span></a>{{end}}{{end}}<a class="back-to-store" href="/#apps">Back to the collection <span aria-hidden="true">←</span></a></section>
+      <p id="feedback" role="status" aria-live="polite"></p>
+    </main>
+    <footer><span>Small by design. Independent by choice.</span><span>PART OF <a href="https://gravitas.cool">GRAVITAS <span aria-hidden="true">↗</span></a></span></footer>
+  </div>
+</body>
+</html>

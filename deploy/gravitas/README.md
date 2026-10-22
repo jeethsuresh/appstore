@@ -4,7 +4,7 @@ The backend runs at `https://apps.gravitas.cool` in namespace `appstore` on
 `do-tor1-gravitas-k8s-services`. Enter that root URL in the Android client.
 The API requires device enrollment; the public health endpoint is `/healthz`.
 
-The October 21, 2026 deployment uses source commit
+The initial October 21, 2026 backend deployment used source commit
 `4e1c30186829f8ffc1df90ad501734caabc69583` and image
 `ghcr.io/jeethsuresh/appstore@sha256:3eb40fac0f2cf2bff46e08cd4f64860dc105bb3f0b8f905173804c12d2700ba8`.
 Live verification covered both APK downloads, enrollment/revocation, signed
@@ -98,3 +98,19 @@ this gate protects downloads served by apps.gravitas.cool.
 
 Network policy additionally allows HTTPS through the existing shared Traefik
 path to IAM. No IAM registration, new public service or new ingress is needed.
+
+## App collection pages
+
+`/apps/daybreak` and `/apps/spacetime` describe the configured apps, including
+features, device requirements, local storage and network behavior. The home page
+links to them through the collection cards and the store illustration. Descriptions
+are public; the store APK remains behind the existing Gravitas session gate.
+Signing in from a detail page returns to that page, with its download and setup
+controls enabled. No new identity permissions are requested.
+
+The editorial descriptions live in `backend/internal/store/web_catalog.go` and
+are grounded in each app's source documentation. A page is published only while
+its app is present in the store configuration. Release versions, sizes and Android
+minimums come from the verified SQLite catalog; metadata verified under an old
+package or certificate is hidden. Release notes are escaped as plain text. New
+pages share the existing CSP, no-store policy, host-only session and logout flow.

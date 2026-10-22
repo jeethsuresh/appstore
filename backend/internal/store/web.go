@@ -20,7 +20,7 @@ const clientSize int64 = 7569144
 
 //go:embed web/*
 var webFiles embed.FS
-var webPage = template.Must(template.ParseFS(webFiles, "web/index.html"))
+var webPage = template.Must(template.New("web").Funcs(template.FuncMap{"addOne": func(i int) int { return i + 1 }}).ParseFS(webFiles, "web/index.html", "web/app.html"))
 
 func verifyClientAPK(path, digest string, size int64) error {
 	f, err := os.Open(path)
@@ -47,9 +47,10 @@ func (s *Server) registerWeb() error {
 	}
 	s.mux.HandleFunc("GET /{$}", s.webHome)
 	s.mux.HandleFunc("GET /login", s.webHome)
-	for _, name := range []string{"style.css", "app.js", "icon.svg"} {
+	s.mux.HandleFunc("GET /apps/{app}", s.webAppPage)
+	for _, name := range []string{"style.css", "app.js", "icon.svg", "daybreak.svg", "spacetime.svg"} {
 		data, _ := webFiles.ReadFile("web/" + name)
-		mime := map[string]string{"style.css": "text/css; charset=utf-8", "app.js": "text/javascript; charset=utf-8", "icon.svg": "image/svg+xml"}[name]
+		mime := map[string]string{"style.css": "text/css; charset=utf-8", "app.js": "text/javascript; charset=utf-8", "icon.svg": "image/svg+xml", "daybreak.svg": "image/svg+xml", "spacetime.svg": "image/svg+xml"}[name]
 		s.mux.HandleFunc("GET /assets/"+name, func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", mime)
 			_, _ = w.Write(data)
@@ -63,20 +64,12 @@ func (s *Server) registerWeb() error {
 	return nil
 }
 func (s *Server) webHome(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	w.Header().Set("Content-Security-Policy", "default-src 'none'; style-src 'self'; script-src 'self'; img-src 'self'; connect-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'")
-	w.Header().Set("Referrer-Policy", "no-referrer")
-	var identity gravitas.Identity
-	if s.cfg.Federation != nil {
-		identity, _ = s.cfg.Federation.Session(r)
-	}
-	data := struct {
-		SignedIn, Enabled, Error bool
-		Username, Digest         string
-	}{identity.Subject != "", s.cfg.Federation != nil, r.URL.Query().Get("error") != "", identity.Username, clientSHA256}
-	if err := webPage.Execute(w, data); err != nil {
+	data, err := s.webData(r)
+	if err != nil {
+		s.internal(w, err)
 		return
 	}
+	s.renderWeb(w, "index.html", data)
 }
 func (s *Server) webStart(w http.ResponseWriter, r *http.Request, register bool) {
 	if s.cfg.Federation == nil {

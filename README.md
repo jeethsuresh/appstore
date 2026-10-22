@@ -4,6 +4,8 @@ A personal Android app distribution platform with invitation-based device enroll
 
 Visit [apps.gravitas.cool](https://apps.gravitas.cool) and sign in with Gravitas to download the signed **appstore-android.apk**. The app asks for an HTTPS server address and a device invitation. The Gravitas backend uses `https://apps.gravitas.cool`; see [Kubernetes deployment](deploy/gravitas/README.md). Docker/Caddy remains available for independent installations.
 
+Browse the collection at [apps.gravitas.cool](https://apps.gravitas.cool), with dedicated [Daybreak](https://apps.gravitas.cool/apps/daybreak) and [Spacetime](https://apps.gravitas.cool/apps/spacetime) pages. App descriptions are public; downloading the store requires Gravitas sign-in. Each page explains features, Android compatibility, local data and optional connections, with current verified release details.
+
 ## Included
 
 - Go backend, SQLite, and local APK storage.
