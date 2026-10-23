@@ -49,9 +49,9 @@ func (s *Server) registerWeb() error {
 	s.mux.HandleFunc("GET /{$}", s.webHome)
 	s.mux.HandleFunc("GET /login", s.webHome)
 	s.mux.HandleFunc("GET /apps/{app}", s.webAppPage)
-	for _, name := range []string{"style.css", "app.js", "icon.svg", "daybreak.svg", "spacetime.svg", "launcher.svg"} {
+	for _, name := range []string{"style.css", "app.js", "icon.svg", "daybreak.svg", "spacetime.svg", "launcher.svg", "river.svg"} {
 		data, _ := webFiles.ReadFile("web/" + name)
-		mime := map[string]string{"style.css": "text/css; charset=utf-8", "app.js": "text/javascript; charset=utf-8", "icon.svg": "image/svg+xml", "daybreak.svg": "image/svg+xml", "spacetime.svg": "image/svg+xml", "launcher.svg": "image/svg+xml"}[name]
+		mime := map[string]string{"style.css": "text/css; charset=utf-8", "app.js": "text/javascript; charset=utf-8", "icon.svg": "image/svg+xml", "daybreak.svg": "image/svg+xml", "spacetime.svg": "image/svg+xml", "launcher.svg": "image/svg+xml", "river.svg": "image/svg+xml"}[name]
 		s.mux.HandleFunc("GET /assets/"+name, func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", mime)
 			_, _ = w.Write(data)

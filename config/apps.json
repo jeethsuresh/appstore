@@ -34,5 +34,14 @@
     "assetName": "StillLauncher-{tag}-android.apk",
     "certificateSha256": "508184332d54eadbf5ad558c0b00c8350769cb386130c68eeec4aa8bf47c8b09",
     "description": "A private Android home screen with folders, widgets, photo wallpapers, and a customisable drawer and dock."
+  },
+  {
+    "id": "river",
+    "name": "River",
+    "packageName": "cool.gravitas.river",
+    "repository": "jeethsuresh/river",
+    "assetName": "River-{tag}-android.apk",
+    "certificateSha256": "6559956b5cf6b2f796824995b31da7fa2c176ba652e8fcb40741686d850bb6b0",
+    "description": "Private Gravitas spaces, separate channels, friends, conversations, posts and discussions."
   }
 ]
