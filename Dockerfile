@@ -4,8 +4,8 @@ COPY backend/go.mod backend/go.sum ./
 RUN go mod download
 COPY backend/ ./
 RUN CGO_ENABLED=1 go build -trimpath -ldflags='-s -w' -o /store ./cmd/store
-RUN curl --fail --location --retry 3 https://github.com/jeethsuresh/appstore/releases/download/v0.3.1/appstore-android.apk -o /appstore.apk \
-    && echo 'f1548d5da63822a34a91cc9a624fe68ae7967559514cea7070fd0e45033d39d5  /appstore.apk' | sha256sum -c -
+RUN curl --fail --location --retry 3 https://github.com/jeethsuresh/appstore/releases/download/v0.3.2/appstore-android.apk -o /appstore.apk \
+    && echo '55c5520b399fb5b3624dfc245cf2e9e5f4ec66510789a77db64a9d65c5ba9cbe  /appstore.apk' | sha256sum -c -
 
 FROM debian:bookworm-slim
 RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates aapt apksigner default-jre-headless && rm -rf /var/lib/apt/lists/* && useradd --uid 10001 --create-home store && mkdir /data && chown store:store /data
