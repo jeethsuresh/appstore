@@ -6,6 +6,7 @@
     <queries>
         <package android:name="dev.jeeth.local_weather" />
         <package android:name="com.jeethsuresh.spacetime" />
+        <package android:name="app.still.launcher" />
     </queries>
     <application android:label="Private Store" android:theme="@style/AppTheme" android:allowBackup="false" android:usesCleartextTraffic="false" android:supportsRtl="true" android:icon="@mipmap/ic_launcher" android:roundIcon="@mipmap/ic_launcher">
         <activity android:name=".MainActivity" android:exported="true" android:launchMode="singleTask">
