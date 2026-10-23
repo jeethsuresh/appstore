@@ -6,7 +6,7 @@ sub=p.add_subparsers(dest='command',required=True)
 a=sub.add_parser('invite');a.add_argument('--label',default='Phone');a.add_argument('--uses',type=int,default=1);a.add_argument('--hours',type=int,default=24)
 sub.add_parser('devices')
 a=sub.add_parser('revoke');a.add_argument('device_id')
-a=sub.add_parser('sync');a.add_argument('app', choices=['daybreak','spacetime','appstore']);a.add_argument('--tag')
+a=sub.add_parser('sync');a.add_argument('app', choices=['daybreak','spacetime','appstore','launcher']);a.add_argument('--tag')
 args=p.parse_args()
 base=os.environ.get('STORE_URL','https://store.example.com').rstrip('/')
 if not base.startswith('https://') and not base.startswith('http://127.0.0.1:'):

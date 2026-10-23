@@ -50,3 +50,7 @@ The separate store client's optional signed-build workflow uses these `android-r
 - `STORE_KEY_PASSWORD`
 
 This is independent of the two app environments above. The store client continues to use the protected local key and `scripts/release.py --publish`; those local builds verify `android/release-certificate.sha256`. No store-client key upload was needed to configure Daybreak and Spacetime.
+
+## Still Launcher
+
+Still Launcher is pinned as `app.still.launcher` from `jeethsuresh/launcher`. Published stable releases provide `StillLauncher-{tag}-android.apk`; drafts and prereleases are ignored. The certificate SHA-256 is `508184332d54eadbf5ad558c0b00c8350769cb386130c68eeec4aa8bf47c8b09`, matching the existing 0.3.0 installation, so updates retain layout and settings. The current release retains the launcher's existing preview signing identity. Keep that key for future updates. The backend polls GitHub every 15 minutes; `storectl.py sync launcher` requests immediate verification.

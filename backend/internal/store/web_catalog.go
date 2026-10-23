@@ -28,16 +28,29 @@ type webView struct {
 }
 
 var appStories = map[string]appStory{
+	"launcher": {
+		Category: "Home screen", Tagline: "A home that feels like yours.",
+		Summary: "Make room for your apps and widgets with Still Launcher. Organise home screens and the dock into folders, choose a photo wallpaper, and adjust the drawer and dock colours and transparency.",
+		Icon:    "launcher.svg", Architecture: "ARM, ARM64 and x86-64", MinimumAndroid: "Android 8.0+",
+		Features: []appFeature{
+			{"Keep apps together", "Drag an app onto another to create a folder, on a home screen or in the dock. Drop more apps onto it, rename it, or drag apps back out."},
+			{"Make it your own", "Choose an image wallpaper with a preview before applying. Set separate colours and opacity for the app drawer and dock."},
+			{"Reach your apps", "Search at the bottom of the drawer. Hold an app and drag it below the dock to hide it or ask Android to uninstall it."},
+			{"Build your home", "Add resizable widgets, change the grid and icon size, and drag to either edge to add home pages. Still Keyboard is included."},
+		},
+		LocalData:  "Home layout, folders, hidden apps and appearance settings stay on your device. The launcher needs no account and has no network permission.",
+		Connection: "The launcher works offline. Private Store needs a connection to download signed updates; Android controls app removal and widget permissions.",
+	},
 	"appstore": {
 		Category: "Apps & updates", Tagline: "A small home for your apps.",
 		Summary: "Install independent Android apps, keep them current, and sign in with Gravitas. Private Store keeps itself up to date through the same verified release channel.",
-		Icon: "icon.svg", Architecture: "ARM, ARM64 and x86-64", MinimumAndroid: "Android 8.0+",
+		Icon:    "icon.svg", Architecture: "ARM, ARM64 and x86-64", MinimumAndroid: "Android 8.0+",
 		Features: []appFeature{
 			{"Keep the store current", "New signed versions of Private Store appear alongside your other app updates. Check now or let periodic checks find them; Android may ask you to approve installation."},
 			{"Keep your settings", "Updating the store preserves its sign-in and update preferences. Every APK must match the configured package, version, checksum and permanent release certificate."},
 			{"Sign in with Gravitas", "Use your Gravitas account to enroll your phone and connect supported apps. Central sign-out revokes connected sessions."},
 		},
-		LocalData: "Your enrollment and Gravitas credentials are encrypted with keys held by Android. Store updates retain those keys, your account and your update settings.",
+		LocalData:  "Your enrollment and Gravitas credentials are encrypted with keys held by Android. Store updates retain those keys, your account and your update settings.",
 		Connection: "Browsing, downloads and sign-in need a connection. Update checks run about every six hours when Android's network and battery conditions allow. You control app installation and notification permissions.",
 	},
 	"daybreak": {
