@@ -18,3 +18,4 @@ android/**/build/
 dist/
 
 /store
+.gravitas-runtime/
