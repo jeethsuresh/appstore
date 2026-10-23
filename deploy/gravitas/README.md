@@ -18,8 +18,7 @@ copy certificate keys, or change DNS and other applications.
 The `Verify store` workflow tests the backend, validates Compose and builds the
 production image. Main-branch builds publish an AMD64 image to
 `ghcr.io/jeethsuresh/appstore:<commit>`. Deployments use its immutable digest.
-Image publication does not automatically deploy to Kubernetes. No cluster
-administrator credential is stored in GitHub Actions.
+Successful main-branch builds deploy their immutable image digest to Kubernetes after both CI jobs pass. See [automatic deployment](AUTOMATIC_DEPLOYMENT.md) for scoped credentials, the enable switch and release verification. No cluster administrator credential is stored in GitHub Actions.
 
 ## First deployment
 
