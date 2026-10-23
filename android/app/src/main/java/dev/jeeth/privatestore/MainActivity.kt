@@ -40,6 +40,7 @@ class MainActivity : ComponentActivity() {
     override fun onStop() { visible = false; super.onStop() }
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        SelfUpdateRecovery.reconcile(this)
         acceptCallback(intent)
         setContent { MaterialTheme(colorScheme = lightColorScheme(primary = Color(0xFF47633F), background = Color(0xFFF8FAF4))) { Surface(Modifier.fillMaxSize()) { StoreScreen() } } }
     }
@@ -64,7 +65,7 @@ class MainActivity : ComponentActivity() {
         val scope = rememberCoroutineScope()
         val notifications = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { allowed -> revision++; if (!allowed) message = "Enable notifications in Android settings to receive update confirmations." }
         val permission = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { installAllowed = packageManager.canRequestPackageInstalls(); message = if (installAllowed) "App installation enabled. Tap Install again." else "Enable app installation to continue." }
-        fun refresh() { val current = session ?: return; busy = true; scope.launch { try { apps = withContext(Dispatchers.IO) { StoreApi(current).apps() }; message = prefs.getString("status", "") ?: "" } catch (e: Exception) { message = e.message ?: "Could not refresh"; if (e is ApiException && e.code == 401) { vault.clear(); session = null; apps = emptyList(); UpdateWorker.cancel(this@MainActivity) } } finally { busy = false } } }
+        fun refresh() { val current = session ?: return; busy = true; scope.launch { try { apps = withContext(Dispatchers.IO) { StoreApi(current).apps() }; message = prefs.getString("status", "") ?: "" } catch (e: Exception) { message = e.message ?: "Could not refresh"; if (e is ApiException && e.code == 401) { BrokerManager.clear(this@MainActivity,true); session = null; apps = emptyList(); UpdateWorker.cancel(this@MainActivity) } } finally { busy = false } } }
         fun openLogin(address: String) { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(address)).addCategory(Intent.CATEGORY_BROWSABLE)) }
         fun signIn(register: Boolean = false) {
             val current = session ?: Session(GravitasLogin.STORE, "")
@@ -89,7 +90,9 @@ class MainActivity : ComponentActivity() {
             try {
                 val current = session?.takeIf { it.baseUrl == request.baseUrl } ?: Session(request.baseUrl, "")
                 val result = withContext(Dispatchers.IO) { StoreApi(current).finishLogin(request, code) }
-                vault.save(result); vault.clearPending(); pending = null; session = result; message = "Signed in with Gravitas"
+                if(result.broker!=null) withContext(Dispatchers.IO) { BrokerManager.engine(this@MainActivity).accept(result.broker,result.session) } else vault.save(result.session)
+                if(vault.load()?.token!=result.session.token) throw BrokerFailure(BrokerError.CANCELLED)
+                vault.clearPending();pending=null;session=result.session;message="Signed in with Gravitas"
                 if (Build.VERSION.SDK_INT >= 33) notifications.launch(Manifest.permission.POST_NOTIFICATIONS)
             } catch (e: Exception) {
                 vault.clearPending(); pending = null; message = e.message ?: "Sign-in failed. Start again."
@@ -97,14 +100,17 @@ class MainActivity : ComponentActivity() {
         }
         DisposableEffect(session) {
             val observer = LifecycleEventObserver { _, event ->
-                if (event == Lifecycle.Event.ON_RESUME) { installAllowed = packageManager.canRequestPackageInstalls(); revision++; if (session != null && !busy) refresh() }
+                if (event == Lifecycle.Event.ON_RESUME) { runCatching { BrokerAccounts.reconcile(this@MainActivity) };installAllowed = packageManager.canRequestPackageInstalls(); revision++; if (session != null && !busy) refresh() }
             }
             lifecycle.addObserver(observer)
             val listener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
                 scope.launch { revision++; if (key == "status") message = prefs.getString("status", "") ?: "" }
             }
             prefs.registerOnSharedPreferenceChangeListener(listener)
-            onDispose { lifecycle.removeObserver(observer); prefs.unregisterOnSharedPreferenceChangeListener(listener) }
+            val sessionPrefs=getSharedPreferences("session",MODE_PRIVATE)
+            val sessionListener=SharedPreferences.OnSharedPreferenceChangeListener { _,_ -> scope.launch { val value=runCatching { vault.load() }.getOrNull();if(value==null && session!=null) { session=null;apps=emptyList();message="Sign in with Gravitas again" } } }
+            sessionPrefs.registerOnSharedPreferenceChangeListener(sessionListener)
+            onDispose { lifecycle.removeObserver(observer); prefs.unregisterOnSharedPreferenceChangeListener(listener);sessionPrefs.unregisterOnSharedPreferenceChangeListener(sessionListener) }
         }
         LaunchedEffect(session) { if (session != null) { UpdateWorker.schedule(this@MainActivity); refresh() } }
         Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).statusBarsPadding().navigationBarsPadding().padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -131,7 +137,7 @@ class MainActivity : ComponentActivity() {
             } else {
                 Text(session!!.baseUrl, style = MaterialTheme.typography.bodySmall)
                 if (session!!.account.isNotBlank()) Text("Signed in as ${session!!.account}", style = MaterialTheme.typography.bodyMedium)
-                else TextButton(enabled = !busy, onClick = { signIn() }) { Text("Connect Gravitas account") }
+                if (session!!.account.isBlank() || runCatching { BrokerVault(this@MainActivity).load() }.getOrNull()==null) TextButton(enabled = !busy, onClick = { signIn() }) { Text(if(session!!.account.isBlank()) "Connect Gravitas account" else "Enable Gravitas sign-in for your apps") }
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Button(enabled = !busy, onClick = { refresh() }) { Text("Check for updates") }
                     TextButton(enabled = !busy, onClick = { if (Build.VERSION.SDK_INT >= 33 && !Notices.enabled(this@MainActivity)) notifications.launch(Manifest.permission.POST_NOTIFICATIONS) else startActivity(Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, packageName)) }) { Text("Notifications") }
@@ -141,7 +147,7 @@ class MainActivity : ComponentActivity() {
                     Switch(checked = auto, onCheckedChange = { auto = it; prefs.edit().putBoolean("auto", it).apply() })
                     Text("Automatic updates", modifier = Modifier.padding(start = 12.dp, top = 12.dp))
                 }
-                Text("Checks run about every 6 hours when connected and the battery is not low. Android may ask you to approve an update. Notifications must be enabled for background installation.", style = MaterialTheme.typography.bodySmall)
+                Text("Checks include Private Store itself and run about every 6 hours when connected and the battery is not low. Android may ask you to approve an update. Notifications must be enabled for background installation.", style = MaterialTheme.typography.bodySmall)
                 val checked = prefs.getLong("lastCheck", 0)
                 if (checked > 0) Text("Last background check: ${DateFormat.getDateTimeInstance().format(Date(checked))}", style = MaterialTheme.typography.bodySmall)
                 apps.forEach { app ->
@@ -158,14 +164,14 @@ class MainActivity : ComponentActivity() {
                                 withContext(Dispatchers.IO) { Installer.install(this@MainActivity, StoreApi(current).download(this@MainActivity, app) { done,total -> scope.launch { downloadFraction = done.toFloat()/total.toFloat() } }, app, background = false) }
                                 message = "Follow Android's installation prompt, then check for updates."
                             } catch (e: Exception) { message = e.message ?: "Installation failed" } finally { busy = false } } }
-                        }) { Text(if (installed == null) "Install" else if (update) "Update" else "Installed") }
+                        }) { Text(if (installed == null) "Install" else if (update && app.packageName == packageName) "Update Private Store" else if (update) "Update" else "Installed") }
                     } }
                 }
                 TextButton(enabled = !busy, onClick = { busy = true; scope.launch { try {
-                    withContext(Dispatchers.IO) { StoreApi(session!!).revoke() }
-                    vault.clear(); UpdateWorker.cancel(this@MainActivity); session = null; apps = emptyList(); message = "Device access revoked"
+                    withContext(Dispatchers.IO) { try { StoreApi(session!!).revoke() } catch(e:ApiException) { if(e.code!=401) throw e } }
+                    BrokerManager.clear(this@MainActivity,true); UpdateWorker.cancel(this@MainActivity); session = null; apps = emptyList(); message = "Device access revoked"
                 } catch (e: Exception) { message = "Could not revoke access: ${e.message}" } finally { busy = false } } }) { Text("Sign out and revoke this device") }
-                TextButton(enabled = !busy, onClick = { vault.clear(); UpdateWorker.cancel(this@MainActivity); session = null; apps = emptyList(); message = "Signed out locally. Ask the administrator to revoke old device access." }) { Text("Forget local enrollment") }
+                TextButton(enabled = !busy, onClick = { BrokerManager.clear(this@MainActivity,true); UpdateWorker.cancel(this@MainActivity); session = null; apps = emptyList(); message = "Signed out locally. Ask the administrator to revoke old device access." }) { Text("Forget local enrollment") }
             }
             if (pending != null) Card(Modifier.fillMaxWidth()) { Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text("Sign-in is open in your browser", style = MaterialTheme.typography.titleMedium)

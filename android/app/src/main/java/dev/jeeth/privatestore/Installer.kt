@@ -58,10 +58,11 @@ object Installer {
                 val callback = Intent(context, InstallReceiver::class.java).setAction("dev.jeeth.privatestore.INSTALL_RESULT").putExtra("appName", app.name).putExtra("packageName", app.packageName).putExtra("versionCode", app.release!!.versionCode)
                 val flags = PendingIntent.FLAG_UPDATE_CURRENT or (if (Build.VERSION.SDK_INT >= 31) PendingIntent.FLAG_MUTABLE else 0)
                 val pending = PendingIntent.getBroadcast(context, id, callback, flags)
+                // Persist before commit: a self-update can terminate this process immediately.
+                check(prefs.edit().putLong("pending.${app.packageName}", app.release.versionCode).commit())
                 session.commit(pending.intentSender)
-                context.getSharedPreferences("updates", Context.MODE_PRIVATE).edit().putLong("pending.${app.packageName}", app.release.versionCode).apply()
             }
-        } catch (e: Exception) { installer.abandonSession(id); throw e }
+        } catch (e: Exception) { runCatching { installer.abandonSession(id) };prefs.edit().remove("pending.${app.packageName}").apply();throw e }
         finally { file.delete() }
     }
 }
@@ -94,6 +95,7 @@ class InstallReceiver : BroadcastReceiver() {
             }
             Notices.show(context, id, "Finish installing $name", "Tap to approve the Android installation.", confirm)
         } else {
+            if(status==PackageInstaller.STATUS_SUCCESS) runCatching { BrokerAccounts.reconcile(context) }
             prefs.edit().remove("pending.$pkg").putString("status", if (status == PackageInstaller.STATUS_SUCCESS) "$name installed successfully" else "$name installation was cancelled or failed; tap Install to retry").apply()
             Notices.show(context, id, name, prefs.getString("status", "")!!)
         }

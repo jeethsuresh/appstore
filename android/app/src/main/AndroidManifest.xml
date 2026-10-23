@@ -20,6 +20,14 @@
                 <data android:scheme="https" android:host="apps.gravitas.cool" android:path="/auth/android/callback" />
             </intent-filter>
         </activity>
+        <provider android:name=".BrokerVisibilityProvider" android:authorities="${applicationId}.gravitas" android:exported="true" android:grantUriPermissions="false" />
+        <service android:name=".GravitasAuthenticatorService" android:exported="true" android:permission="android.permission.BIND_ACCOUNT_AUTHENTICATOR">
+            <intent-filter><action android:name="android.accounts.AccountAuthenticator" /></intent-filter>
+            <meta-data android:name="android.accounts.AccountAuthenticator" android:resource="@xml/gravitas_authenticator" />
+        </service>
         <receiver android:name=".InstallReceiver" android:exported="false" />
+        <receiver android:name=".StoreReplacedReceiver" android:exported="false">
+            <intent-filter><action android:name="android.intent.action.MY_PACKAGE_REPLACED" /></intent-filter>
+        </receiver>
     </application>
 </manifest>

@@ -44,3 +44,8 @@ Unknown apps/releases/devices return 404. Invalid input returns 400. Upstream in
 ## Browser portal
 
 `GET /`, `/apps/daybreak` and `/apps/spacetime` are public app descriptions. `/auth/gravitas/start` and `/auth/gravitas/register` initiate browser PKCE with same-origin return paths; `/auth/gravitas/callback` establishes an encrypted eight-hour host-only Secure/HttpOnly session. `POST /auth/gravitas/logout` clears that local session. `GET`/`HEAD /download/appstore.apk` requires it, including range requests, and returns private/no-store signed APK bytes whose size and SHA-256 are pinned at startup. Browser sessions do not authenticate device APIs.
+
+
+Explicit native requests set `broker: true` on both `/v1/auth/gravitas/start` and `/v1/auth/gravitas/exchange`. Only that flow requests `profile.name native.broker` and returns the store-origin encrypted-at-rest native bundle; see [Android broker](ANDROID_BROKER.md) for fields and child-client protocol. Linked device credentials and browser sessions require a current IAM family proof on every protected request. IAM revocation returns 401; outages return 503 without deleting local authorization state. `GET /auth/gravitas/session` checks the web session for the visible portal. Invitation-only credentials remain independent.
+
+The configured catalog includes `appstore` (`dev.jeeth.privatestore`) as well as Daybreak and Spacetime. Store release ingestion, authenticated APK download and signature/version verification use the same API as the other apps. `GET /apps/appstore` describes self-updates.

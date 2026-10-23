@@ -6,7 +6,7 @@ import java.security.MessageDigest
 import java.security.SecureRandom
 import java.util.Base64
 
-data class PendingLogin(val baseUrl: String, val state: String, val verifier: String, val deviceName: String, val expiresAt: Long, val authorizationUrl: String = "") {
+data class PendingLogin(val baseUrl: String, val state: String, val verifier: String, val deviceName: String, val expiresAt: Long, val authorizationUrl: String = "", val broker: Boolean = false) {
     override fun toString() = "PendingLogin(baseUrl=$baseUrl, expiresAt=$expiresAt, proof=redacted)"
 }
 object GravitasLogin {
@@ -14,7 +14,7 @@ object GravitasLogin {
     const val CALLBACK = "/auth/android/callback"
     private fun encode(bytes: ByteArray) = Base64.getUrlEncoder().withoutPadding().encodeToString(bytes)
     private fun random() = encode(ByteArray(32).also { SecureRandom().nextBytes(it) })
-    fun create(base: String, deviceName: String, now: Long = System.currentTimeMillis()) = PendingLogin(Versions.baseUrl(base), random(), random(), deviceName.trim(), now + 600_000)
+    fun create(base: String, deviceName: String, now: Long = System.currentTimeMillis(), broker: Boolean = true) = PendingLogin(Versions.baseUrl(base), random(), random(), deviceName.trim(), now + 600_000, broker = broker)
     fun challenge(verifier: String) = encode(MessageDigest.getInstance("SHA-256").digest(verifier.toByteArray(Charsets.US_ASCII)))
     private fun query(uri: URI): Map<String, List<String>> = uri.rawQuery.orEmpty().split('&').filter { it.isNotEmpty() }.map {
         val pair = it.split('=', limit = 2)
@@ -23,7 +23,7 @@ object GravitasLogin {
     fun authorization(pending: PendingLogin, address: String, redirect: String): String {
         val uri = URI(address); val q = query(uri)
         require(uri.scheme == "https" && uri.host == "gravitas.cool" && uri.port in listOf(-1, 443) && uri.userInfo == null && uri.fragment == null && uri.path == "/oauth/start") { "The store returned an untrusted sign-in address" }
-        val expected = mapOf("callerURL" to pending.baseUrl, "redirectURL" to pending.baseUrl + CALLBACK, "codeChallenge" to challenge(pending.verifier), "codeChallengeMethod" to "S256", "scope" to "profile.name", "state" to pending.state)
+        val expected = mapOf("callerURL" to pending.baseUrl, "redirectURL" to pending.baseUrl + CALLBACK, "codeChallenge" to challenge(pending.verifier), "codeChallengeMethod" to "S256", "scope" to if(pending.broker) "profile.name native.broker" else "profile.name", "state" to pending.state)
         require(redirect == pending.baseUrl + CALLBACK && expected.all { (key, value) -> q[key] == listOf(value) }) { "The sign-in request does not match this device" }
         return uri.toASCIIString()
     }

@@ -37,18 +37,22 @@ deploy/gravitas/deploy.sh ghcr.io/jeethsuresh/appstore@sha256:IMAGE_DIGEST
 Set `KUBECTL=/path/to/kubectl` when selecting a different client binary.
 `deploy.sh` validates the intended cluster endpoint, waits for readiness, checks
 public HTTPS health, and requires anonymous catalog access to return 401.
-The image contains the Daybreak and Spacetime package/certificate pins.
-Both current repositories are public, so `GITHUB_TOKEN` is empty. A read-only
+The image contains Daybreak, Spacetime and Private Store package/certificate pins.
+All three current repositories are public, so `GITHUB_TOKEN` is empty. A read-only
 repository token can be added to the runtime Secret if private apps are added.
 
 ## Android Gravitas sign-in
 
 The native client uses the same pinned issuer and app origin as the website,
-with a distinct fixed `/auth/android/callback` redirect, S256 PKCE, and only
-`profile.name` scope. The server exchanges the one-use code with IAM, validates
-its account identity, and creates or links a revocable one-year device credential.
-No IAM access/refresh tokens are sent to Android. Existing device credentials
-continue working. Independent stores can still use invitation enrollment.
+with a distinct fixed `/auth/android/callback` redirect and S256 PKCE. Explicit
+native broker enrollment requests `profile.name native.broker`; legacy store-only
+flows request `profile.name`. The server exchanges the one-use code with IAM and
+creates or links a revocable device credential bounded by the IAM family expiry.
+Only the explicit broker exchange returns the store-origin IAM bundle to the
+native store, which encrypts it in AndroidKeyStore. The server persists only an
+encrypted session-status proof and checks IAM on each protected request. Existing
+Gravitas enrollments without a status proof must sign in again; invitation-only
+devices remain independent. See [Android broker](../../docs/ANDROID_BROKER.md).
 
 `/.well-known/assetlinks.json` publishes the permanent store signing certificate
 for Android's verified HTTPS links. Preserve that certificate on every client
@@ -61,9 +65,11 @@ Load `ADMIN_TOKEN` from the private environment into a trusted terminal and set
 `STORE_URL=https://apps.gravitas.cool`. Use `scripts/storectl.py` to issue
 single-use invitations, list/revoke devices or request an immediate sync.
 Never give the admin token to a phone. An invitation lasts at most seven days;
-enrolled device sessions last one year and can be revoked immediately.
+invitation-only device sessions last one year and can be revoked immediately.
+Gravitas-linked devices also require a live IAM family proof; central logout
+revokes access immediately. IAM outages fail closed with 503 and retain credentials.
 
-Release polling runs at startup and every 15 minutes. App repository webhooks
+Release polling runs at startup and every 15 minutes. All three app repository webhooks, including the store itself,
 use `https://apps.gravitas.cool/webhooks/github`, JSON, release events, and
 the runtime `WEBHOOK_SECRET`. The server accepts only its configured repositories
 and re-fetches GitHub's authoritative release metadata. Polling recovers missed
@@ -92,7 +98,9 @@ and registration use the same pinned-issuer PKCE flow as News and Office.
 The server exchanges codes directly with `https://gravitas.cool`; passwords and
 IAM access tokens are never exposed to the page. Host-only Secure/HttpOnly
 cookies hold encrypted eight-hour app sessions. Local logout clears the app
-session and leaves the central Gravitas login active.
+session and leaves the central Gravitas login active. Protected downloads and
+linked-device requests check IAM session status without a positive authorization
+cache. The visible portal checks status every 15 seconds and on focus.
 
 `GRAVITAS_REQUIRED=true`, `GRAVITAS_ISSUER=https://gravitas.cool`,
 `GRAVITAS_APP_URL=https://apps.gravitas.cool` and a persistent 32-byte base64url

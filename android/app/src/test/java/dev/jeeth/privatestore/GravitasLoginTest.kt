@@ -23,7 +23,7 @@ class GravitasLoginTest {
         rejected(valid,pending.expiresAt);rejected(valid,now-20_000)
     }
     @Test fun authorizationCannotChangeProviderCallbackStateOrPermissions() {
-        val params=mapOf("callerURL" to pending.baseUrl,"redirectURL" to pending.baseUrl+GravitasLogin.CALLBACK,"codeChallenge" to GravitasLogin.challenge(pending.verifier),"codeChallengeMethod" to "S256","scope" to "profile.name","state" to pending.state)
+        val params=mapOf("callerURL" to pending.baseUrl,"redirectURL" to pending.baseUrl+GravitasLogin.CALLBACK,"codeChallenge" to GravitasLogin.challenge(pending.verifier),"codeChallengeMethod" to "S256","scope" to "profile.name native.broker","state" to pending.state)
         val address="https://gravitas.cool/oauth/start?"+params.entries.joinToString("&") { (k,v)->k+"="+URLEncoder.encode(v,"UTF-8") }
         assertEquals(address,GravitasLogin.authorization(pending,address,pending.baseUrl+GravitasLogin.CALLBACK))
         for (bad in listOf(address.replace("gravitas.cool/oauth","evil.example/oauth"),address+"&state=other",address.replace("profile.name","chats.read"),address.replace("S256","plain"),address+"#x")) {

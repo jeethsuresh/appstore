@@ -84,7 +84,7 @@ class GravitasE2ETest {
             val session=requireNotNull(vault.load())
             assertEquals(session,SessionVault(context).load());assertNull(vault.pending())
             val api=StoreApi(session);val apps=api.apps()
-            assertEquals(setOf("daybreak","spacetime"),apps.map { it.id }.toSet())
+            assertTrue(apps.map { it.id }.containsAll(listOf("daybreak","spacetime","appstore")))
             val app=apps.single { it.id=="daybreak" };val apk=api.download(context,app)
             Installer.verifyArchive(context,apk,app);apk.delete()
             api.revoke()

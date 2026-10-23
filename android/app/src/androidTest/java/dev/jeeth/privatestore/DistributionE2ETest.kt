@@ -51,7 +51,7 @@ class DistributionE2ETest {
         stage("ENROLLED_THROUGH_UI")
         val api = StoreApi(session)
         val apps = api.apps()
-        assertEquals(setOf("daybreak", "spacetime"), apps.map { it.id }.toSet())
+        assertTrue(apps.map { it.id }.containsAll(listOf("daybreak", "spacetime", "appstore")))
         val spacetime = apps.single { it.id == "spacetime" }
         val spacetimeFile = api.download(context, spacetime)
         Installer.verifyArchive(context, spacetimeFile, spacetime)

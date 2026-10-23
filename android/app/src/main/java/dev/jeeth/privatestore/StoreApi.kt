@@ -19,6 +19,7 @@ import javax.crypto.spec.GCMParameterSpec
 data class Session(val baseUrl: String, val token: String, val account: String = "") {
     override fun toString() = "Session(baseUrl=$baseUrl, account=$account, token=redacted)"
 }
+data class NativeLoginResult(val session: Session,val broker: BrokerSession?)
 data class StoreRelease(val id: Long, val versionCode: Long, val versionName: String, val sha256: String, val size: Long, val minSdk: Int, val notes: String)
 data class StoreApp(val id: String, val name: String, val packageName: String, val certificate: String, val description: String, val release: StoreRelease?)
 
@@ -57,7 +58,7 @@ class SessionVault(context: Context) {
     private val pendingPrefs = context.getSharedPreferences("gravitas-pending", Context.MODE_PRIVATE)
     fun savePending(value: PendingLogin) {
         val cipher = Cipher.getInstance("AES/GCM/NoPadding").apply { init(Cipher.ENCRYPT_MODE, key()); updateAAD("gravitas-pending-v1".toByteArray()) }
-        val json = JSONObject().put("baseUrl", value.baseUrl).put("state", value.state).put("verifier", value.verifier).put("deviceName", value.deviceName).put("expiresAt", value.expiresAt).put("authorizationUrl", value.authorizationUrl)
+        val json = JSONObject().put("baseUrl", value.baseUrl).put("state", value.state).put("verifier", value.verifier).put("deviceName", value.deviceName).put("expiresAt", value.expiresAt).put("authorizationUrl", value.authorizationUrl).put("broker",value.broker)
         val encrypted = cipher.doFinal(json.toString().toByteArray(Charsets.UTF_8))
         check(pendingPrefs.edit().putString("iv", Base64.encodeToString(cipher.iv, Base64.NO_WRAP)).putString("data", Base64.encodeToString(encrypted, Base64.NO_WRAP)).commit())
     }
@@ -65,7 +66,7 @@ class SessionVault(context: Context) {
         val data = pendingPrefs.getString("data", null) ?: return null
         val cipher = Cipher.getInstance("AES/GCM/NoPadding").apply { init(Cipher.DECRYPT_MODE, key(), GCMParameterSpec(128, Base64.decode(pendingPrefs.getString("iv", ""), Base64.NO_WRAP))); updateAAD("gravitas-pending-v1".toByteArray()) }
         val json = JSONObject(String(cipher.doFinal(Base64.decode(data, Base64.NO_WRAP)), Charsets.UTF_8))
-        val value = PendingLogin(Versions.baseUrl(json.getString("baseUrl")), json.getString("state"), json.getString("verifier"), json.getString("deviceName"), json.getLong("expiresAt"), json.getString("authorizationUrl"))
+        val value = PendingLogin(Versions.baseUrl(json.getString("baseUrl")), json.getString("state"), json.getString("verifier"), json.getString("deviceName"), json.getLong("expiresAt"), json.getString("authorizationUrl"),json.optBoolean("broker",false))
         if (value.expiresAt <= System.currentTimeMillis()) { clearPending(); return null }
         return value
     }
@@ -98,13 +99,16 @@ class StoreApi(private val session: Session) {
         return session.copy(token = result.getString("token"))
     }
     fun startLogin(pending: PendingLogin, register: Boolean = false): PendingLogin {
-        val result = json("/v1/auth/gravitas/start", "POST", JSONObject().put("state", pending.state).put("codeChallenge", GravitasLogin.challenge(pending.verifier)))
+        val result = json("/v1/auth/gravitas/start", "POST", JSONObject().put("state", pending.state).put("codeChallenge", GravitasLogin.challenge(pending.verifier)).put("broker",pending.broker))
         val address = GravitasLogin.authorization(pending, result.getString("authorizationUrl"), result.getString("redirectUri"))
         return pending.copy(authorizationUrl = if (register) "$address&screen=register" else address)
     }
-    fun finishLogin(pending: PendingLogin, code: String): Session {
-        val result = json("/v1/auth/gravitas/exchange", "POST", JSONObject().put("code", code).put("codeVerifier", pending.verifier).put("deviceName", pending.deviceName))
-        return Session(pending.baseUrl, result.getString("token"), result.getString("account"))
+    fun finishLogin(pending: PendingLogin, code: String): NativeLoginResult {
+        val result = json("/v1/auth/gravitas/exchange", "POST", JSONObject().put("code", code).put("codeVerifier", pending.verifier).put("deviceName", pending.deviceName).put("broker",pending.broker))
+        val current=Session(pending.baseUrl,result.getString("token"),result.getString("account"))
+        val broker=if(pending.broker) BrokerSession.parse(result.optJSONObject("broker")?:throw BrokerFailure(BrokerError.UNAVAILABLE)) else null
+        if(broker!=null && (broker.appOrigin!=current.baseUrl || broker.account!=current.account)) throw BrokerFailure(BrokerError.UNAVAILABLE)
+        return NativeLoginResult(current,broker)
     }
     fun revoke() { json("/v1/device", "DELETE") }
     fun apps(): List<StoreApp> {

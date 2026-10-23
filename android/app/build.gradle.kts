@@ -11,8 +11,8 @@ android {
         applicationId = "dev.jeeth.privatestore"
         minSdk = 26
         targetSdk = 36
-        versionCode = 2
-        versionName = "0.2.0"
+        versionCode = 3
+        versionName = "0.3.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
     compileOptions { sourceCompatibility = JavaVersion.VERSION_17; targetCompatibility = JavaVersion.VERSION_17 }
@@ -40,6 +40,12 @@ android {
 }
 val requireReleaseSigning = tasks.register("requireReleaseSigning") {
     doFirst { check(!releaseStore.isNullOrBlank()) { "Set STORE_KEYSTORE, STORE_STORE_PASSWORD, STORE_KEY_ALIAS and STORE_KEY_PASSWORD for release builds." } }
+}
+// Only the isolated test package can override its version for a real process-replacing upgrade test.
+androidComponents.onVariants(androidComponents.selector().withBuildType("e2e")) { variant ->
+    providers.gradleProperty("storeE2eVersionCode").orNull?.let { code ->
+        variant.outputs.forEach { it.versionCode.set(code.toInt()) }
+    }
 }
 tasks.matching { it.name == "preReleaseBuild" }.configureEach { dependsOn(requireReleaseSigning) }
 dependencies {
