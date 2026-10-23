@@ -46,6 +46,14 @@ class BrokerEngine(private val context: Context,private val iam: BrokerIam=Broke
         if(device!=null) SessionVault(context).save(device)
         BrokerVault(context).save(session);BrokerAccounts.reconcile(context)
     }
+    fun invalidateDevice(expected: Session): Boolean = lock.withLock {
+        // A delayed response for the previous device credential must not erase a
+        // fresh login accepted while the request was in flight.
+        val current=runCatching { SessionVault(context).load() }.getOrNull()
+        if(current?.baseUrl!=expected.baseUrl || current.token!=expected.token) return@withLock false
+        BrokerManager.clear(context,true)
+        true
+    }
 }
 object BrokerManager {
     @Volatile private var instance: BrokerEngine?=null

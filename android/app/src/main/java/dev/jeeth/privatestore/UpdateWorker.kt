@@ -19,10 +19,12 @@ class UpdateWorker(context: Context, params: WorkerParameters) : CoroutineWorker
         updateLock.withLock {
             val context = applicationContext
             val prefs = context.getSharedPreferences("updates", Context.MODE_PRIVATE)
+            var checkedSession: Session? = null
             try {
                 BrokerAccounts.reconcile(context)
                 BrokerManager.engine(context).refreshForUpdates()
                 val session = SessionVault(context).load() ?: return@withContext Result.success()
+                checkedSession = session
                 val api = StoreApi(session)
                 var failed = false
                 // Commit other updates before replacing this process with the store update.
@@ -42,7 +44,10 @@ class UpdateWorker(context: Context, params: WorkerParameters) : CoroutineWorker
                 if (failed) Result.retry() else Result.success()
             } catch (e: ApiException) {
                 prefs.edit().putString("status", e.message).apply()
-                if (e.code == 401) { BrokerManager.clear(context,true);Notices.show(context, 101, "Private Store needs sign-in", e.message ?: "Sign in again"); Result.success() } else Result.retry()
+                if (e.code == 401) {
+                    if (checkedSession?.let { BrokerManager.engine(context).invalidateDevice(it) } == true) Notices.show(context, 101, "Private Store needs sign-in", e.message ?: "Sign in again")
+                    Result.success()
+                } else Result.retry()
             } catch(e:BrokerFailure) { prefs.edit().putString("status",if(e.reason==BrokerError.LOGIN_REQUIRED) "Sign in with Gravitas again" else "Gravitas is temporarily unavailable").apply();if(e.reason==BrokerError.LOGIN_REQUIRED) Result.success() else Result.retry()
             } catch (e: Exception) { prefs.edit().putString("status", "Update check failed: ${e.message}").apply(); Result.retry() }
         }

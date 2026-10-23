@@ -93,4 +93,13 @@ class BrokerDeviceTest {
         try { context.contentResolver.query(uri,null,null,null,null);fail("Provider exposed account data") } catch(_:UnsupportedOperationException) { }
         assertFalse(BrokerAccounts.verifiedCaller(context,android.os.Process.myUid(),BrokerProtocol.CLIENT_PACKAGE))
     }
+    @Test fun staleDeviceDenialCannotClearAFreshAcceptedLogin() {
+        val s=sample();val engine=BrokerEngine(context,BrokerIam(Fake(s)))
+        val old=Session(GravitasLogin.STORE,"old-device",s.account)
+        val fresh=old.copy(token="new-device")
+        engine.accept(s,old);engine.accept(s.copy(refreshToken="z".repeat(43)),fresh)
+        assertFalse(engine.invalidateDevice(old))
+        assertEquals(fresh,SessionVault(context).load());assertEquals("z".repeat(43),BrokerVault(context).load()!!.refreshToken)
+        assertTrue(engine.invalidateDevice(fresh));assertNull(SessionVault(context).load());assertNull(BrokerVault(context).load())
+    }
 }
