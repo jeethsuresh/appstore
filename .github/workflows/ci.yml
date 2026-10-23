@@ -2,8 +2,13 @@ name: Verify store
 on: [push, pull_request, workflow_dispatch]
 permissions:
   contents: read
+concurrency:
+  group: gravitas-store-${{ github.ref }}
+  cancel-in-progress: false
 jobs:
   backend:
+    outputs:
+      digest: ${{ steps.image.outputs.digest }}
     runs-on: ubuntu-24.04
     permissions:
       contents: read
@@ -59,3 +64,36 @@ jobs:
         with:
           name: private-store-debug
           path: android/app/build/outputs/apk/debug/app-debug.apk
+  deploy:
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && vars.GRAVITAS_DEPLOY_ENABLED == 'true'
+    needs: [backend, android]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    environment:
+      name: gravitas
+      url: https://apps.gravitas.cool
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - name: Install verified Kubernetes client
+        run: |
+          curl -fsSLo kubectl https://dl.k8s.io/release/v1.37.0/bin/linux/amd64/kubectl
+          curl -fsSLo kubectl.sha256 https://dl.k8s.io/release/v1.37.0/bin/linux/amd64/kubectl.sha256
+          echo "$(cat kubectl.sha256)  kubectl" | sha256sum --check
+          chmod +x kubectl
+          echo "$PWD" >> "$GITHUB_PATH"
+      - name: Configure namespace-scoped deploy credential
+        env:
+          GRAVITAS_KUBECONFIG: ${{ secrets.GRAVITAS_KUBECONFIG }}
+        run: |
+          test -n "$GRAVITAS_KUBECONFIG"
+          umask 077
+          printf '%s' "$GRAVITAS_KUBECONFIG" > "$RUNNER_TEMP/appstore-kubeconfig"
+          echo "KUBECONFIG=$RUNNER_TEMP/appstore-kubeconfig" >> "$GITHUB_ENV"
+      - name: Deploy and verify public HTTPS
+        env:
+          KUBE_CONTEXT: gravitas
+          RELEASE_IMAGE: ghcr.io/jeethsuresh/appstore@${{ needs.backend.outputs.digest }}
+        run: deploy/gravitas/deploy.sh "$RELEASE_IMAGE"
+      - name: Remove deployment credential
+        if: always()
+        run: rm -f "$RUNNER_TEMP/appstore-kubeconfig"
