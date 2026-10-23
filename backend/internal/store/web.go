@@ -15,9 +15,9 @@ import (
 
 // The bootstrap client is pinned to the signed, published release. Updating it
 // requires updating the image download and this pin together.
-const clientVersion = "0.3.0"
-const clientSHA256 = "e48082f87f07ab0e07de547e3ce22db1bb92ac5de9b46f5fc5f565d68d02c0d9"
-const clientSize int64 = 7603840
+const clientVersion = "0.3.1"
+const clientSHA256 = "f1548d5da63822a34a91cc9a624fe68ae7967559514cea7070fd0e45033d39d5"
+const clientSize int64 = 7603864
 
 //go:embed web/*
 var webFiles embed.FS
