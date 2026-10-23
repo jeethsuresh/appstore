@@ -1,6 +1,6 @@
 # Validation
 
-Validation completed October 21–22, 2026, including local deployment tests, the live Gravitas Kubernetes deployment, web login and native Gravitas sign-in.
+Validation completed October 21–23, 2026, including local deployment tests, the live Gravitas Kubernetes deployment, web login and native Gravitas sign-in.
 
 ## Backend
 
@@ -90,4 +90,8 @@ A disposable Android 16 emulator replaced the running `dev.jeeth.privatestore.te
 
 Seven isolated broker device tests cover encrypted storage, nonce-bound results and caller rejection, concurrent single refresh, a rotated pair retained across a status outage, explicit revocation clearing credentials, local logout racing an in-flight refresh, provider access denial, and a stale device denial that must preserve a newly accepted login. Debug unit tests, release lint, permanent-key signed build and APK identity/signature checks pass.
 
-The IAM coordinator’s live synthetic HTTP integration passed explicit native enrollment, scope-upgrade rejection, first-consent requirements, PKCE/callback/subject/family/replay checks, fixed refresh-family expiry, and central logout across store cookies/devices, Spacetime native sessions, pending codes and refresh credentials. An independent family remained valid. Actual signed cross-package emulator verification is recorded separately after completion; test credentials are never included in this report.
+The IAM coordinator’s live synthetic HTTP integration passed explicit native enrollment, scope-upgrade rejection, first-consent requirements, PKCE/callback/subject/family/replay checks, fixed refresh-family expiry, and central logout across store cookies/devices, Spacetime native sessions, pending codes and refresh credentials. An independent family remained valid. Actual signed cross-package emulator verification also passed using the exact release APKs: Private Store 0.3.0/code 3 (`e48082f87f07ab0e07de547e3ce22db1bb92ac5de9b46f5fc5f565d68d02c0d9`) and Spacetime 0.4.0/code 4 (`9130d447a129843171e433bf7db5c524a02175ebadc8765b954c2541bb5ca8ca`). The tests covered explicit store enrollment, installing Spacetime after the store account already existed, sign-in without a browser, silent renewal and sync, explicit disconnect, browser PKCE fallback and central logout clearing both apps. Both APKs retain their permanent production signing certificates. Test credentials and the private instrumentation helper are never published.
+
+After direct human approval, the temporary native-login fixture was removed. The store cleanup created a private consistent SQLite backup, deleted exactly three fixture devices and their three identity/proof records, and verified fingerprints of all other data were unchanged. Temporary helper resources were removed; the live deployment remained Ready and healthy. The IAM and Spacetime owners independently confirmed their fixture cleanup.
+
+[Private Store v0.3.0](https://github.com/jeethsuresh/appstore/releases/tag/v0.3.0) is published with only its signed APK and `SHA256SUMS`. An independent public download matched the exact tested APK hash and size (7,603,840 bytes). The live authenticated catalog and APK endpoint served version code 3 with the same digest, package and permanent certificate; the disposable verification credential was revoked afterward. The website bootstrap download is pinned to this same artifact in both the production image and server.

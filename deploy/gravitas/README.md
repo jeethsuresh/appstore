@@ -37,8 +37,8 @@ deploy/gravitas/deploy.sh ghcr.io/jeethsuresh/appstore@sha256:IMAGE_DIGEST
 Set `KUBECTL=/path/to/kubectl` when selecting a different client binary.
 `deploy.sh` validates the intended cluster endpoint, waits for readiness, checks
 public HTTPS health, and requires anonymous catalog access to return 401.
-The image contains Daybreak, Spacetime and Private Store package/certificate pins.
-All three current repositories are public, so `GITHUB_TOKEN` is empty. A read-only
+The image contains Daybreak, Spacetime, Private Store and Still Launcher package/certificate pins.
+All configured repositories are public, so `GITHUB_TOKEN` is empty. A read-only
 repository token can be added to the runtime Secret if private apps are added.
 
 ## Android Gravitas sign-in
@@ -69,7 +69,7 @@ invitation-only device sessions last one year and can be revoked immediately.
 Gravitas-linked devices also require a live IAM family proof; central logout
 revokes access immediately. IAM outages fail closed with 503 and retain credentials.
 
-Release polling runs at startup and every 15 minutes. All three app repository webhooks, including the store itself,
+Release polling runs at startup and every 15 minutes. Configured app repository webhooks, including the store itself,
 use `https://apps.gravitas.cool/webhooks/github`, JSON, release events, and
 the runtime `WEBHOOK_SECRET`. The server accepts only its configured repositories
 and re-fetches GitHub's authoritative release metadata. Polling recovers missed
@@ -110,7 +110,7 @@ and administrative credentials continue to work independently.
 
 `GET /download/appstore.apk` requires a valid app session, including for HEAD
 and Range requests, and serves the APK directly with private/no-store headers.
-The image fetches the signed v0.2.0 client at build time, verifies its pinned
+The image fetches the signed v0.3.0 client at build time, verifies its pinned
 SHA-256, and verifies it again before starting an IAM-enabled server. Future
 client releases require updating the URL/hash in Dockerfile and the hash/size
 and version in `backend/internal/store/web.go`; the displayed version/size use those values. `CLIENT_APK` can select the same verified
@@ -122,7 +122,7 @@ path to IAM. No IAM registration, new public service or new ingress is needed.
 
 ## App collection pages
 
-`/apps/daybreak` and `/apps/spacetime` describe the configured apps, including
+`/apps/daybreak`, `/apps/spacetime`, `/apps/appstore` and `/apps/launcher` describe the configured apps, including
 features, device requirements, local storage and network behavior. The home page
 links to them through the collection cards and the store illustration. Descriptions
 are public; the store APK remains behind the existing Gravitas session gate.
