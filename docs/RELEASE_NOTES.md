@@ -1,8 +1,8 @@
-Private Store 0.3.1 fixes installed-version detection for Still Launcher.
+Private Store 0.3.2 adds River to your app collection.
 
-- Still Launcher is now visible to the store on Android 11 and later. Once its current release is installed, the store shows **Up to date** and stops offering to install it again.
-- **Check for updates** refreshes installed versions even when the server catalog has not changed.
-- Release verification checks the compiled APK can see every configured catalog app, preventing another catalog addition from silently losing installed-version detection.
+- Install River for Gravitas spaces, separate channels, friends, private conversations, posts and discussions.
+- River's permanent package and signing certificate are pinned in the catalog. The Android store can detect an installed River version and offer verified updates.
+- Existing store accounts, app identities and update settings stay in place.
 
 Install **appstore-android.apk** over your existing Private Store. The permanent package and signing certificate are unchanged; your login, apps and update settings remain in place. Existing stores can find this release through their own update checks. Android may request installation approval.
 

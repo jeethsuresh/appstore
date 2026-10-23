@@ -112,6 +112,7 @@ func TestBootstrapPinAndUnconfiguredWebFailClosed(t *testing.T) {
 func TestAppPagesBrowsePubliclyButKeepDownloadsGated(t *testing.T) {
 	s := testServer(t)
 	s.cfg.Apps = append(s.cfg.Apps, App{ID: "spacetime", Name: "Spacetime", Package: "com.jeethsuresh.spacetime", Repo: "jeethsuresh/spacetime", Certificate: strings.Repeat("d", 64)})
+	s.cfg.Apps = append(s.cfg.Apps, App{ID: "river", Name: "River", Package: "cool.gravitas.river", Repo: "jeethsuresh/river", Certificate: "6559956b5cf6b2f796824995b31da7fa2c176ba652e8fcb40741686d850bb6b0"})
 	c, err := gravitas.New("https://gravitas.cool", "https://apps.gravitas.cool", base64.RawURLEncoding.EncodeToString(make([]byte, 32)))
 	if err != nil {
 		t.Fatal(err)
@@ -121,7 +122,7 @@ func TestAppPagesBrowsePubliclyButKeepDownloadsGated(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, check := range []struct{ id, name, feature string }{{"daybreak", "Daybreak", "Choose your weather source"}, {"spacetime", "Spacetime", "Let plans repeat"}} {
+	for _, check := range []struct{ id, name, feature string }{{"daybreak", "Daybreak", "Choose your weather source"}, {"spacetime", "Spacetime", "Let plans repeat"}, {"river", "River", "Give each topic a home"}} {
 		w := request(s, "GET", "/apps/"+check.id, "", "")
 		page := w.Body.String()
 		for _, content := range []string{check.name, check.feature, "What you can do.", "At home on your device.", "Sign in to get the store", "Android 8.0+", "/apps/"} {
@@ -177,7 +178,7 @@ func TestAppPagesBrowsePubliclyButKeepDownloadsGated(t *testing.T) {
 	if w = request(s, "GET", "/apps/spacetime", "", ""); w.Code != 404 {
 		t.Fatal("removed app remains published")
 	}
-	for _, path := range []string{"/assets/daybreak.svg", "/assets/spacetime.svg"} {
+	for _, path := range []string{"/assets/daybreak.svg", "/assets/spacetime.svg", "/assets/river.svg"} {
 		if w = request(s, "GET", path, "", ""); w.Code != 200 || w.Header().Get("Content-Type") != "image/svg+xml" {
 			t.Fatal("missing app icon", path)
 		}

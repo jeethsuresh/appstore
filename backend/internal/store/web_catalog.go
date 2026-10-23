@@ -28,6 +28,19 @@ type webView struct {
 }
 
 var appStories = map[string]appStory{
+	"river": {
+		Category: "Chat & communities", Tagline: "A little closer, wherever you are.",
+		Summary: "Bring your Gravitas spaces, conversations and ideas together in River. Separate channels, friends, private conversations, posts and discussions share the same blue interface on Android and the web.",
+		Icon:    "river.svg", Architecture: "ARM, ARM64 and x86-64", MinimumAndroid: "Android 6.0+",
+		Features: []appFeature{
+			{"Give each topic a home", "Create spaces and separate text channels. Invitations and membership are managed by the space, with saved unread positions and earlier-message history."},
+			{"Keep your people close", "Send and accept friend requests, start private conversations, and remove or block people. Blocking stops new direct messages and friend requests."},
+			{"Make room for ideas", "Write posts and discussions with Markdown preview, edit your own entries, follow reply threads, and add or remove emoji reactions."},
+			{"Use the screen you have", "The shared Flutter client adapts to phones, tablets and desktops. Continue on the web at chat.gravitas.cool."},
+		},
+		LocalData:  "River keeps its Android sign-in in secure device storage. Gravitas stores access-controlled group membership, message history and social events; central sign-out revokes connected sessions.",
+		Connection: "Sign-in, history and new messages require a connection to Gravitas. Voice, video, screen sharing and file attachments are not enabled in this release.",
+	},
 	"launcher": {
 		Category: "Home screen", Tagline: "A home that feels like yours.",
 		Summary: "Make room for your apps and widgets with Still Launcher. Organise home screens and the dock into folders, choose a photo wallpaper, and adjust the drawer and dock colours and transparency.",
