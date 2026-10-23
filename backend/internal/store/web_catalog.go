@@ -28,6 +28,18 @@ type webView struct {
 }
 
 var appStories = map[string]appStory{
+	"appstore": {
+		Category: "Apps & updates", Tagline: "A small home for your apps.",
+		Summary: "Install independent Android apps, keep them current, and sign in with Gravitas. Private Store keeps itself up to date through the same verified release channel.",
+		Icon: "icon.svg", Architecture: "ARM, ARM64 and x86-64", MinimumAndroid: "Android 8.0+",
+		Features: []appFeature{
+			{"Keep the store current", "New signed versions of Private Store appear alongside your other app updates. Check now or let periodic checks find them; Android may ask you to approve installation."},
+			{"Keep your settings", "Updating the store preserves its sign-in and update preferences. Every APK must match the configured package, version, checksum and permanent release certificate."},
+			{"Sign in with Gravitas", "Use your Gravitas account to enroll your phone and connect supported apps. Central sign-out revokes connected sessions."},
+		},
+		LocalData: "Your enrollment and Gravitas credentials are encrypted with keys held by Android. Store updates retain those keys, your account and your update settings.",
+		Connection: "Browsing, downloads and sign-in need a connection. Update checks run about every six hours when Android's network and battery conditions allow. You control app installation and notification permissions.",
+	},
 	"daybreak": {
 		Category: "Weather", Tagline: "A clearer view of your day.",
 		Summary: "Hourly forecasts, daily outlooks and home-screen widgets. The weather you need, in a quiet little app that keeps your last forecast close.",

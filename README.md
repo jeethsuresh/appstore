@@ -24,6 +24,7 @@ Background updates request installation without interaction when Android permits
 
 - **Daybreak:** [jeethsuresh/weather](https://github.com/jeethsuresh/weather), `dev.jeeth.local_weather`, `daybreak-android-arm64.apk`. ARM64 phones; existing release certificate retained.
 - **Spacetime:** [jeethsuresh/spacetime](https://github.com/jeethsuresh/spacetime), `com.jeethsuresh.spacetime`, `spacetime-{tag}-android.apk`. Existing release certificate retained; universal APK.
+- **Private Store:** [jeethsuresh/appstore](https://github.com/jeethsuresh/appstore), `dev.jeeth.privatestore`, `appstore-android.apk`. The store updates itself through this catalog, using its permanent release certificate.
 
 Their application source is Flutter; this store's client is native Kotlin. Repository visibility is independent of store authentication: the platform restricts its API/cached downloads and can ingest private repositories, but it does not make an upstream public GitHub release private.
 
@@ -54,6 +55,7 @@ Independent stores can continue using device invitations. In a trusted terminal,
 export STORE_URL=https://store.example.com
 python3 scripts/storectl.py sync daybreak
 python3 scripts/storectl.py sync spacetime
+python3 scripts/storectl.py sync appstore
 python3 scripts/storectl.py invite --label 'My phone' --uses 1 --hours 24
 python3 scripts/storectl.py devices
 python3 scripts/storectl.py revoke DEVICE_ID

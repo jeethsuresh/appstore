@@ -16,5 +16,14 @@
     "assetName": "spacetime-{tag}-android.apk",
     "certificateSha256": "f5714ad3d2b3d82b283efd61b2d99f5eaad5ec9efe67b644a62efc79fec94582",
     "description": "Calendar, events, tasks, and occasions."
+  },
+  {
+    "id": "appstore",
+    "name": "Private Store",
+    "packageName": "dev.jeeth.privatestore",
+    "repository": "jeethsuresh/appstore",
+    "assetName": "appstore-android.apk",
+    "certificateSha256": "e70b5b54a0d174f4ad8867889f6481a2b193dc9c130630f321563e12f3293793",
+    "description": "Your private app collection, Gravitas sign-in, and signed updates — including updates to Private Store itself."
   }
 ]
