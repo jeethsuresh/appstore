@@ -4,7 +4,7 @@
 Uses local HTTPS, the isolated .testbed store and a disposable emulator. Approve the
 normal Android installation prompt. Production accounts and servers are not used.
 """
-import argparse, json, os, pathlib, re, secrets, shutil, socket, ssl, subprocess, tempfile, time, urllib.request, xml.etree.ElementTree as ET
+import argparse, datetime, json, os, pathlib, re, secrets, shutil, socket, ssl, subprocess, tempfile, time, urllib.request, xml.etree.ElementTree as ET
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 p = argparse.ArgumentParser()
@@ -111,6 +111,18 @@ try:
     adb('shell', 'pm', 'clear', package)
     adb('shell', 'appops', 'set', package, 'REQUEST_INSTALL_PACKAGES', 'allow')
     adb('shell', 'pm', 'grant', package, 'android.permission.POST_NOTIFICATIONS')
+    # A busy emulator can lag the host clock. Keep TLS validation enabled and
+    # wait until the temporary server certificate is valid on the device.
+    start = run(['openssl', 'x509', '-in', work/'server.pem', '-noout', '-startdate'], capture_output=True).stdout.strip().split('=', 1)[1]
+    not_before = datetime.datetime.strptime(start, '%b %d %H:%M:%S %Y %Z').replace(tzinfo=datetime.timezone.utc).timestamp()
+    while True:
+        remaining = not_before+2-int(adb('shell', 'date', '+%s').strip())
+        if remaining <= 0:
+            break
+        if remaining > 120:
+            raise RuntimeError('Emulator clock is over two minutes behind; correct it before running this HTTPS test')
+        print('Waiting for test certificate validity on emulator:', int(remaining), 'seconds', flush=True)
+        time.sleep(min(remaining, 10))
     print('Installing through Private Store. Approve the normal Android prompt on', args.serial, flush=True)
     with (work/'instrumentation.log').open('w') as output:
         result = subprocess.Popen([str(sdk/'platform-tools/adb'), '-s', args.serial, 'shell', 'am', 'instrument', '-w', '-e', 'class', 'dev.jeeth.privatestore.LauncherInstallationTest', '-e', 'launcherInstallE2E', 'true', '-e', 'serverUrl', f'https://10.0.2.2:{port}', '-e', 'invite', invite, package+'.test/androidx.test.runner.AndroidJUnitRunner'], env=env, stdout=output, stderr=output)
