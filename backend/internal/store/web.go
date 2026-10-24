@@ -79,6 +79,10 @@ func (s *Server) webStart(w http.ResponseWriter, r *http.Request, register bool)
 		return
 	}
 	if err := s.cfg.Federation.Start(w, r, register); err != nil {
+		if errors.Is(err, gravitas.ErrInvalidUsername) {
+			fail(w, 400, err.Error())
+			return
+		}
 		fail(w, 503, "Gravitas sign-in is temporarily unavailable. Please try again.")
 	}
 }
