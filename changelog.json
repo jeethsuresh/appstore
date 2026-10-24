@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "version": "0.4.0",
+  "versionCode": 7,
+  "changes": [
+    "Sign in with your username and the 🔥 submit button, including accounts from other Gravitas providers.",
+    "Receive account-bound Spacetime event and invitation notifications through the shared native listener."
+  ]
+}

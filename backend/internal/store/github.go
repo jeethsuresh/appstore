@@ -139,7 +139,15 @@ func (s *Server) syncOnce(ctx context.Context, a App, tag string) error {
 	}
 	if latest != nil && latest.ConfigHash == appTrust(a) && latest.AssetID == assetID && latest.Tag == rel.Tag && latest.Size == size && (digest == "" || digest == "sha256:"+latest.SHA256) {
 		if st, statErr := os.Stat(filepath.Join(s.cfg.DataDir, "apks", latest.SHA256+".apk")); statErr == nil && st.Mode().IsRegular() && st.Size() == size {
-			return nil
+			// Existing verified APKs may have been ingested before JSON notes support.
+			notes, notesErr := s.releaseNotes(ctx, a, rel, APKInfo{VersionName: latest.VersionName, VersionCode: latest.VersionCode})
+			if notesErr != nil {
+				return fmt.Errorf("release changelog verification failed: %w", notesErr)
+			}
+			if notes != latest.Notes {
+				_, notesErr = s.db.ExecContext(ctx, "UPDATE releases SET notes=? WHERE id=?", notes, latest.ID)
+			}
+			return notesErr
 		}
 	}
 	res, err = s.github(ctx, fmt.Sprintf("/repos/%s/releases/assets/%d", a.Repo, assetID), "application/octet-stream")
@@ -178,6 +186,10 @@ func (s *Server) syncOnce(ctx context.Context, a App, tag string) error {
 	if info.VersionCode <= 0 || info.VersionName == "" || info.MinSDK <= 0 {
 		return fmt.Errorf("invalid APK version metadata")
 	}
+	notes, err := s.releaseNotes(ctx, a, rel, info)
+	if err != nil {
+		return fmt.Errorf("release changelog verification failed: %w", err)
+	}
 	if latest != nil && info.VersionCode <= latest.VersionCode {
 		if info.VersionCode != latest.VersionCode || actual != latest.SHA256 {
 			return fmt.Errorf("version code %d is not newer than %d; releases are immutable", info.VersionCode, latest.VersionCode)
@@ -186,16 +198,12 @@ func (s *Server) syncOnce(ctx context.Context, a App, tag string) error {
 		if err = os.Rename(f.Name(), filepath.Join(s.cfg.DataDir, "apks", actual+".apk")); err != nil {
 			return err
 		}
-		_, err = s.db.ExecContext(ctx, "UPDATE releases SET asset_id=?,tag=?,config_hash=? WHERE id=?", assetID, rel.Tag, appTrust(a), latest.ID)
+		_, err = s.db.ExecContext(ctx, "UPDATE releases SET asset_id=?,tag=?,config_hash=?,notes=? WHERE id=?", assetID, rel.Tag, appTrust(a), notes, latest.ID)
 		return err
 	}
 	dest := filepath.Join(s.cfg.DataDir, "apks", actual+".apk")
 	if err = os.Rename(f.Name(), dest); err != nil {
 		return err
-	}
-	notes := rel.Body
-	if len(notes) > 32000 {
-		notes = notes[:32000]
 	}
 	_, err = s.db.ExecContext(ctx, `INSERT INTO releases(app_id,tag,version_code,version_name,sha256,size,min_sdk,notes,created,asset_id,config_hash) VALUES(?,?,?,?,?,?,?,?,?,?,?)`, a.ID, rel.Tag, info.VersionCode, info.VersionName, actual, n, info.MinSDK, notes, time.Now().UTC().Format(time.RFC3339), assetID, appTrust(a))
 	return err
