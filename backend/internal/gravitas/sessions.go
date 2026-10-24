@@ -53,7 +53,12 @@ type familyStatus struct {
 }
 
 func (c *Client) proofStatus(ctx context.Context, identity Identity) (int64, error) {
-	if identity.Issuer != c.Issuer || identity.Subject == "" || identity.SessionID == "" || len(identity.SessionID) > 128 || !proofPattern.MatchString(identity.CheckToken) {
+	selected, selectErr := c.ForIssuer(identity.Issuer)
+	if selectErr != nil {
+		return 0, ErrLoginRequired
+	}
+	c = selected
+	if !c.acceptsIssuer(identity.Issuer) || identity.Subject == "" || identity.SessionID == "" || len(identity.SessionID) > 128 || !proofPattern.MatchString(identity.CheckToken) {
 		return 0, ErrLoginRequired
 	}
 	m, err := c.discovery()
@@ -97,14 +102,14 @@ func (c *Client) CheckIdentity(ctx context.Context, identity Identity) error {
 	return err
 }
 func (c *Client) SealDevice(identity Identity) (string, error) {
-	if identity.Issuer != c.Issuer || identity.SessionExpires <= time.Now().Unix() || identity.SessionID == "" || !proofPattern.MatchString(identity.CheckToken) {
+	if !c.acceptsIssuer(identity.Issuer) || identity.SessionExpires <= time.Now().Unix() || identity.SessionID == "" || !proofPattern.MatchString(identity.CheckToken) {
 		return "", ErrLoginRequired
 	}
 	return c.seal("device-session", identity)
 }
 func (c *Client) OpenDevice(value string) (Identity, error) {
 	var identity Identity
-	if c.open("device-session", value, &identity) != nil || identity.Issuer != c.Issuer || identity.SessionExpires <= time.Now().Unix() {
+	if c.open("device-session", value, &identity) != nil || !c.acceptsIssuer(identity.Issuer) || identity.SessionExpires <= time.Now().Unix() {
 		return Identity{}, ErrLoginRequired
 	}
 	return identity, nil
