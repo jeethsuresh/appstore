@@ -175,6 +175,20 @@
                         "key": "GRAVITAS_SESSION_KEY"
                       }
                     }
+                  },
+                  {
+                    "name": "NOTIFICATION_PUBLIC_URL",
+                    "value": "https://apps.gravitas.cool"
+                  },
+                  {
+                    "name": "NOTIFICATION_APP_KEYS",
+                    "valueFrom": {
+                      "secretKeyRef": {
+                        "name": "appstore-notifications",
+                        "key": "app-keys",
+                        "optional": true
+                      }
+                    }
                   }
                 ],
                 "envFrom": [
