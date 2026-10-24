@@ -10,7 +10,7 @@ The Daybreak and Spacetime signed-release workflow PRs are merged. Both GitHub `
 
 The backend is deployed at **https://apps.gravitas.cool** on the existing Gravitas Kubernetes cluster. It uses its own `appstore` namespace and retained 20Gi volume, with the existing shared Traefik ingress and wildcard TLS. Both app releases were ingested and downloaded over authenticated HTTPS; credentials/catalog survived pod replacement, revocation passed, and cross-namespace Service access was denied. Existing RSS, Spacetime and Office endpoints still respond normally.
 
-Signed release webhooks are configured in both app repositories, and GitHub's ping deliveries returned 200. Polling remains enabled for recovery. The administrator/webhook environment remains outside this repository with mode 0600. Phones sign in with Gravitas; manual invitations remain available for independent stores. See [Kubernetes operations](../deploy/gravitas/README.md) for updates, persistence and backup instructions. CI publishes backend images; cluster rollout remains an explicit operation.
+Signed release webhooks are configured in both app repositories, and GitHub's ping deliveries returned 200. Polling remains enabled for recovery. The administrator/webhook environment remains outside this repository with mode 0600. Phones sign in with Gravitas; manual invitations remain available for independent stores. See [Kubernetes operations](../deploy/gravitas/README.md) for updates, persistence and backup instructions. Successful pushes to main automatically deploy verified backend images after CI passes.
 
 
 The web portal now links to dedicated Daybreak and Spacetime pages with features,
