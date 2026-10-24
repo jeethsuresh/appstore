@@ -61,11 +61,12 @@ class MainActivity : ComponentActivity() {
         var selected by remember { mutableStateOf<StoreApp?>(null) }
         val prefs = remember { getSharedPreferences("updates", MODE_PRIVATE) }
         var auto by remember { mutableStateOf(prefs.getBoolean("auto", true)) }
+        var appNotifications by remember { mutableStateOf(prefs.getBoolean("appNotifications", true)) }
         var installAllowed by remember { mutableStateOf(packageManager.canRequestPackageInstalls()) }
         val scope = rememberCoroutineScope()
         val notifications = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { allowed -> revision++; if (!allowed) message = "Enable notifications in Android settings to receive update confirmations." }
         val permission = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { installAllowed = packageManager.canRequestPackageInstalls(); message = if (installAllowed) "App installation enabled. Tap Install again." else "Enable app installation to continue." }
-        fun refresh() { val current = session ?: return; revision++; busy = true; scope.launch { try { apps = withContext(Dispatchers.IO) { StoreApi(current).apps() }; message = prefs.getString("status", "") ?: "" } catch (e: Exception) { message = e.message ?: "Could not refresh"; if (e is ApiException && e.code == 401 && withContext(Dispatchers.IO) { BrokerManager.engine(this@MainActivity).invalidateDevice(current) }) { session = null; apps = emptyList(); UpdateWorker.cancel(this@MainActivity) } } finally { busy = false } } }
+        fun refresh() { val current = session ?: return; revision++; busy = true; scope.launch { try { val received = withContext(Dispatchers.IO) { StoreApi(current).apps() }; if (session?.token != current.token) return@launch; apps = received; NotificationRelay.configure(this@MainActivity, current, apps, appNotifications); message = prefs.getString("status", "") ?: "" } catch (e: Exception) { message = e.message ?: "Could not refresh"; if (e is ApiException && e.code == 401 && withContext(Dispatchers.IO) { BrokerManager.engine(this@MainActivity).invalidateDevice(current) }) { session = null; apps = emptyList(); UpdateWorker.cancel(this@MainActivity) } } finally { busy = false } } }
         fun openLogin(address: String) { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(address)).addCategory(Intent.CATEGORY_BROWSABLE)) }
         fun signIn(register: Boolean = false) {
             val current = session ?: Session(GravitasLogin.STORE, "")
@@ -147,6 +148,11 @@ class MainActivity : ComponentActivity() {
                     Switch(checked = auto, onCheckedChange = { auto = it; prefs.edit().putBoolean("auto", it).apply() })
                     Text("Automatic updates", modifier = Modifier.padding(start = 12.dp, top = 12.dp))
                 }
+                Row {
+                    Switch(checked = appNotifications, onCheckedChange = { appNotifications = it; prefs.edit().putBoolean("appNotifications", it).apply(); NotificationRelay.configure(this@MainActivity, session!!, apps, it) })
+                    Text("App notifications", modifier = Modifier.padding(start = 12.dp, top = 12.dp))
+                }
+                Text("A small shared listener receives notifications for installed apps. It sleeps with your phone; delivery can wait until Android restores networking. Each app controls its own notification permission.", style = MaterialTheme.typography.bodySmall)
                 Text("Checks include Private Store itself and run about every 6 hours when connected and the battery is not low. Android may ask you to approve an update. Notifications must be enabled for background installation.", style = MaterialTheme.typography.bodySmall)
                 val checked = prefs.getLong("lastCheck", 0)
                 if (checked > 0) Text("Last background check: ${DateFormat.getDateTimeInstance().format(Date(checked))}", style = MaterialTheme.typography.bodySmall)

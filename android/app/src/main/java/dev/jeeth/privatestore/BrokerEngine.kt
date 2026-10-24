@@ -60,6 +60,6 @@ object BrokerManager {
     fun engine(context: Context): BrokerEngine = instance?:synchronized(this) { instance?:BrokerEngine(context.applicationContext).also { instance=it } }
     fun clear(context: Context,device: Boolean) {
         BrokerVault(context).clear();BrokerAccounts.clear(context)
-        if(device) { SessionVault(context).clear();UpdateWorker.cancel(context) }
+        if(device) { NotificationRelay.clear(context); SessionVault(context).clear();UpdateWorker.cancel(context) }
     }
 }

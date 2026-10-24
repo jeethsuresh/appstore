@@ -95,7 +95,10 @@ class InstallReceiver : BroadcastReceiver() {
             }
             Notices.show(context, id, "Finish installing $name", "Tap to approve the Android installation.", confirm)
         } else {
-            if(status==PackageInstaller.STATUS_SUCCESS) runCatching { BrokerAccounts.reconcile(context) }
+            if(status==PackageInstaller.STATUS_SUCCESS) {
+                runCatching { BrokerAccounts.reconcile(context) }
+                context.sendBroadcast(Intent(context, NotificationRelayReceiver::class.java).setAction(context.packageName + ".NOTIFICATION_APPS_CHANGED").setData(android.net.Uri.fromParts("package", pkg, null)))
+            }
             prefs.edit().remove("pending.$pkg").putString("status", if (status == PackageInstaller.STATUS_SUCCESS) "$name installed successfully" else "$name installation was cancelled or failed; tap Install to retry").apply()
             Notices.show(context, id, name, prefs.getString("status", "")!!)
         }
