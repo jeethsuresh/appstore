@@ -65,7 +65,7 @@ jobs:
           name: private-store-debug
           path: android/app/build/outputs/apk/debug/app-debug.apk
   deploy:
-    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && vars.GRAVITAS_DEPLOY_ENABLED == 'true'
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && vars.GRAVITAS_DEPLOY_ENABLED == 'true'))
     needs: [backend, android]
     runs-on: ubuntu-24.04
     timeout-minutes: 15

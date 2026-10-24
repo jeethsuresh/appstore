@@ -39,7 +39,7 @@ func TestWebDownloadRequiresGravitasSession(t *testing.T) {
 		}
 	}
 	w := request(s, "GET", "/", "", "")
-	if w.Code != 200 || !strings.Contains(w.Body.String(), "Sign in with Gravitas") || strings.Contains(w.Body.String(), `href="/download/appstore.apk"`) || w.Header().Get("Content-Security-Policy") == "" {
+	if w.Code != 200 || !strings.Contains(w.Body.String(), `aria-label="Sign in"`) || !strings.Contains(w.Body.String(), `name="username"`) || strings.Contains(w.Body.String(), `href="/download/appstore.apk"`) || w.Header().Get("Content-Security-Policy") == "" {
 		t.Fatal("unsafe login shell")
 	}
 	session := httptest.NewRecorder()
@@ -125,7 +125,7 @@ func TestAppPagesBrowsePubliclyButKeepDownloadsGated(t *testing.T) {
 	for _, check := range []struct{ id, name, feature string }{{"daybreak", "Daybreak", "Choose your weather source"}, {"spacetime", "Spacetime", "Let plans repeat"}, {"river", "River", "Give each topic a home"}} {
 		w := request(s, "GET", "/apps/"+check.id, "", "")
 		page := w.Body.String()
-		for _, content := range []string{check.name, check.feature, "What you can do.", "At home on your device.", "Sign in to get the store", "Android 8.0+", "/apps/"} {
+		for _, content := range []string{check.name, check.feature, "What you can do.", "At home on your device.", `name="username"`, "Android 8.0+", "/apps/"} {
 			if !strings.Contains(page, content) {
 				t.Fatalf("%s missing %q: %s", check.id, content, page)
 			}
@@ -134,9 +134,14 @@ func TestAppPagesBrowsePubliclyButKeepDownloadsGated(t *testing.T) {
 			t.Fatal("unsafe public app page", w.Code, page)
 		}
 		returnsToApp := false
-		for _, link := range regexp.MustCompile(`href="([^"]+)"`).FindAllStringSubmatch(page, -1) {
-			target, err := url.Parse(html.UnescapeString(link[1]))
-			if err == nil && target.Path == "/auth/gravitas/start" && target.Query().Get("next") == "/apps/"+check.id {
+		for _, form := range regexp.MustCompile(`(?s)<form\b([^>]*)>(.*?)</form>`).FindAllStringSubmatch(page, -1) {
+			action := regexp.MustCompile(`action="([^"]+)"`).FindStringSubmatch(form[1])
+			next := regexp.MustCompile(`name="next" value="([^"]+)"`).FindStringSubmatch(form[2])
+			if len(action) < 2 || len(next) < 2 {
+				continue
+			}
+			target, err := url.Parse(html.UnescapeString(action[1]))
+			if err == nil && target.Path == "/auth/gravitas/start" && html.UnescapeString(next[1]) == "/apps/"+check.id {
 				returnsToApp = true
 			}
 		}

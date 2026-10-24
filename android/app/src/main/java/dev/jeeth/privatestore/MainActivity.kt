@@ -1,5 +1,9 @@
 package dev.jeeth.privatestore
 
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
+
 import android.Manifest
 import android.content.Intent
 import android.net.Uri
@@ -57,6 +61,9 @@ class MainActivity : ComponentActivity() {
         var advanced by remember { mutableStateOf(false) }
         var pending by remember { mutableStateOf(runCatching { vault.pending() }.getOrElse { vault.clearPending(); null }) }
         var invite by remember { mutableStateOf("") }
+        var username by remember { mutableStateOf("") }
+        var defaultDomain by remember { mutableStateOf("") }
+        var defaultIssuer by remember { mutableStateOf("") }
         var name by remember { mutableStateOf(Build.MODEL) }
         var selected by remember { mutableStateOf<StoreApp?>(null) }
         val prefs = remember { getSharedPreferences("updates", MODE_PRIVATE) }
@@ -73,11 +80,17 @@ class MainActivity : ComponentActivity() {
             if (current.baseUrl != GravitasLogin.STORE) { message = "Gravitas sign-in is available at ${GravitasLogin.STORE}. Use an invitation for this other store."; return }
             busy = true; message = "Opening Gravitas sign-in…"
             scope.launch { try {
-                val request = withContext(Dispatchers.IO) { StoreApi(current).startLogin(GravitasLogin.create(current.baseUrl, name), register) }
+                val requestedIdentity = if (register) "" to defaultIssuer else GravitasLogin.identity(username.ifBlank { current.account }, defaultDomain)
+                val identity = if (requestedIdentity.second == "https://$defaultDomain") requestedIdentity.first to defaultIssuer else requestedIdentity
+                val request = withContext(Dispatchers.IO) { StoreApi(current).startLogin(GravitasLogin.create(current.baseUrl, name, broker = identity.second == "https://gravitas.cool", username = identity.first, issuer = identity.second), register) }
                 vault.savePending(request); pending = request
                 openLogin(request.authorizationUrl)
                 message = "Finish signing in in your browser, then return to Private Store."
             } catch (e: Exception) { vault.clearPending(); pending = null; message = e.message ?: "Could not open sign-in" } finally { busy = false } }
+        }
+        LaunchedEffect(Unit) {
+            try { val config = withContext(Dispatchers.IO) { StoreApi(Session(GravitasLogin.STORE, "")).authConfig() }; defaultDomain = config.getString("defaultDomain"); defaultIssuer = config.getString("issuer") }
+            catch (_: Exception) { message = "Connect to the store to sign in." }
         }
         val callback = loginCallback
         LaunchedEffect(callback) {
@@ -120,8 +133,12 @@ class MainActivity : ComponentActivity() {
             if (session == null) {
                 Text("Sign in with your Gravitas account to browse, install and update your apps. Your browser handles sign-in; Private Store never asks for your password.")
                 OutlinedTextField(name, { name = it }, label = { Text("Device name") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-                Button(enabled = !busy && name.isNotBlank(), onClick = { signIn() }, modifier = Modifier.fillMaxWidth()) { Text("Sign in with Gravitas") }
-                TextButton(enabled = !busy && name.isNotBlank(), onClick = { signIn(true) }) { Text("Create a Gravitas account") }
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    OutlinedTextField(username, { username = it }, label = { Text("Username") }, placeholder = { Text("username@$defaultDomain") }, singleLine = true, modifier = Modifier.weight(1f), keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(capitalization = androidx.compose.ui.text.input.KeyboardCapitalization.None, autoCorrectEnabled = false, imeAction = androidx.compose.ui.text.input.ImeAction.Go), keyboardActions = androidx.compose.foundation.text.KeyboardActions(onGo = { if (!busy && defaultDomain.isNotEmpty() && username.isNotBlank() && name.isNotBlank()) signIn() }))
+                    Button(enabled = !busy && defaultDomain.isNotEmpty() && username.isNotBlank() && name.isNotBlank(), onClick = { signIn() }, modifier = Modifier.semantics { contentDescription = "Sign in" }) { Text("🔥") }
+                }
+                Text("Without a domain, sign in at $defaultDomain.")
+                TextButton(enabled = !busy && defaultDomain.isNotEmpty() && name.isNotBlank(), onClick = { signIn(true) }) { Text("Register at $defaultDomain") }
                 TextButton(enabled = !busy, onClick = { advanced = !advanced }) { Text(if (advanced) "Hide invitation setup" else "Use an invitation or another store") }
                 if (advanced) {
                 Text("For an independent store, enter its HTTPS address and a device invitation from its owner.")
@@ -138,7 +155,14 @@ class MainActivity : ComponentActivity() {
             } else {
                 Text(session!!.baseUrl, style = MaterialTheme.typography.bodySmall)
                 if (session!!.account.isNotBlank()) Text("Signed in as ${session!!.account}", style = MaterialTheme.typography.bodyMedium)
-                if (session!!.account.isBlank() || runCatching { BrokerVault(this@MainActivity).load() }.getOrNull()==null) TextButton(enabled = !busy, onClick = { signIn() }) { Text(if(session!!.account.isBlank()) "Connect Gravitas account" else "Enable Gravitas sign-in for your apps") }
+                if (session!!.account.isBlank()) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                        OutlinedTextField(username, { username = it }, label = { Text("Username") }, placeholder = { Text("username@$defaultDomain") }, singleLine = true, modifier = Modifier.weight(1f), keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(capitalization = androidx.compose.ui.text.input.KeyboardCapitalization.None, autoCorrectEnabled = false))
+                        Button(enabled = !busy && defaultDomain.isNotEmpty() && username.isNotBlank(), onClick = { signIn() }, modifier = Modifier.semantics { contentDescription = "Sign in" }) { Text("🔥") }
+                    }
+                } else if (defaultIssuer == "https://gravitas.cool" && session!!.account.endsWith(":$defaultDomain") && runCatching { BrokerVault(this@MainActivity).load() }.getOrNull()==null) {
+                    TextButton(enabled = !busy, onClick = { signIn() }) { Text("Enable Gravitas sign-in for your apps") }
+                }
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Button(enabled = !busy, onClick = { refresh() }) { Text("Check for updates") }
                     TextButton(enabled = !busy, onClick = { if (Build.VERSION.SDK_INT >= 33 && !Notices.enabled(this@MainActivity)) notifications.launch(Manifest.permission.POST_NOTIFICATIONS) else startActivity(Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, packageName)) }) { Text("Notifications") }

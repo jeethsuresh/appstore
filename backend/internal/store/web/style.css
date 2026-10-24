@@ -9,3 +9,7 @@
 @media(max-width:430px){header{height:auto;min-height:86px;padding:16px 0;gap:15px}.brand{flex-shrink:0}.site-nav{max-width:58%;flex-wrap:wrap;justify-content:flex-end;gap:0 14px;font-size:11px}.site-nav .text-button{font-size:11px;min-height:40px}.site-nav>a{min-height:40px}}
 
 a[aria-disabled="true"] { pointer-events: none; opacity: .55; }
+
+.gravitas-login{min-width:0;width:100%;grid-template-columns:minmax(0,1fr);display:grid;gap:8px;max-width:480px}.gravitas-login label{font-size:14px;font-weight:600}.gravitas-login-row{min-width:0;width:100%;display:flex;gap:8px}.gravitas-login-row input{min-width:0;width:0;flex:1 1 0%;padding:14px;border:1px solid #999;border-radius:8px;font:inherit}.gravitas-login-row button{width:48px;max-width:48px;min-width:48px;min-height:48px;flex:0 0 48px;padding:0;gap:0;border:0;justify-content:center;font-size:24px;cursor:pointer}.gravitas-login small{line-height:1.5}.gravitas-login :focus-visible{outline:3px solid #477bff;outline-offset:3px}
+
+.hero>.intro,.app-hero>.app-intro{min-width:0}.hero,.app-hero{min-width:0}

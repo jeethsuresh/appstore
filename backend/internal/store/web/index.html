@@ -30,9 +30,9 @@
           <a class="button" href="/download/appstore.apk">Download for Android <span aria-hidden="true">↓</span></a>
           <p class="button-note">v{{.ClientVersion}} <span>·</span> {{.ClientSize}} <span>·</span> Android 8.0+</p>
           {{else if .Enabled}}
-          <a class="button" href="/auth/gravitas/start">Sign in with Gravitas <span aria-hidden="true">↗</span></a>
+          <form class="gravitas-login" action="/auth/gravitas/start" method="get"><input type="hidden" name="next" value="{{.Next}}"><label for="gravitas-username">Username</label><div class="gravitas-login-row"><input id="gravitas-username" name="username" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="username@{{.DefaultDomain}}" maxlength="256" required><button class="button" type="submit" aria-label="Sign in" title="Sign in">🔥</button></div><small>Without a domain, sign in at {{.DefaultDomain}}.</small></form>
           <p class="button-note">Your Gravitas account unlocks the download.</p>
-          <p class="register">New around here? <a href="/auth/gravitas/register">Create an account <span aria-hidden="true">↗</span></a></p>
+          <p class="register">New around here? <a href="/auth/gravitas/register">Register at {{.DefaultDomain}} <span aria-hidden="true">↗</span></a></p>
           {{else}}
           <p class="notice" role="status">Downloads will be available when Gravitas sign-in is configured.</p>
           {{end}}

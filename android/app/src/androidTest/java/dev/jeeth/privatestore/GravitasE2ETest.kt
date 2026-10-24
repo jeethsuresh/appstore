@@ -2,6 +2,8 @@ package dev.jeeth.privatestore
 
 import android.net.Uri
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
+import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
@@ -44,13 +46,17 @@ class GravitasE2ETest {
             open();compose.waitForIdle()
             assertNull(vault.load())
             compose.onNodeWithText("Device name").performTextReplacement("Gravitas E2E emulator")
-            compose.onNodeWithText("Sign in with Gravitas").performScrollTo().performClick()
+            compose.onNodeWithText("Username").performTextReplacement(args.getString("iamUsername") ?: error("A test username is required"))
+            compose.waitUntil(30_000) { runCatching { compose.onNodeWithContentDescription("Sign in").assertIsEnabled(); true }.getOrDefault(false) }
+            compose.onNodeWithContentDescription("Sign in").performScrollTo().performClick()
             compose.waitUntil(30_000) { vault.pending() != null && !MainActivity.visible }
             val first = requireNotNull(vault.pending())
             open();compose.waitForIdle()
             compose.onNodeWithText("Cancel sign-in").performScrollTo().performClick()
             assertNull(vault.pending());assertNull(vault.load())
-            compose.onNodeWithText("Sign in with Gravitas").performScrollTo().performClick()
+            compose.onNodeWithText("Username").performTextReplacement(args.getString("iamUsername") ?: error("A test username is required"))
+            compose.waitUntil(30_000) { runCatching { compose.onNodeWithContentDescription("Sign in").assertIsEnabled(); true }.getOrDefault(false) }
+            compose.onNodeWithContentDescription("Sign in").performScrollTo().performClick()
             compose.waitUntil(30_000) { vault.pending() != null && !MainActivity.visible }
             val pending = requireNotNull(vault.pending())
             assertNotEquals(first.state,pending.state)

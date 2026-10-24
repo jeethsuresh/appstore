@@ -96,6 +96,14 @@ func New(cfg Config) (*Server, error) {
 		reply(w, 200, map[string]string{"status": "ok"})
 	})
 	s.mux.HandleFunc("POST /v1/enroll", s.enroll)
+	s.mux.HandleFunc("GET /v1/auth/gravitas/config", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Cache-Control", "no-store")
+		if s.cfg.Federation == nil {
+			fail(w, 503, "Sign-in is not configured")
+			return
+		}
+		reply(w, 200, map[string]string{"issuer": s.cfg.Federation.Issuer, "defaultDomain": s.cfg.Federation.DefaultDomain()})
+	})
 	s.mux.HandleFunc("POST /v1/auth/gravitas/start", s.nativeStart)
 	s.mux.HandleFunc("POST /v1/auth/gravitas/exchange", s.nativeExchange)
 	s.mux.HandleFunc("GET /auth/android/callback", s.nativeReturn)
