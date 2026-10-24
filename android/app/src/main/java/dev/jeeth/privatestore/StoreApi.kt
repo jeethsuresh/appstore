@@ -21,7 +21,7 @@ data class Session(val baseUrl: String, val token: String, val account: String =
 }
 data class NativeLoginResult(val session: Session,val broker: BrokerSession?)
 data class StoreRelease(val id: Long, val versionCode: Long, val versionName: String, val sha256: String, val size: Long, val minSdk: Int, val notes: String)
-data class StoreApp(val id: String, val name: String, val packageName: String, val certificate: String, val description: String, val release: StoreRelease?)
+data class StoreApp(val id: String, val name: String, val packageName: String, val certificate: String, val description: String, val release: StoreRelease?, val notificationAuthority: String? = null)
 
 object Versions {
     fun newer(installed: Long?, available: Long) = installed == null || available > installed
@@ -111,6 +111,7 @@ class StoreApi(private val session: Session) {
         if(broker!=null && (broker.appOrigin!=current.baseUrl || broker.account!=current.account)) throw BrokerFailure(BrokerError.UNAVAILABLE)
         return NativeLoginResult(current,broker)
     }
+    fun clearNotificationApps(generation: Long) { json("/v1/notification-apps", "PUT", JSONObject().put("generation", generation).put("apps", org.json.JSONArray())) }
     fun revoke() { json("/v1/device", "DELETE") }
     fun apps(): List<StoreApp> {
         val array = json("/v1/apps").getJSONArray("apps")
@@ -118,7 +119,7 @@ class StoreApi(private val session: Session) {
             val obj = array.getJSONObject(i); val r = obj.optJSONObject("release")
             StoreApp(obj.getString("id"), obj.getString("name"), obj.getString("packageName"), obj.getString("certificateSha256"), obj.getString("description"), r?.let {
                 StoreRelease(it.getLong("id"), it.getLong("versionCode"), it.getString("versionName"), it.getString("sha256"), it.getLong("size"), it.getInt("minSdk"), it.getString("notes"))
-            })
+            }, obj.optJSONObject("notifications")?.getString("authority"))
         }
     }
     fun download(context: Context, app: StoreApp, progress: (Long, Long) -> Unit = { _, _ -> }): File {

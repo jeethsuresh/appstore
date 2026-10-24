@@ -26,6 +26,7 @@ class UpdateWorker(context: Context, params: WorkerParameters) : CoroutineWorker
                 val session = SessionVault(context).load() ?: return@withContext Result.success()
                 checkedSession = session
                 val api = StoreApi(session)
+                if (!prefs.getBoolean("appNotifications", true)) api.clearNotificationApps(NotificationRelay.registrationGeneration(context))
                 var failed = false
                 // Commit other updates before replacing this process with the store update.
                 for (app in api.apps().sortedBy { it.packageName == context.packageName }) {

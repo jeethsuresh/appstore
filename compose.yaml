@@ -8,6 +8,8 @@ services:
       ADMIN_TOKEN: ${ADMIN_TOKEN:?Generate an admin token in .env}
       WEBHOOK_SECRET: ${WEBHOOK_SECRET:?Generate a webhook secret in .env}
       GITHUB_TOKEN: ${GITHUB_TOKEN:-}
+      NOTIFICATION_PUBLIC_URL: ${NOTIFICATION_PUBLIC_URL:-}
+      NOTIFICATION_APP_KEYS: ${NOTIFICATION_APP_KEYS:-}
       DATA_DIR: /data
       APPS_CONFIG: /etc/private-store/apps.json
     volumes:

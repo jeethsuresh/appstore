@@ -10,14 +10,15 @@ import (
 )
 
 type App struct {
-	ID          string   `json:"id"`
-	Name        string   `json:"name"`
-	Package     string   `json:"packageName"`
-	Repo        string   `json:"repository"`
-	Asset       string   `json:"assetName"`
-	Certificate string   `json:"certificateSha256"`
-	Description string   `json:"description"`
-	Release     *Release `json:"release,omitempty"`
+	ID            string           `json:"id"`
+	Name          string           `json:"name"`
+	Package       string           `json:"packageName"`
+	Repo          string           `json:"repository"`
+	Asset         string           `json:"assetName"`
+	Certificate   string           `json:"certificateSha256"`
+	Description   string           `json:"description"`
+	Release       *Release         `json:"release,omitempty"`
+	Notifications *NotificationApp `json:"notifications,omitempty"`
 }
 type Release struct {
 	ConfigHash  string `json:"-"`
@@ -37,6 +38,9 @@ type Config struct {
 	Apps                                                             []App
 	Federation                                                       *gravitas.Client
 	ClientAPK                                                        string
+	NotificationURL                                                  string
+	NotificationGateway                                              string
+	NotificationKeys                                                 map[string]string
 }
 
 var hexDigest = regexp.MustCompile(`^[a-f0-9]{64}$`)

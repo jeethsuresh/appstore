@@ -23,15 +23,17 @@ import (
 )
 
 type Server struct {
-	cfg        Config
-	db         *sql.DB
-	mux        *http.ServeMux
-	client     *http.Client
-	api        string
-	inspect    func(context.Context, string) (APKInfo, error)
-	syncGate   chan struct{}
-	nativeGate chan struct{}
-	queue      chan string
+	notifications      *notificationHub
+	notificationClient *http.Client
+	cfg                Config
+	db                 *sql.DB
+	mux                *http.ServeMux
+	client             *http.Client
+	api                string
+	inspect            func(context.Context, string) (APKInfo, error)
+	syncGate           chan struct{}
+	nativeGate         chan struct{}
+	queue              chan string
 }
 
 func New(cfg Config) (*Server, error) {
@@ -77,6 +79,10 @@ func New(cfg Config) (*Server, error) {
 		return nil, err
 	}
 	s := &Server{cfg: cfg, db: db, mux: http.NewServeMux(), client: &http.Client{Timeout: 5 * time.Minute}, api: "https://api.github.com", queue: make(chan string, 32), syncGate: make(chan struct{}, 1), nativeGate: make(chan struct{}, 4)}
+	if err := s.initNotifications(); err != nil {
+		db.Close()
+		return nil, err
+	}
 	s.inspect = s.inspectAPK
 	if err := s.registerWeb(); err != nil {
 		db.Close()
@@ -311,6 +317,8 @@ func (s *Server) revokeID(w http.ResponseWriter, r *http.Request, id string) {
 		fail(w, 404, "unknown device")
 		return
 	}
+	s.notifications.wake(id)
+	s.wakeNotifications()
 	w.WriteHeader(204)
 }
 func (s *Server) latest(ctx context.Context, id string) (*Release, error) {
@@ -333,6 +341,9 @@ func (s *Server) catalog(w http.ResponseWriter, r *http.Request) {
 			v = nil
 		}
 		apps[i].Release = v
+		if s.notificationApp(apps[i].ID) == nil {
+			apps[i].Notifications = nil
+		}
 	}
 	reply(w, 200, map[string]any{"apps": apps})
 }

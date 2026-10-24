@@ -49,7 +49,12 @@ func main() {
 		slog.Error("GRAVITAS_ISSUER is required")
 		os.Exit(1)
 	}
-	s, err := store.New(store.Config{DataDir: env("DATA_DIR", "data"), AdminToken: os.Getenv("ADMIN_TOKEN"), WebhookSecret: os.Getenv("WEBHOOK_SECRET"), GitHubToken: os.Getenv("GITHUB_TOKEN"), AAPT: env("AAPT", "aapt"), APKSigner: env("APKSIGNER", "apksigner"), Apps: apps, Federation: federation, ClientAPK: env("CLIENT_APK", "/usr/local/share/store/appstore.apk")})
+	notificationKeys, err := store.NotificationKeys(os.Getenv("NOTIFICATION_APP_KEYS"))
+	if err != nil {
+		slog.Error("notification configuration", "error", err)
+		os.Exit(1)
+	}
+	s, err := store.New(store.Config{NotificationGateway: os.Getenv("NOTIFICATION_GATEWAY_ADDR"), NotificationURL: os.Getenv("NOTIFICATION_PUBLIC_URL"), NotificationKeys: notificationKeys, DataDir: env("DATA_DIR", "data"), AdminToken: os.Getenv("ADMIN_TOKEN"), WebhookSecret: os.Getenv("WEBHOOK_SECRET"), GitHubToken: os.Getenv("GITHUB_TOKEN"), AAPT: env("AAPT", "aapt"), APKSigner: env("APKSIGNER", "apksigner"), Apps: apps, Federation: federation, ClientAPK: env("CLIENT_APK", "/usr/local/share/store/appstore.apk")})
 	if err != nil {
 		slog.Error("start", "error", err)
 		os.Exit(1)
@@ -57,6 +62,7 @@ func main() {
 	defer s.Close()
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
+	go s.RunNotifications(ctx)
 	interval, err := time.ParseDuration(env("POLL_INTERVAL", "15m"))
 	if err != nil || interval < 0 {
 		slog.Error("invalid POLL_INTERVAL")
