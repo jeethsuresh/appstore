@@ -189,6 +189,10 @@
                         "optional": true
                       }
                     }
+                  },
+                  {
+                    "name": "NOTIFICATION_GATEWAY_ADDR",
+                    "value": "traefik.traefik.svc.cluster.local:443"
                   }
                 ],
                 "envFrom": [
