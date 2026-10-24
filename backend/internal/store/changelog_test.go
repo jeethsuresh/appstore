@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync/atomic"
 	"testing"
 )
 
@@ -56,6 +57,7 @@ func TestChangelogIngestionAndExistingClientNotes(t *testing.T) {
 			if scenario == "bad-size" {
 				size++
 			}
+			var apkDownloads atomic.Int64
 			gh := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				switch r.URL.Path {
 				case "/repos/" + a.Repo + "/releases/latest":
@@ -69,6 +71,7 @@ func TestChangelogIngestionAndExistingClientNotes(t *testing.T) {
 					}
 					json.NewEncoder(w).Encode(map[string]any{"tag_name": "v1.4.2", "body": "Legacy release notes", "assets": assets})
 				case "/repos/" + a.Repo + "/releases/assets/1":
+					apkDownloads.Add(1)
 					w.Write(apk)
 				case "/repos/" + a.Repo + "/releases/assets/2":
 					if scenario == "unavailable" {
@@ -108,6 +111,19 @@ func TestChangelogIngestionAndExistingClientNotes(t *testing.T) {
 			}
 			if latest.Notes != want {
 				t.Fatalf("notes: got %q want %q", latest.Notes, want)
+			}
+			if scenario == "valid" {
+				// Simulate a release cached by the old backend before JSON support.
+				if _, err := s.db.Exec("UPDATE releases SET notes=? WHERE id=?", "Old release body", latest.ID); err != nil {
+					t.Fatal(err)
+				}
+				if err := s.Sync(context.Background(), a, ""); err != nil {
+					t.Fatal("cached JSON notes refresh:", err)
+				}
+				latest, _ = s.latest(context.Background(), a.ID)
+				if latest == nil || latest.Notes != want || apkDownloads.Load() != 1 {
+					t.Fatalf("cached notes were not refreshed without redownloading the APK: %+v, downloads %d", latest, apkDownloads.Load())
+				}
 			}
 			tok, _ := enrollDevice(t, s)
 			catalog := request(s, "GET", "/v1/apps", tok, "")

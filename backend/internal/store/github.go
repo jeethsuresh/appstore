@@ -139,7 +139,15 @@ func (s *Server) syncOnce(ctx context.Context, a App, tag string) error {
 	}
 	if latest != nil && latest.ConfigHash == appTrust(a) && latest.AssetID == assetID && latest.Tag == rel.Tag && latest.Size == size && (digest == "" || digest == "sha256:"+latest.SHA256) {
 		if st, statErr := os.Stat(filepath.Join(s.cfg.DataDir, "apks", latest.SHA256+".apk")); statErr == nil && st.Mode().IsRegular() && st.Size() == size {
-			return nil
+			// Existing verified APKs may have been ingested before JSON notes support.
+			notes, notesErr := s.releaseNotes(ctx, a, rel, APKInfo{VersionName: latest.VersionName, VersionCode: latest.VersionCode})
+			if notesErr != nil {
+				return fmt.Errorf("release changelog verification failed: %w", notesErr)
+			}
+			if notes != latest.Notes {
+				_, notesErr = s.db.ExecContext(ctx, "UPDATE releases SET notes=? WHERE id=?", notes, latest.ID)
+			}
+			return notesErr
 		}
 	}
 	res, err = s.github(ctx, fmt.Sprintf("/repos/%s/releases/assets/%d", a.Repo, assetID), "application/octet-stream")
@@ -190,7 +198,7 @@ func (s *Server) syncOnce(ctx context.Context, a App, tag string) error {
 		if err = os.Rename(f.Name(), filepath.Join(s.cfg.DataDir, "apks", actual+".apk")); err != nil {
 			return err
 		}
-		_, err = s.db.ExecContext(ctx, "UPDATE releases SET asset_id=?,tag=?,config_hash=? WHERE id=?", assetID, rel.Tag, appTrust(a), latest.ID)
+		_, err = s.db.ExecContext(ctx, "UPDATE releases SET asset_id=?,tag=?,config_hash=?,notes=? WHERE id=?", assetID, rel.Tag, appTrust(a), notes, latest.ID)
 		return err
 	}
 	dest := filepath.Join(s.cfg.DataDir, "apks", actual+".apk")
