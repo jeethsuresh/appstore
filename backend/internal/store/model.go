@@ -39,6 +39,7 @@ type Config struct {
 	Federation                                                       *gravitas.Client
 	ClientAPK                                                        string
 	NotificationURL                                                  string
+	NotificationGateway                                              string
 	NotificationKeys                                                 map[string]string
 }
 

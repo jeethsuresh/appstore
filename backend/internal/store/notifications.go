@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"net/url"
 	"strings"
@@ -39,6 +40,11 @@ func (h *notificationHub) wake(device string) {
 	}
 }
 func (s *Server) initNotifications() error {
+	client, err := newNotificationHTTP(s.cfg.NotificationGateway)
+	if err != nil {
+		return fmt.Errorf("invalid NOTIFICATION_GATEWAY_ADDR: %w", err)
+	}
+	s.notificationClient = client
 	for _, a := range s.cfg.Apps {
 		if a.Notifications != nil {
 			if !validNotificationOrigin(a.Notifications.Origin) || a.Notifications.Authority != a.Package+".notifications" {
@@ -49,7 +55,7 @@ func (s *Server) initNotifications() error {
 	if s.cfg.NotificationURL != "" && !validNotificationOrigin(s.cfg.NotificationURL) {
 		return errors.New("NOTIFICATION_PUBLIC_URL must be an HTTPS origin")
 	}
-	_, err := s.db.Exec(`CREATE TABLE IF NOT EXISTS notification_devices(device TEXT PRIMARY KEY REFERENCES devices(id), generation INTEGER NOT NULL);
+	_, err = s.db.Exec(`CREATE TABLE IF NOT EXISTS notification_devices(device TEXT PRIMARY KEY REFERENCES devices(id), generation INTEGER NOT NULL);
  CREATE TABLE IF NOT EXISTS notification_providers(id TEXT PRIMARY KEY, device TEXT NOT NULL REFERENCES devices(id), app TEXT NOT NULL, issuer TEXT NOT NULL, subject TEXT NOT NULL, enabled INTEGER NOT NULL, synced INTEGER NOT NULL DEFAULT 0);
  CREATE UNIQUE INDEX IF NOT EXISTS notification_active_provider ON notification_providers(device,app) WHERE enabled=1;
  CREATE TABLE IF NOT EXISTS notifications(seq INTEGER PRIMARY KEY AUTOINCREMENT, provider TEXT NOT NULL, device TEXT NOT NULL REFERENCES devices(id), app TEXT NOT NULL, event TEXT NOT NULL, payload TEXT NOT NULL, created INTEGER NOT NULL, acked INTEGER NOT NULL DEFAULT 0, UNIQUE(provider,event));
@@ -222,6 +228,24 @@ func (s *Server) syncNotificationProviders(ctx context.Context) {
 		cancel()
 	}
 }
+
+// The gateway changes only the TCP destination. The HTTPS URL still controls
+// the Host header, SNI and certificate verification, and redirects stay disabled.
+func newNotificationHTTP(gateway string) (*http.Client, error) {
+	transport := http.DefaultTransport.(*http.Transport).Clone()
+	transport.Proxy = nil
+	if gateway != "" {
+		if _, _, err := net.SplitHostPort(gateway); err != nil {
+			return nil, err
+		}
+		dialer := &net.Dialer{Timeout: 5 * time.Second}
+		transport.DialContext = func(ctx context.Context, network, _ string) (net.Conn, error) {
+			return dialer.DialContext(ctx, network, gateway)
+		}
+	}
+	return &http.Client{Transport: transport, Timeout: 10 * time.Second, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}, nil
+}
+
 func (s *Server) notificationHTTP() *http.Client {
 	if s.notificationClient != nil {
 		return s.notificationClient
