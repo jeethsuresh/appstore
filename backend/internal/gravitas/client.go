@@ -47,6 +47,8 @@ type metadata struct {
 	SessionCheck string `json:"session_check_endpoint"`
 }
 type flow struct {
+	Issuer   string
+	Username string
 	State    string
 	Verifier string
 	Next     string
@@ -58,13 +60,16 @@ type session struct {
 }
 
 type Client struct {
-	Issuer      string
-	AppURL      string
-	HTTP        *http.Client
-	aead        cipher.AEAD
-	mu          sync.Mutex
-	cached      metadata
-	cachedUntil time.Time
+	federationMu   sync.Mutex
+	federated      map[string]*Client
+	federatedOrder []string
+	Issuer         string
+	AppURL         string
+	HTTP           *http.Client
+	aead           cipher.AEAD
+	mu             sync.Mutex
+	cached         metadata
+	cachedUntil    time.Time
 }
 
 func New(issuer, appURL, encodedKey string) (*Client, error) {
@@ -194,11 +199,20 @@ func cookie(w http.ResponseWriter, name, value string, age int) {
 	w.Header().Set("Referrer-Policy", "no-referrer")
 }
 func (c *Client) Start(w http.ResponseWriter, r *http.Request, register bool) error {
+	raw := r.URL.Query().Get("username")
+	if raw == "" {
+		raw = r.URL.Query().Get("login_hint")
+	}
+	selected, username, err := c.ResolveLogin(raw, register)
+	if err != nil {
+		return err
+	}
+	c = selected
 	m, err := c.discovery()
 	if err != nil {
 		return err
 	}
-	f := flow{State: random(), Verifier: random(), Next: SafeNext(r.URL.Query().Get("next")), Expires: time.Now().Add(10 * time.Minute).Unix()}
+	f := flow{Issuer: c.Issuer, Username: username, State: random(), Verifier: random(), Next: SafeNext(r.URL.Query().Get("next")), Expires: time.Now().Add(10 * time.Minute).Unix()}
 	encoded, err := c.seal("flow", f)
 	if err != nil {
 		return err
@@ -211,9 +225,8 @@ func (c *Client) Start(w http.ResponseWriter, r *http.Request, register bool) er
 	if r.URL.Query().Get("prompt") == "none" {
 		q.Set("prompt", "none")
 	}
-	// A hint is cosmetic; the issuer and every discovered endpoint stay pinned.
-	if hint := r.URL.Query().Get("login_hint"); len(hint) <= 256 && hint != "" {
-		q.Set("login_hint", hint)
+	if username != "" {
+		q.Set("login_hint", username)
 	}
 	cookie(w, FlowCookie, encoded, 600)
 	http.Redirect(w, r, m.Browser+"?"+q.Encode(), http.StatusSeeOther)
@@ -246,7 +259,15 @@ func (c *Client) Callback(w http.ResponseWriter, r *http.Request) (Identity, str
 	if len(q["code"]) != 1 || q.Get("code") == "" {
 		return identity, "", errors.New("missing authorization code")
 	}
+	selected, err := c.ForIssuer(f.Issuer)
+	if err != nil {
+		return identity, "", err
+	}
+	c = selected
 	identity, err = c.exchange(q.Get("code"), f.Verifier, c.AppURL+"/auth/gravitas/callback")
+	if err == nil && f.Username != "" && identity.UserID != f.Username {
+		return Identity{}, "", ErrLoginRequired
+	}
 	return identity, SafeNext(f.Next), err
 }
 
@@ -348,7 +369,7 @@ func (c *Client) SessionInfo(r *http.Request) (Identity, time.Time, error) {
 	if err = c.open("session", got.Value, &s); err != nil {
 		return Identity{}, time.Time{}, ErrLoginRequired
 	}
-	if s.Expires <= time.Now().Unix() || s.Expires > time.Now().Add(SessionLifetime+time.Minute).Unix() || s.Identity.Issuer != c.Issuer || s.Identity.Subject == "" {
+	if s.Expires <= time.Now().Unix() || s.Expires > time.Now().Add(SessionLifetime+time.Minute).Unix() || !c.acceptsIssuer(s.Identity.Issuer) || s.Identity.Subject == "" {
 		return Identity{}, time.Time{}, ErrLoginRequired
 	}
 	if err := c.CheckIdentity(r.Context(), s.Identity); err != nil {

@@ -18,18 +18,34 @@ func (s *Server) nativeStart(w http.ResponseWriter, r *http.Request) {
 	}
 	var in struct {
 		State     string `json:"state"`
+		Username  string `json:"username"`
+		Register  bool   `json:"register"`
 		Challenge string `json:"codeChallenge"`
 		Broker    bool   `json:"broker"`
 	}
 	if !decode(w, r, &in) {
 		return
 	}
-	target, err := s.cfg.Federation.NativeStartBroker(in.State, in.Challenge, in.Broker)
+	selected, username, err := s.cfg.Federation.ResolveLogin(in.Username, in.Register)
+	if err != nil {
+		fail(w, 400, "Use a username or user@domain")
+		return
+	}
+	target, err := selected.NativeStartBroker(in.State, in.Challenge, in.Broker)
 	if err != nil {
 		fail(w, 400, "Unable to start Gravitas sign-in")
 		return
 	}
-	reply(w, 200, map[string]string{"authorizationUrl": target, "redirectUri": s.cfg.Federation.NativeRedirect()})
+	parsed, _ := url.Parse(target)
+	query := parsed.Query()
+	if username != "" {
+		query.Set("login_hint", username)
+	}
+	if in.Register {
+		query.Set("screen", "register")
+	}
+	parsed.RawQuery = query.Encode()
+	reply(w, 200, map[string]string{"authorizationUrl": parsed.String(), "redirectUri": s.cfg.Federation.NativeRedirect()})
 }
 func (s *Server) nativeExchange(w http.ResponseWriter, r *http.Request) {
 	if s.cfg.Federation == nil {
@@ -38,6 +54,7 @@ func (s *Server) nativeExchange(w http.ResponseWriter, r *http.Request) {
 	}
 	var in struct {
 		Code     string `json:"code"`
+		Username string `json:"username"`
 		Verifier string `json:"codeVerifier"`
 		Name     string `json:"deviceName"`
 		Broker   bool   `json:"broker"`
@@ -57,13 +74,18 @@ func (s *Server) nativeExchange(w http.ResponseWriter, r *http.Request) {
 		fail(w, 429, "Too many sign-ins. Try again shortly.")
 		return
 	}
+	selected, username, selectErr := s.cfg.Federation.ResolveLogin(in.Username, false)
+	if selectErr != nil {
+		fail(w, 400, "Invalid identity domain")
+		return
+	}
 	var identity gravitas.Identity
 	var broker *gravitas.BrokerBundle
 	var err error
 	if in.Broker {
-		identity, broker, err = s.cfg.Federation.NativeBrokerExchange(in.Code, in.Verifier)
+		identity, broker, err = selected.NativeBrokerExchange(in.Code, in.Verifier)
 	} else {
-		identity, err = s.cfg.Federation.NativeExchange(in.Code, in.Verifier)
+		identity, err = selected.NativeExchange(in.Code, in.Verifier)
 	}
 	if err != nil {
 		if errors.Is(err, gravitas.ErrUnavailable) {
@@ -71,6 +93,10 @@ func (s *Server) nativeExchange(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		fail(w, 401, "Sign-in expired or was not completed. Start again.")
+		return
+	}
+	if username != "" && identity.UserID != username {
+		fail(w, 401, "Sign-in account did not match")
 		return
 	}
 	// The IAM code is one-use and tied to this exact native callback and PKCE verifier.
