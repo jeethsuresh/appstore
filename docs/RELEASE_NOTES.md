@@ -1,5 +1,7 @@
-Private Store 0.3.3 adds username-based sign-in with the 🔥 submit button.
+# Private Store 0.4.0
 
-Bare usernames use the configured registration domain. Qualified usernames sign in through their own Gravitas provider. The selected account and provider stay bound through browser and Android PKCE login and session validation.
+Enter a username and press 🔥 to sign in. Bare usernames use the configured registration domain; qualified usernames use their own Gravitas provider. Browser and Android login remain bound to the selected account and provider.
 
-Install **appstore-android.apk** over your existing Private Store. The permanent package and signing certificate are unchanged. Verify the download using **SHA256SUMS**.
+This release also provides the shared native notification listener used by Spacetime for account-bound event and invitation notifications, with native Android permission controls.
+
+Install **appstore-android.apk** over the existing Private Store. The package and permanent signing certificate are unchanged. GitHub now builds, verifies and publishes new signed versions automatically.
