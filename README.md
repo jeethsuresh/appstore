@@ -2,9 +2,9 @@
 
 A personal Android app distribution platform with Gravitas account sign-in, optional invitation-based device enrollment, GitHub release ingestion, and a native Kotlin/Jetpack Compose client. Daybreak and Spacetime are the first two supported apps.
 
-The signed [0.2.0 release](https://github.com/jeethsuresh/appstore/releases/tag/v0.2.0) updates 0.1.0 in place.
+The signed [0.4.0 release](https://github.com/jeethsuresh/appstore/releases/tag/v0.4.0) updates existing installations in place.
 
-Visit [apps.gravitas.cool](https://apps.gravitas.cool) and sign in with Gravitas to download the signed **appstore-android.apk**. Open the app and sign in with Gravitas; no separate device invitation is needed. The app connects automatically to `https://apps.gravitas.cool`; see [Kubernetes deployment](deploy/gravitas/README.md). Docker/Caddy remains available for independent installations.
+Visit [apps.gravitas.cool](https://apps.gravitas.cool) and sign in with Gravitas to download the signed **appstore-android.apk**. Open the app, enter your username and press **🔥**; no separate device invitation is needed. The app connects automatically to `https://apps.gravitas.cool`; see [Kubernetes deployment](deploy/gravitas/README.md). Docker/Caddy remains available for independent installations.
 
 Browse the collection at [apps.gravitas.cool](https://apps.gravitas.cool), with dedicated [Daybreak](https://apps.gravitas.cool/apps/daybreak) and [Spacetime](https://apps.gravitas.cool/apps/spacetime) pages. App descriptions are public; downloading the store requires Gravitas sign-in. Each page explains features, Android compatibility, local data and optional connections, with current verified release details.
 
@@ -51,7 +51,7 @@ The `store_data` volume holds the SQLite database and APKs. Back it up while the
 
 ## Connect a phone
 
-At apps.gravitas.cool, install the signed store and choose **Sign in with Gravitas**. Existing enrollments remain valid; **Connect Gravitas account** links them in place. Creating a Gravitas account follows the central login system's registration policy.
+At apps.gravitas.cool, install the signed store, enter your username and press **🔥**. Existing enrollments remain valid; **Connect Gravitas account** links them in place. Creating a Gravitas account follows the central login system's registration policy.
 
 Independent stores can continue using device invitations. In a trusted terminal, export `ADMIN_TOKEN` from your private deployment environment without placing it in shell history:
 
