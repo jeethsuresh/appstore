@@ -11,6 +11,8 @@ Generate one random service key of at least 32 characters outside source control
 
 The Kubernetes manifests read optional Secrets: `appstore-notifications` / `app-keys` containing `spacetime=YOUR_SERVICE_KEY`, and `spacetime-notifications` / `provider-key` containing the same raw key. Populate them through your existing secret-management process, then restart both deployments. Docker Compose accepts the appstore variables from its environment. No real credentials are included in the repository.
 
+The hosted manifests use `NOTIFICATION_GATEWAY_ADDR=traefik.traefik.svc.cluster.local:443` to route backend traffic through the existing private ingress. This changes only the TCP destination: the configured public HTTPS origin still determines Host, SNI and certificate verification. Redirects are disabled. Independent deployments can omit this setting.
+
 Both apps must use the same Gravitas issuer. The Android clients must be signed with their existing release certificates. The store catalog declares Spacetime's HTTPS backend and native notification authority. Notification capability is advertised only when its backend URL and key are configured. Independent invitation-only enrollments keep app installation/update support; app notifications require a linked Gravitas account. The Spacetime integration currently targets the hosted Gravitas account/server.
 
 Install the upgraded clients, sign in to the same Gravitas account, and enable **App notifications** in Private Store. In Spacetime, choose **Settings → Sync & invites → Enable invite & event notifications** to grant Android notification permission. Android also allows disabling the **Invites & event updates** channel independently of local reminders.
