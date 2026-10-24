@@ -1,0 +1,26 @@
+{
+  "name": "Private Store",
+  "kind": "gradle",
+  "project_dir": "android",
+  "version_file": "android/app/build.gradle.kts",
+  "package": "dev.jeeth.privatestore",
+  "min_sdk": 26,
+  "key_alias": "private-store-release",
+  "certificate_sha256": "e70b5b54a0d174f4ad8867889f6481a2b193dc9c130630f321563e12f3293793",
+  "apk": "android/app/build/outputs/apk/release/app-release.apk",
+  "asset": "appstore-android.apk",
+  "additional_verification": [
+    [
+      "python3",
+      "scripts/verify-android.py",
+      "android/app/build/outputs/apk/release/app-release.apk"
+    ]
+  ],
+  "build": [
+    "./gradlew",
+    "--no-daemon",
+    "assembleRelease",
+    "lintRelease"
+  ],
+  "release_notes": "docs/RELEASE_NOTES.md"
+}
