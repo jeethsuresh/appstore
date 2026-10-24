@@ -94,7 +94,7 @@ python3 scripts/build-android.py
 python3 scripts/verify-android.py android/app/build/outputs/apk/release/app-release.apk
 ```
 
-Alternatively supply `STORE_KEYSTORE`, `STORE_STORE_PASSWORD`, `STORE_KEY_ALIAS`, and `STORE_KEY_PASSWORD` directly to Gradle. Release builds reject missing signing configuration. The optional GitHub signed-client workflow uses the same key through `android-release` environment secrets; see [integration notes](docs/INTEGRATIONS.md).
+Alternatively supply `STORE_KEYSTORE`, `STORE_STORE_PASSWORD`, `STORE_KEY_ALIAS`, and `STORE_KEY_PASSWORD` directly to Gradle. Release builds reject missing signing configuration. Version bumps merged to `main` automatically test, sign and publish through GitHub’s main-only `android-release` environment. See [signed Android releases](ANDROID_RELEASES.md).
 
 ## Backend development
 
