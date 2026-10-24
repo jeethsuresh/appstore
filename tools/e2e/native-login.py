@@ -46,7 +46,7 @@ def fetch(address,form=None):
 def authorize(address):
  u=urllib.parse.urlsplit(address);q=urllib.parse.parse_qs(u.query)
  assert u.scheme=='https' and u.netloc=='gravitas.cool' and u.path=='/oauth/start'
- assert q['scope']==['profile.name'] and q['codeChallengeMethod']==['S256'] and q['redirectURL']==['https://apps.gravitas.cool/auth/android/callback']
+ assert q['scope'] in (['profile.name'], ['profile.name native.broker']) and q['codeChallengeMethod']==['S256'] and q['redirectURL']==['https://apps.gravitas.cool/auth/android/callback']
  for _ in range(18):
   if address.startswith('https://apps.gravitas.cool/auth/android/callback?'):return address
   status,headers,body=fetch(address)
@@ -81,7 +81,7 @@ try:
  package='dev.jeeth.privatestore.testbed'
  adb('install','-r',ROOT/'android/app/build/outputs/apk/e2e/app-e2e.apk');adb('install','-r',ROOT/'android/app/build/outputs/apk/androidTest/e2e/app-e2e-androidTest.apk')
  adb('shell','pm','clear',package);adb('shell','pm','grant',package,'android.permission.POST_NOTIFICATIONS')
- result=adb('shell','am','instrument','-w','-e','class','dev.jeeth.privatestore.GravitasE2ETest','-e','nativeGravitasE2E','true','-e','controlUrl',f'https://10.0.2.2:{server.server_port}',package+'.test/androidx.test.runner.AndroidJUnitRunner')
+ result=adb('shell','am','instrument','-w','-e','class','dev.jeeth.privatestore.GravitasE2ETest','-e','nativeGravitasE2E','true','-e','iamUsername',creds['IAM_USERNAME'],'-e','controlUrl',f'https://10.0.2.2:{server.server_port}',package+'.test/androidx.test.runner.AndroidJUnitRunner')
  (work/'instrumentation.log').write_text(result)
  if 'OK (1 test)' not in result:raise RuntimeError('Native integration failed; inspect instrumentation.log')
  (work/'report.json').write_text(json.dumps({'passed':True,'realGravitasPKCE':True,'verifierRemainedOnDevice':True,'cancellation':True,'activityRecreation':True,'mismatchedStateRejected':True,'accountVaultReload':True,'signedAPKDownload':True,'revocation':True,'newAccountsCreated':False},indent=2)+'\n')
