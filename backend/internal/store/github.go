@@ -178,6 +178,10 @@ func (s *Server) syncOnce(ctx context.Context, a App, tag string) error {
 	if info.VersionCode <= 0 || info.VersionName == "" || info.MinSDK <= 0 {
 		return fmt.Errorf("invalid APK version metadata")
 	}
+	notes, err := s.releaseNotes(ctx, a, rel, info)
+	if err != nil {
+		return fmt.Errorf("release changelog verification failed: %w", err)
+	}
 	if latest != nil && info.VersionCode <= latest.VersionCode {
 		if info.VersionCode != latest.VersionCode || actual != latest.SHA256 {
 			return fmt.Errorf("version code %d is not newer than %d; releases are immutable", info.VersionCode, latest.VersionCode)
@@ -192,10 +196,6 @@ func (s *Server) syncOnce(ctx context.Context, a App, tag string) error {
 	dest := filepath.Join(s.cfg.DataDir, "apks", actual+".apk")
 	if err = os.Rename(f.Name(), dest); err != nil {
 		return err
-	}
-	notes := rel.Body
-	if len(notes) > 32000 {
-		notes = notes[:32000]
 	}
 	_, err = s.db.ExecContext(ctx, `INSERT INTO releases(app_id,tag,version_code,version_name,sha256,size,min_sdk,notes,created,asset_id,config_hash) VALUES(?,?,?,?,?,?,?,?,?,?,?)`, a.ID, rel.Tag, info.VersionCode, info.VersionName, actual, n, info.MinSDK, notes, time.Now().UTC().Format(time.RFC3339), assetID, appTrust(a))
 	return err
