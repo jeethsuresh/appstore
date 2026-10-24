@@ -30,4 +30,17 @@ class GravitasLoginTest {
             assertTrue(runCatching { GravitasLogin.authorization(pending,bad,pending.baseUrl+GravitasLogin.CALLBACK) }.isFailure)
         }
     }
+    @Test fun usernameUsesConfiguredRegistrationDomainAndRemoteIdentity() {
+        assertEquals("@alice:accounts.example" to "https://accounts.example", GravitasLogin.identity(" Alice ", "accounts.example"))
+        assertEquals("@alice:remote.example" to "https://remote.example", GravitasLogin.identity("@Alice:REMOTE.EXAMPLE", "accounts.example"))
+        assertEquals("@alice:remote.example" to "https://remote.example", GravitasLogin.identity("alice@remote.example", "accounts.example"))
+        for (bad in listOf("", "alice@", "alice@remote.example/path", "alice@remote.example@evil.example", "alice@remote.example:443")) assertTrue(runCatching { GravitasLogin.identity(bad,"accounts.example") }.isFailure)
+        val remote = pending.copy(issuer="https://remote.example", username="@alice:remote.example", broker=false)
+        val params = mapOf("callerURL" to remote.baseUrl, "redirectURL" to remote.baseUrl+GravitasLogin.CALLBACK, "codeChallenge" to GravitasLogin.challenge(remote.verifier), "codeChallengeMethod" to "S256", "scope" to "profile.name", "state" to remote.state, "login_hint" to remote.username)
+        val address = "https://remote.example/oauth/start?"+params.entries.joinToString("&") { (k,v)->k+"="+URLEncoder.encode(v,"UTF-8") }
+        assertEquals(address,GravitasLogin.authorization(remote,address,remote.baseUrl+GravitasLogin.CALLBACK))
+        assertTrue(runCatching { GravitasLogin.authorization(remote,address.replace("remote.example/oauth","evil.example/oauth"),remote.baseUrl+GravitasLogin.CALLBACK) }.isFailure)
+        assertTrue(runCatching { GravitasLogin.authorization(remote,address.replace("alice","bob"),remote.baseUrl+GravitasLogin.CALLBACK) }.isFailure)
+    }
+
 }
