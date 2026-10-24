@@ -111,3 +111,18 @@ Native defaults: `LISTEN_ADDR=127.0.0.1:8080`, `DATA_DIR=data`, `APPS_CONFIG=con
 See [API](docs/API.md), [validation](docs/VALIDATION.md), [app integrations](docs/INTEGRATIONS.md), and [release notes](docs/RELEASE_NOTES.md).
 
 To add another app, configure its repository, asset pattern, package and certificate pin, declare the package in Android's `<queries>`, and rebuild the client. This initial single-instance platform does not implement per-user catalogs, APK pruning, split-APK installation, signing-key rotation, or device-owner installation.
+
+### Username sign-in
+
+Sign in by entering your username and pressing **🔥** (or Enter). A bare name
+such as `alice` uses the identity server configured by `GRAVITAS_ISSUER`, which
+also owns the registration button. The Gravitas deployment uses `gravitas.cool`.
+`alice@example.org`, `alice:example.org` and `@alice:example.org` select that
+public domain's compatible IAM service over HTTPS. Registration always stays on
+the configured default server. Login transactions and app sessions retain the
+selected issuer, including subsequent session-revocation checks.
+
+The Android client obtains the default issuer from `GET /v1/auth/gravitas/config`.
+Native start/exchange requests carry an optional `username`; start also accepts
+`register: true`. The existing native broker is used for `gravitas.cool`; other
+identity domains use browser PKCE with a device session.
