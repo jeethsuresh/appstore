@@ -54,7 +54,7 @@ func main() {
 		slog.Error("notification configuration", "error", err)
 		os.Exit(1)
 	}
-	s, err := store.New(store.Config{NotificationURL: os.Getenv("NOTIFICATION_PUBLIC_URL"), NotificationKeys: notificationKeys, DataDir: env("DATA_DIR", "data"), AdminToken: os.Getenv("ADMIN_TOKEN"), WebhookSecret: os.Getenv("WEBHOOK_SECRET"), GitHubToken: os.Getenv("GITHUB_TOKEN"), AAPT: env("AAPT", "aapt"), APKSigner: env("APKSIGNER", "apksigner"), Apps: apps, Federation: federation, ClientAPK: env("CLIENT_APK", "/usr/local/share/store/appstore.apk")})
+	s, err := store.New(store.Config{NotificationGateway: os.Getenv("NOTIFICATION_GATEWAY_ADDR"), NotificationURL: os.Getenv("NOTIFICATION_PUBLIC_URL"), NotificationKeys: notificationKeys, DataDir: env("DATA_DIR", "data"), AdminToken: os.Getenv("ADMIN_TOKEN"), WebhookSecret: os.Getenv("WEBHOOK_SECRET"), GitHubToken: os.Getenv("GITHUB_TOKEN"), AAPT: env("AAPT", "aapt"), APKSigner: env("APKSIGNER", "apksigner"), Apps: apps, Federation: federation, ClientAPK: env("CLIENT_APK", "/usr/local/share/store/appstore.apk")})
 	if err != nil {
 		slog.Error("start", "error", err)
 		os.Exit(1)
