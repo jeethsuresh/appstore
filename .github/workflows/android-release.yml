@@ -1,10 +1,19 @@
 name: Build signed store client
 on:
   workflow_dispatch:
+    inputs:
+      create_draft:
+        description: Create a draft release from the verified APK
+        required: true
+        default: false
+        type: boolean
 permissions:
   contents: read
 jobs:
   apk:
+    if: github.ref == 'refs/heads/main'
+    permissions:
+      contents: write
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     environment: android-release
@@ -23,6 +32,18 @@ jobs:
           packages: platform-tools
           log-accepted-android-sdk-licenses: false
       - run: sdkmanager 'platforms;android-36' 'build-tools;35.0.0'
+      - name: Read and reserve the new release version
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION="$(python3 -c 'import pathlib,re;print(re.search(r"versionName = \"([^\"]+)\"",pathlib.Path("android/app/build.gradle.kts").read_text())[1])')"
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+          if [ '${{ inputs.create_draft }}' = true ]; then
+            if gh release view "v$VERSION" >/dev/null 2>&1 || git ls-remote --exit-code --tags origin "refs/tags/v$VERSION" >/dev/null 2>&1; then
+              echo 'Increase the version before creating a release.' >&2
+              exit 1
+            fi
+          fi
       - name: Restore the store's own release key
         env:
           KEYSTORE_BASE64: ${{ secrets.STORE_KEYSTORE_BASE64 }}
@@ -41,3 +62,15 @@ jobs:
           path: android/app/build/outputs/apk/release/app-release.apk
       - if: always()
         run: rm -f "$RUNNER_TEMP/store.jks"
+      - name: Prepare verified release assets
+        run: |
+          mkdir -p "$RUNNER_TEMP/dist"
+          cp android/app/build/outputs/apk/release/app-release.apk "$RUNNER_TEMP/dist/appstore-android.apk"
+          cd "$RUNNER_TEMP/dist"
+          sha256sum appstore-android.apk > SHA256SUMS
+      - name: Create verified draft release
+        if: inputs.create_draft
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "v$VERSION" --target "$GITHUB_SHA" --draft --title "Private Store $VERSION" --notes-file docs/RELEASE_NOTES.md "$RUNNER_TEMP/dist/appstore-android.apk" "$RUNNER_TEMP/dist/SHA256SUMS"
