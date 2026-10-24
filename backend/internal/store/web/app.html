@@ -29,7 +29,7 @@
           <p class="session"><span class="status-dot"></span> Signed in as <strong>{{.Username}}</strong></p>
           <a class="button" href="/download/appstore.apk">Get Private Store <span aria-hidden="true">↓</span></a>
           {{else if .Enabled}}
-          <a class="button" href="/auth/gravitas/start?next={{.Next}}">Sign in to get the store <span aria-hidden="true">↗</span></a>
+          <form class="gravitas-login" action="/auth/gravitas/start" method="get"><input type="hidden" name="next" value="{{.Next}}"><label for="gravitas-username">Username</label><div class="gravitas-login-row"><input id="gravitas-username" name="username" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="username@{{.DefaultDomain}}" maxlength="256" required><button class="button" type="submit" aria-label="Sign in" title="Sign in">🔥</button></div><small>Without a domain, sign in at {{.DefaultDomain}}.</small></form><p class="register"><a href="/auth/gravitas/register?next={{.Next}}">Register at {{.DefaultDomain}}</a></p>
           {{else}}<p class="notice" role="status">Store downloads will be available when Gravitas sign-in is configured.</p>{{end}}
           <p class="button-note">{{if eq .Selected.ID "appstore"}}Download once; future updates appear inside the store.{{else}}Install {{.Selected.Name}} inside Private Store.{{end}}<br>Android 8.0+ · Sign in with your Gravitas account.</p>
         </div>
