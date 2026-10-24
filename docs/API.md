@@ -39,7 +39,7 @@ Unknown apps/releases/devices return 404. Invalid input returns 400. Upstream in
 
 `POST /webhooks/github` accepts signed GitHub `release` events for configured repositories. Validate with `X-Hub-Signature-256` and `WEBHOOK_SECRET`. Accepted events return 202 and queue a fresh GitHub API lookup; unsigned events return 401. A full queue returns 503 so GitHub can retry. Polling also recovers missed events.
 
-For releases with a `changelog.json` asset, ingestion verifies its size, digest, schema, version name and version code against the verified APK. The existing release `notes` field contains its plain-text `changes` as a bulleted list, so existing Android and web clients display the new changelog without an API migration. Legacy releases without the JSON asset use their GitHub release body. Invalid JSON assets fail ingestion rather than silently falling back to unrelated notes. See [app integrations](INTEGRATIONS.md) for the JSON contract.
+For releases with a `changelog.json` asset, ingestion verifies its size, digest, schema, version name and version code against the verified APK. The existing release `notes` field contains its plain-text `changes` as a bulleted list, so existing Android and web clients display the new changelog without an API migration. Previously cached APKs also refresh their notes from verified JSON without downloading the APK again. Legacy releases without the JSON asset use their GitHub release body. Invalid JSON assets fail ingestion rather than silently falling back to unrelated notes. See [app integrations](INTEGRATIONS.md) for the JSON contract.
 
 `GET /healthz` is an unauthenticated liveness/readiness check with a SQLite ping. The container runs `store healthcheck` against it. No admin or device data is exposed.
 
