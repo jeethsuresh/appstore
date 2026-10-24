@@ -31,15 +31,17 @@ var appStories = map[string]appStory{
 	"river": {
 		Category: "Chat & communities", Tagline: "A little closer, wherever you are.",
 		Summary: "Bring your Gravitas spaces, conversations and ideas together in River. Separate channels, friends, private conversations, posts and discussions share the same blue interface on Android and the web.",
-		Icon:    "river.svg", Architecture: "ARM, ARM64 and x86-64", MinimumAndroid: "Android 6.0+",
+		Icon:    "river.svg", Architecture: "ARM, ARM64 and x86-64", MinimumAndroid: "Android 7.0+",
 		Features: []appFeature{
-			{"Give each topic a home", "Create spaces and separate text channels. Invitations and membership are managed by the space, with saved unread positions and earlier-message history."},
-			{"Keep your people close", "Send and accept friend requests, start private conversations, and remove or block people. Blocking stops new direct messages and friend requests."},
-			{"Make room for ideas", "Write posts and discussions with Markdown preview, edit your own entries, follow reply threads, and add or remove emoji reactions."},
+			{"Give each topic a home", "Create spaces with separate text channels and drop-in voice rooms. Return to unread activity and your recent reply threads, with membership controlled by Gravitas."},
+			{"Keep your people close", "Use your Gravitas contacts as River friends when both people approve River access. Send and accept requests, start direct or group conversations, and remove or block contacts."},
+			{"Make room for ideas", "Write visually or in Markdown, preview formatting, and edit your posts and discussions. Follow reply threads, add reactions, and share public posts and space blogs with separate comment permissions."},
+			{"Talk face to face", "Join voice and video calls in conversations or drop-in rooms. Share your screen, control microphone and call audio, and use the current call’s private chat."},
+			{"Share files with your people", "Send up to five peer-shared attachments per message, with a 25 MiB file limit and 50 MiB total. Verified local copies can be shared again by returning peers; files have no cloud backup."},
 			{"Use the screen you have", "The shared Flutter client adapts to phones, tablets and desktops. Continue on the web at chat.gravitas.cool."},
 		},
-		LocalData:  "River keeps its Android sign-in in secure device storage. Gravitas stores access-controlled group membership, message history and social events; central sign-out revokes connected sessions.",
-		Connection: "Sign-in, history and new messages require a connection to Gravitas. Voice, video, screen sharing and file attachments are not enabled in this release.",
+		LocalData:  "River keeps its Android sign-in in secure device storage and retains verified peer files in an account-isolated cache. Gravitas stores group membership, message history and contacts; central sign-out revokes connected sessions.",
+		Connection: "Sign-in, history, new messages and calls require a connection. Calls use encrypted WebRTC media through River’s configured calling service. File delivery requires an online peer holding the file; metadata alone cannot restore a file after all copies are gone.",
 	},
 	"launcher": {
 		Category: "Home screen", Tagline: "A home that feels like yours.",
