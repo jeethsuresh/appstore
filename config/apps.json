@@ -15,7 +15,11 @@
     "repository": "jeethsuresh/spacetime",
     "assetName": "spacetime-{tag}-android.apk",
     "certificateSha256": "f5714ad3d2b3d82b283efd61b2d99f5eaad5ec9efe67b644a62efc79fec94582",
-    "description": "Calendar, events, tasks, and occasions."
+    "description": "Calendar, events, tasks, and occasions.",
+    "notifications": {
+      "origin": "https://spacetime.gravitas.cool",
+      "authority": "com.jeethsuresh.spacetime.notifications"
+    }
   },
   {
     "id": "appstore",
