@@ -130,3 +130,7 @@ The Android client obtains the default issuer from `GET /v1/auth/gravitas/config
 Native start/exchange requests carry an optional `username`; start also accepts
 `register: true`. The existing native broker is used for `gravitas.cool`; other
 identity domains use browser PKCE with a device session.
+
+## Atlas
+
+[Atlas](https://apps.gravitas.cool/apps/atlas) adds OpenStreetMap layers, business lists, driving routes, street highlights and opt-in foreground friend locations. Open the web app at https://maps.gravitas.cool. Android 8.0+; source and signed releases are in `jeethsuresh/atlas`, package `cool.gravitas.atlas`, asset `Atlas-{tag}-android.apk`, with the permanent certificate pinned in `config/apps.json`. The store automatically ingests stable, signed releases and their verified changelogs.

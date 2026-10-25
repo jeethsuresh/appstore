@@ -11,6 +11,7 @@ import (
 type appFeature struct{ Title, Description string }
 type appStory struct {
 	Category, Tagline, Summary, Icon, Architecture, MinimumAndroid string
+	Website                                                        string
 	Features                                                       []appFeature
 	LocalData, Connection                                          string
 }
@@ -28,6 +29,19 @@ type webView struct {
 }
 
 var appStories = map[string]appStory{
+	"atlas": {
+		Category: "Maps & places", Tagline: "Your world, in layers.",
+		Summary: "Bring your places, your paths and your people together on an OpenStreetMap map. Save businesses to lists, highlight streets, plan a drive and choose when to share your location with friends, on Android and the web.",
+		Icon:    "atlas.svg", Architecture: "ARM, ARM64 and x86-64", MinimumAndroid: "Android 8.0+", Website: "https://maps.gravitas.cool",
+		Features: []appFeature{
+			{"Make the map yours", "Switch nearby businesses, saved lists, routes and friends on or off independently over an OpenStreetMap base layer."},
+			{"Keep your good finds", "Search places and addresses, save businesses into multiple lists, rename collections and remove pins. Sign in with Gravitas to sync lists and highlights across web and Android."},
+			{"Remember the way there", "Plan driving directions, save a route, highlight a named street near the map or draw a personal path. Public transit schedules and live traffic are not included."},
+			{"Find your people, on your terms", "Connect with single-use invitations. Each friend chooses when to share their foreground location. Sharing pauses when Atlas is hidden; the latest position expires within two minutes. No location history is kept."},
+		},
+		LocalData:  "Guest lists and highlights stay on the device. Signed-in lists, highlights, accepted friendships and the latest voluntarily shared location are stored by Atlas with account access controls. Removing a friend ends location access in both directions.",
+		Connection: "Maps, search, directions, sync and friends need a connection. OpenStreetMap, Nominatim, Overpass and OSRM receive the map area or query used for their services. Background location sharing and offline map packs are not included.",
+	},
 	"river": {
 		Category: "Chat & communities", Tagline: "A little closer, wherever you are.",
 		Summary: "Bring your Gravitas spaces, conversations and ideas together in River. Separate channels, friends, private conversations, posts and discussions share the same blue interface on Android and the web.",

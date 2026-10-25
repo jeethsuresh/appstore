@@ -24,6 +24,7 @@
         <div class="app-intro">
           <div class="app-identity"><img src="/assets/{{.Selected.Icon}}" width="76" height="76" alt=""><div><p class="eyebrow">{{.Selected.Category}}</p><h1 id="app-name">{{.Selected.Name}}</h1></div></div>
           <h2>{{.Selected.Tagline}}</h2><p class="app-summary">{{.Selected.Summary}}</p>
+          {{if .Selected.Website}}<p><a class="button" href="{{.Selected.Website}}" target="_blank" rel="noopener noreferrer">Open {{.Selected.Name}} on the web <span aria-hidden="true">↗</span></a></p>{{end}}
           {{if .SignedIn}}
           <p id="session-feedback" class="notice" role="status" hidden></p>
           <p class="session"><span class="status-dot"></span> Signed in as <strong>{{.Username}}</strong></p>

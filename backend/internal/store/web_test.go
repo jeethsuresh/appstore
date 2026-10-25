@@ -113,6 +113,7 @@ func TestAppPagesBrowsePubliclyButKeepDownloadsGated(t *testing.T) {
 	s := testServer(t)
 	s.cfg.Apps = append(s.cfg.Apps, App{ID: "spacetime", Name: "Spacetime", Package: "com.jeethsuresh.spacetime", Repo: "jeethsuresh/spacetime", Certificate: strings.Repeat("d", 64)})
 	s.cfg.Apps = append(s.cfg.Apps, App{ID: "river", Name: "River", Package: "cool.gravitas.river", Repo: "jeethsuresh/river", Certificate: "6559956b5cf6b2f796824995b31da7fa2c176ba652e8fcb40741686d850bb6b0"})
+	s.cfg.Apps = append(s.cfg.Apps, App{ID: "atlas", Name: "Atlas", Package: "cool.gravitas.atlas", Repo: "jeethsuresh/atlas", Certificate: "ee7ce4ba953a4f64cb1b857c6cf0f124a68dc6cd90840b1a46259c9b759e7f4a"})
 	c, err := gravitas.New("https://gravitas.cool", "https://apps.gravitas.cool", base64.RawURLEncoding.EncodeToString(make([]byte, 32)))
 	if err != nil {
 		t.Fatal(err)
@@ -122,7 +123,7 @@ func TestAppPagesBrowsePubliclyButKeepDownloadsGated(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, check := range []struct{ id, name, feature string }{{"daybreak", "Daybreak", "Choose your weather source"}, {"spacetime", "Spacetime", "Let plans repeat"}, {"river", "River", "Give each topic a home"}} {
+	for _, check := range []struct{ id, name, feature string }{{"daybreak", "Daybreak", "Choose your weather source"}, {"spacetime", "Spacetime", "Let plans repeat"}, {"river", "River", "Give each topic a home"}, {"atlas", "Atlas", "Make the map yours"}} {
 		w := request(s, "GET", "/apps/"+check.id, "", "")
 		page := w.Body.String()
 		for _, content := range []string{check.name, check.feature, "What you can do.", "At home on your device.", `name="username"`, "Android 8.0+", "/apps/"} {
@@ -183,7 +184,7 @@ func TestAppPagesBrowsePubliclyButKeepDownloadsGated(t *testing.T) {
 	if w = request(s, "GET", "/apps/spacetime", "", ""); w.Code != 404 {
 		t.Fatal("removed app remains published")
 	}
-	for _, path := range []string{"/assets/daybreak.svg", "/assets/spacetime.svg", "/assets/river.svg"} {
+	for _, path := range []string{"/assets/daybreak.svg", "/assets/spacetime.svg", "/assets/river.svg", "/assets/atlas.svg"} {
 		if w = request(s, "GET", path, "", ""); w.Code != 200 || w.Header().Get("Content-Type") != "image/svg+xml" {
 			t.Fatal("missing app icon", path)
 		}
