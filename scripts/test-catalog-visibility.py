@@ -34,6 +34,9 @@ class CatalogVisibilityTest(unittest.TestCase):
         A: android:name(0x01010003)="also.not.visible" (Raw: "also.not.visible")
 '''
         self.assertEqual({"cool.gravitas.river", "cool.gravitas.atlas"}, visibility.compiled_packages(manifest))
+        # The pinned aapt2 emits the expanded namespace URI, while aapt uses the prefix.
+        expanded = manifest.replace("A: android:", "A: http://schemas.android.com/apk/res/android:")
+        self.assertEqual({"cool.gravitas.river", "cool.gravitas.atlas"}, visibility.compiled_packages(expanded))
         # A catalog-only change used to pass PR CI and leave Atlas invisible on Android.
         without_atlas = manifest.replace('      E: package (line=5)\n        A: android:name(0x01010003)="cool.gravitas.atlas" (Raw: "cool.gravitas.atlas")\n', '')
         with self.assertRaisesRegex(ValueError, "cool.gravitas.atlas"):

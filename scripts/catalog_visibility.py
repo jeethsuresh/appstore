@@ -36,7 +36,7 @@ def compiled_packages(manifest):
             elif queries_indent is not None and line.lstrip().startswith("E: package "):
                 package_indent = indent
         elif package_indent is not None and indent > package_indent:
-            match = re.search(r'A: android:name\([^)]*\)="([^"]+)"', line)
+            match = re.search(r'A: (?:android|http://schemas\.android\.com/apk/res/android):name\([^)]*\)="([^"]+)"', line)
             if match:
                 visible.add(match[1])
     return visible
