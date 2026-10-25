@@ -40,7 +40,7 @@ var appStories = map[string]appStory{
 			{"Find your people, on your terms", "Connect with single-use invitations. Each friend chooses when to share their foreground location. Sharing pauses when Atlas is hidden; the latest position expires within two minutes. No location history is kept."},
 		},
 		LocalData:  "Guest lists and highlights stay on the device. Signed-in lists, highlights, accepted friendships and the latest voluntarily shared location are stored by Atlas with account access controls. Removing a friend ends location access in both directions.",
-		Connection: "Maps, search, directions, sync and friends need a connection. OpenStreetMap, Nominatim, Overpass and OSRM receive the map area or query used for their services. Background location sharing and offline map packs are not included.",
+		Connection: "Maps, search, directions, sync and friends need a connection. OpenStreetMap, Nominatim, Photon and OSRM receive the map area or query used for their services. Background location sharing and offline map packs are not included.",
 	},
 	"river": {
 		Category: "Chat & communities", Tagline: "A little closer, wherever you are.",
