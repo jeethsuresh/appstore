@@ -159,6 +159,17 @@ func TestAppPagesBrowsePubliclyButKeepDownloadsGated(t *testing.T) {
 	if !strings.Contains(w.Body.String(), "&lt;script&gt;alert(1)&lt;/script&gt;") {
 		t.Fatal("release notes must be escaped")
 	}
+	// Atlas is a tiny WebView APK. Its verified byte count must not round to 0.0 MB.
+	atlas := s.cfg.Apps[len(s.cfg.Apps)-1]
+	_, err = s.db.Exec("INSERT INTO releases(app_id,tag,version_code,version_name,sha256,size,min_sdk,notes,created,asset_id,config_hash) VALUES(?,?,?,?,?,?,?,?,?,?,?)", "atlas", "v1.0.1", 2, "1.0.1", strings.Repeat("a", 64), 11560, 26, "Atlas updates", "2026-10-25T00:00:00Z", 2, appTrust(atlas))
+	if err != nil {
+		t.Fatal(err)
+	}
+	w = request(s, "GET", "/apps/atlas", "", "")
+	page := html.UnescapeString(w.Body.String())
+	if w.Code != 200 || !strings.Contains(page, "v1.0.1") || !strings.Contains(page, "11.6 kB") || strings.Contains(page, "0.0 MB") {
+		t.Fatal("tiny verified Atlas download size missing", w.Code, page)
+	}
 	// Old metadata verified under a different package/certificate must stay hidden.
 	s.cfg.Apps[0].Certificate = strings.Repeat("f", 64)
 	if w = request(s, "GET", "/apps/daybreak", "", ""); strings.Contains(w.Body.String(), "v1.4.2") {

@@ -1,9 +1,9 @@
 {
   "schemaVersion": 1,
-  "version": "0.4.0",
-  "versionCode": 7,
+  "version": "0.4.1",
+  "versionCode": 8,
   "changes": [
-    "Sign in with your username and the 🔥 submit button, including accounts from other Gravitas providers.",
-    "Receive account-bound Spacetime event and invitation notifications through the shared native listener."
+    "Recognise installed copies of Atlas and show Installed or Update correctly.",
+    "Show small APK downloads in bytes or kB instead of rounding to 0.0 MB on Android and the web."
   ]
 }
