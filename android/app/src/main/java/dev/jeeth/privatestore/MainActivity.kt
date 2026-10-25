@@ -186,7 +186,7 @@ class MainActivity : ComponentActivity() {
                     Card(Modifier.fillMaxWidth()) { Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                         Text(app.name, style = MaterialTheme.typography.titleLarge)
                         Text(app.description)
-                        Text(when { r == null -> "No verified release available"; installed == null -> "Version ${r.versionName} · ${(r.size / 1048576.0).let { "%.1f".format(it) }} MB"; update -> "Update to ${r.versionName}"; installed > r.versionCode -> "Installed a newer version · code $installed"; else -> "Up to date · ${r.versionName}" }, style = MaterialTheme.typography.labelLarge)
+                        Text(when { r == null -> "No verified release available"; installed == null -> "Version ${r.versionName} · ${DownloadSizes.format(r.size)}"; update -> "Update to ${r.versionName}"; installed > r.versionCode -> "Installed a newer version · code $installed"; else -> "Up to date · ${r.versionName}" }, style = MaterialTheme.typography.labelLarge)
                         if (r != null && r.notes.isNotBlank()) TextButton(onClick = { selected = app }) { Text("Release notes") }
                         Button(enabled = !busy && update && r!!.minSdk <= Build.VERSION.SDK_INT, onClick = {
                             if (!packageManager.canRequestPackageInstalls()) { permission.launch(Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:$packageName"))) }

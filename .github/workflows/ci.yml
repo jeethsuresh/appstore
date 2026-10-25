@@ -49,6 +49,10 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
+      - name: Check catalog package visibility before building
+        run: |
+          python3 scripts/test-catalog-visibility.py
+          python3 scripts/catalog_visibility.py
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -60,6 +64,8 @@ jobs:
       - run: sdkmanager 'platforms;android-36' 'build-tools;35.0.0'
       - run: ./gradlew --no-daemon assembleDebug testDebugUnitTest lintDebug
         working-directory: android
+      - name: Verify catalog visibility in the compiled APK
+        run: python3 scripts/catalog_visibility.py --apk android/app/build/outputs/apk/debug/app-debug.apk
       - uses: actions/upload-artifact@v4
         with:
           name: private-store-debug

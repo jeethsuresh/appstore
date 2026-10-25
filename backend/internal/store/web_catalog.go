@@ -112,6 +112,16 @@ var appStories = map[string]appStory{
 	},
 }
 
+func downloadSize(bytes int64) string {
+	if bytes < 1000 {
+		return fmt.Sprintf("%d B", bytes)
+	}
+	if bytes < 1e6 {
+		return fmt.Sprintf("%.1f kB", float64(bytes)/1e3)
+	}
+	return fmt.Sprintf("%.1f MB", float64(bytes)/1e6)
+}
+
 func (s *Server) webApps(ctx context.Context) ([]webApp, error) {
 	apps := make([]webApp, 0, len(s.cfg.Apps))
 	for _, configured := range s.cfg.Apps {
@@ -130,7 +140,7 @@ func (s *Server) webApps(ctx context.Context) ([]webApp, error) {
 		}
 		item := webApp{App: app, appStory: story}
 		if release != nil {
-			item.Size = fmt.Sprintf("%.1f MB", float64(release.Size)/1e6)
+			item.Size = downloadSize(release.Size)
 			versions := map[int]string{21: "5.0", 22: "5.1", 23: "6.0", 24: "7.0", 25: "7.1", 26: "8.0", 27: "8.1", 28: "9", 29: "10", 30: "11", 31: "12", 32: "12L", 33: "13", 34: "14", 35: "15", 36: "16"}
 			if version, found := versions[release.MinSDK]; found {
 				item.MinimumAndroid = "Android " + version + "+"
@@ -143,7 +153,7 @@ func (s *Server) webApps(ctx context.Context) ([]webApp, error) {
 	return apps, nil
 }
 func (s *Server) webData(w http.ResponseWriter, r *http.Request) (webView, error) {
-	data := webView{Enabled: s.cfg.Federation != nil, Error: r.URL.Query().Get("error") != "", Digest: clientSHA256, ClientVersion: clientVersion, ClientSize: fmt.Sprintf("%.1f MB", float64(clientSize)/1e6), Title: "Private Store · Gravitas", Description: "A small home for independent Android apps. Get Private Store with your Gravitas account.", Next: "/", StoreURL: "https://apps.gravitas.cool"}
+	data := webView{Enabled: s.cfg.Federation != nil, Error: r.URL.Query().Get("error") != "", Digest: clientSHA256, ClientVersion: clientVersion, ClientSize: downloadSize(clientSize), Title: "Private Store · Gravitas", Description: "A small home for independent Android apps. Get Private Store with your Gravitas account.", Next: "/", StoreURL: "https://apps.gravitas.cool"}
 	if s.cfg.Federation != nil {
 		data.DefaultDomain = s.cfg.Federation.DefaultDomain()
 	}
