@@ -134,3 +134,7 @@ identity domains use browser PKCE with a device session.
 ## Atlas
 
 [Atlas](https://apps.gravitas.cool/apps/atlas) adds OpenStreetMap layers, business lists, driving routes, street highlights and opt-in foreground friend locations. Open the web app at https://maps.gravitas.cool. Android 8.0+; source and signed releases are in `jeethsuresh/atlas`, package `cool.gravitas.atlas`, asset `Atlas-{tag}-android.apk`, with the permanent certificate pinned in `config/apps.json`. The store automatically ingests stable, signed releases and their verified changelogs.
+
+## Protocol capability registry
+
+See [the versioned protocol contract and integration](protocols/README.md) for Gravitas-facilitated push notifications and private protocol discovery.

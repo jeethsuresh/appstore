@@ -1,0 +1,13 @@
+# Appstore protocol
+
+`appstore/1.0.0.json` is the authoritative immutable protocol capability specification. Publish a new semver file for any change. Every capability has an object input/output schema and an explicit required permission array. `push.broadcast` is a peer capability layering `appstore.push.broadcast` over the base `appstore.push` permission.
+
+A successful configured Gravitas login publishes `{"schema_version":1,"protocols":[SPEC]}` with its app access token, before returning a session. `PROTOCOL_SPEC_FILE` selects this source in the production image. Existing active devices register through a trusted backend credential plus their live IAM session proof. Neither registration discloses installed apps or devices. The registry is per account, and subscriptions persist until registry replacement or app-grant removal.
+
+Senders call Gravitas's discovered protocol API. `input.app` is the sending app's catalog ID, authorized against its backend origin; `input.device` is an opaque app-specific handle. It identifies a particular account/device installation without identifying the store provider. The relay verifies the current issuer, principal, device and installed subscription. `push.broadcast` targets every enabled device of the authorized app. It does not authorize pushing to another app.
+
+Payloads are JSON objects of at most 8 KiB, interpreted by the receiving native app. Unknown versions/capabilities and malformed requests fail closed. Queue insertion, duplicate suppression and broadcast backpressure are transactional. Acknowledged messages retain only deduplication metadata; payloads expire after seven days. The public receipt reports acceptance without provider counts or delivery results.
+
+Set a distinct random `PROTOCOL_RELAY_KEY` of at least 32 characters in appstore and as its backend credential in IAM's secret `PROTOCOL_SERVICES`. Configure the sender's existing notification key in IAM with `protocols.read` and `appstore.push`. The hosted secret uses `appstore-notifications/protocol-relay-key`. Leave `PROTOCOL_RELAY_KEY` unset to retain an independent deployment's existing notification integration. Legacy provider callbacks remain available for rollout compatibility; upgraded senders use Gravitas.
+
+See [notification delivery and native-device validation](../docs/NOTIFICATIONS.md), and the IAM repository's `docs/protocol-registry.md` for the general registration, discovery, permission and invocation APIs. Android's existing separate native listener, signature checks, explicit notification permission, replay handling and Doze behavior remain part of the delivery path. Immediate display during deep sleep is governed by Android's networking rules.

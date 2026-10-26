@@ -40,6 +40,10 @@ func (h *notificationHub) wake(device string) {
 	}
 }
 func (s *Server) initNotifications() error {
+	if s.cfg.ProtocolRelayKey != "" && len(s.cfg.ProtocolRelayKey) < 32 {
+		return errors.New("PROTOCOL_RELAY_KEY must have at least 32 characters")
+	}
+	s.mux.HandleFunc("POST /api/protocols/invoke", s.protocolInvoke)
 	client, err := newNotificationHTTP(s.cfg.NotificationGateway)
 	if err != nil {
 		return fmt.Errorf("invalid NOTIFICATION_GATEWAY_ADDR: %w", err)
@@ -59,7 +63,8 @@ func (s *Server) initNotifications() error {
  CREATE TABLE IF NOT EXISTS notification_providers(id TEXT PRIMARY KEY, device TEXT NOT NULL REFERENCES devices(id), app TEXT NOT NULL, issuer TEXT NOT NULL, subject TEXT NOT NULL, enabled INTEGER NOT NULL, synced INTEGER NOT NULL DEFAULT 0);
  CREATE UNIQUE INDEX IF NOT EXISTS notification_active_provider ON notification_providers(device,app) WHERE enabled=1;
  CREATE TABLE IF NOT EXISTS notifications(seq INTEGER PRIMARY KEY AUTOINCREMENT, provider TEXT NOT NULL, device TEXT NOT NULL REFERENCES devices(id), app TEXT NOT NULL, event TEXT NOT NULL, payload TEXT NOT NULL, created INTEGER NOT NULL, acked INTEGER NOT NULL DEFAULT 0, UNIQUE(provider,event));
- CREATE INDEX IF NOT EXISTS notification_pending ON notifications(device,acked,seq);`)
+ CREATE INDEX IF NOT EXISTS notification_pending ON notifications(device,acked,seq);
+ CREATE TABLE IF NOT EXISTS protocol_registry_sync(device TEXT PRIMARY KEY REFERENCES devices(id) ON DELETE CASCADE,next INTEGER NOT NULL);`)
 	if err != nil {
 		return err
 	}
@@ -175,6 +180,7 @@ func (s *Server) RunNotifications(ctx context.Context) {
 	timer := time.NewTicker(time.Minute)
 	defer timer.Stop()
 	for {
+		s.syncProtocolRegistry(ctx)
 		s.syncNotificationProviders(ctx)
 		select {
 		case <-ctx.Done():
@@ -208,7 +214,12 @@ func (s *Server) syncNotificationProviders(ctx context.Context) {
 		if a == nil {
 			continue
 		}
-		body, _ := json.Marshal(map[string]any{"issuer": p.Issuer, "subject": p.Subject, "callback": s.cfg.NotificationURL + "/v1/notifications/" + a.ID, "enabled": p.Enabled})
+		registration := map[string]any{"issuer": p.Issuer, "subject": p.Subject, "callback": s.cfg.NotificationURL + "/v1/notifications/" + a.ID, "enabled": p.Enabled}
+		if len(s.cfg.ProtocolRelayKey) >= 32 {
+			registration["callback"] = ""
+			registration["protocol"] = "appstore/1.0.0"
+		}
+		body, _ := json.Marshal(registration)
 		reqCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
 		req, _ := http.NewRequestWithContext(reqCtx, "PUT", a.Notifications.Origin+"/api/notifications/providers/"+p.ID, bytes.NewReader(body))
 		req.Header.Set("Authorization", "Bearer "+s.cfg.NotificationKeys[p.App])

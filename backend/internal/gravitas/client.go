@@ -39,6 +39,7 @@ type Identity struct {
 	SessionExpires int64  `json:"session_expires_at,omitempty"`
 }
 type metadata struct {
+	Registry     string `json:"protocol_registry_endpoint,omitempty"`
 	Issuer       string `json:"issuer"`
 	Domain       string `json:"identity_domain"`
 	Browser      string `json:"browser_initiation_endpoint"`
@@ -60,16 +61,17 @@ type session struct {
 }
 
 type Client struct {
-	federationMu   sync.Mutex
-	federated      map[string]*Client
-	federatedOrder []string
-	Issuer         string
-	AppURL         string
-	HTTP           *http.Client
-	aead           cipher.AEAD
-	mu             sync.Mutex
-	cached         metadata
-	cachedUntil    time.Time
+	ProtocolRegistry json.RawMessage
+	federationMu     sync.Mutex
+	federated        map[string]*Client
+	federatedOrder   []string
+	Issuer           string
+	AppURL           string
+	HTTP             *http.Client
+	aead             cipher.AEAD
+	mu               sync.Mutex
+	cached           metadata
+	cachedUntil      time.Time
 }
 
 func New(issuer, appURL, encodedKey string) (*Client, error) {
@@ -113,6 +115,12 @@ func (c *Client) discovery() (metadata, error) {
 		u, err := url.Parse(raw)
 		if err != nil || u.Scheme != origin.Scheme || u.Host != origin.Host || u.User != nil || u.Fragment != "" || u.RawQuery != "" {
 			return m, errors.New("IAM discovery endpoint must belong to the configured issuer")
+		}
+	}
+	if m.Registry != "" {
+		u, err := url.Parse(m.Registry)
+		if err != nil || u.Scheme != origin.Scheme || u.Host != origin.Host || u.User != nil || u.Fragment != "" || u.RawQuery != "" || u.Path != "/app/v1/protocols/registry" {
+			return m, errors.New("untrusted protocol registry endpoint")
 		}
 	}
 	c.cached = m
@@ -340,6 +348,9 @@ func (c *Client) exchangeGrant(code, verifier, redirect string) (Identity, issue
 	}
 	identity.SessionExpires, err = c.proofStatus(context.Background(), identity)
 	if err != nil {
+		return Identity{}, tokens, err
+	}
+	if err = c.registerAccess(context.Background(), m.Registry, tokens.AccessToken); err != nil {
 		return Identity{}, tokens, err
 	}
 	return identity, tokens, nil

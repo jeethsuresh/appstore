@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"log/slog"
 	"net"
 	"net/http"
@@ -45,6 +46,18 @@ func main() {
 			slog.Error("configure Gravitas login", "error", err)
 			os.Exit(1)
 		}
+		if os.Getenv("PROTOCOL_RELAY_KEY") != "" {
+			spec, loadErr := os.ReadFile(env("PROTOCOL_SPEC_FILE", "protocols/appstore/1.0.0.json"))
+			if loadErr != nil || !json.Valid(spec) {
+				slog.Error("load appstore protocol specification")
+				os.Exit(1)
+			}
+			federation.ProtocolRegistry, err = json.Marshal(map[string]any{"schema_version": 1, "protocols": []json.RawMessage{spec}})
+			if err != nil {
+				slog.Error("encode protocol registry")
+				os.Exit(1)
+			}
+		}
 	} else if os.Getenv("GRAVITAS_REQUIRED") == "true" {
 		slog.Error("GRAVITAS_ISSUER is required")
 		os.Exit(1)
@@ -54,7 +67,7 @@ func main() {
 		slog.Error("notification configuration", "error", err)
 		os.Exit(1)
 	}
-	s, err := store.New(store.Config{NotificationGateway: os.Getenv("NOTIFICATION_GATEWAY_ADDR"), NotificationURL: os.Getenv("NOTIFICATION_PUBLIC_URL"), NotificationKeys: notificationKeys, DataDir: env("DATA_DIR", "data"), AdminToken: os.Getenv("ADMIN_TOKEN"), WebhookSecret: os.Getenv("WEBHOOK_SECRET"), GitHubToken: os.Getenv("GITHUB_TOKEN"), AAPT: env("AAPT", "aapt"), APKSigner: env("APKSIGNER", "apksigner"), Apps: apps, Federation: federation, ClientAPK: env("CLIENT_APK", "/usr/local/share/store/appstore.apk")})
+	s, err := store.New(store.Config{ProtocolRelayKey: os.Getenv("PROTOCOL_RELAY_KEY"), NotificationGateway: os.Getenv("NOTIFICATION_GATEWAY_ADDR"), NotificationURL: os.Getenv("NOTIFICATION_PUBLIC_URL"), NotificationKeys: notificationKeys, DataDir: env("DATA_DIR", "data"), AdminToken: os.Getenv("ADMIN_TOKEN"), WebhookSecret: os.Getenv("WEBHOOK_SECRET"), GitHubToken: os.Getenv("GITHUB_TOKEN"), AAPT: env("AAPT", "aapt"), APKSigner: env("APKSIGNER", "apksigner"), Apps: apps, Federation: federation, ClientAPK: env("CLIENT_APK", "/usr/local/share/store/appstore.apk")})
 	if err != nil {
 		slog.Error("start", "error", err)
 		os.Exit(1)
