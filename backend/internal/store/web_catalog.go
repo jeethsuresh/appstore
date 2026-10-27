@@ -38,7 +38,7 @@ var appStories = map[string]appStory{
 			{"Keep copies at home", "Enable a desktop as a sink and choose its repository folder. Haven transfers directly between devices and verifies each completed copy."},
 			{"See your library", "Browse photo, video and audio thumbnails, search filenames, inspect stored-copy counts and see connected devices."},
 		},
-		LocalData:  "Original media stays on your source and sink devices. The Haven service stores account-scoped filenames, revision descriptors, transfer status and small thumbnails. Haven retains previous sink versions when replacing files.",
+		LocalData:  "Original media stays on your source and sink devices. Web viewers cache thumbnails in browser localStorage and fetch missing thumbnails directly from a source or sink over WebRTC. The Haven service stores account-scoped filenames, revision descriptors, transfer status and device reports about pending items and errors. Haven retains previous sink versions when replacing files.",
 		Connection: "The initial release scans and transfers while Haven is open. Sign-in and coordination need a connection; restrictive networks may prevent a direct route. Background backup and native contacts/notes adapters are not included yet.",
 	},
 	"atlas": {
