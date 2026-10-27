@@ -25,6 +25,13 @@ func TestSpacetimeNotificationEndToEnd(t *testing.T) {
 	s, credential, device := notificationFixture(t)
 	store := httptest.NewServer(s)
 	defer store.Close()
+	if ready := os.Getenv("PROTOCOL_INTEROP_READY"); ready != "" {
+		s.cfg.ProtocolRelayKey = strings.Repeat("r", 48)
+		data, _ := json.Marshal(map[string]string{"url": store.URL})
+		if err := os.WriteFile(ready, data, 0600); err != nil {
+			t.Fatal(err)
+		}
+	}
 	ready := filepath.Join(t.TempDir(), "ready.json")
 	ctx, cancel := context.WithTimeout(t.Context(), 40*time.Second)
 	defer cancel()

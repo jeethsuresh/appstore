@@ -2,7 +2,13 @@
 
 Private Store distributes application payloads to installed, certificate-pinned Android apps. Spacetime is the first consumer. It displays invitations and updated events through a native handler, without starting Flutter, syncing calendars, fetching data, or running its UI.
 
-## Configure both backends
+## Gravitas protocol delivery
+
+Hosted delivery uses the versioned [appstore PCR](../protocols/README.md). Private Store publishes it on sign-in and reconciles existing active devices on the server. Spacetime discovers the recipient's `appstore` version/capabilities, then sends the same native payload to Gravitas. Gravitas privately multicasts to registered providers; appstore checks the sender's app namespace, account and opaque device handle before inserting into this existing durable queue. The sender receives a constant acceptance receipt without store identities or fan-out counts. A missing subscription or discovery outage keeps Spacetime's outbox queued.
+
+The hosted appstore Secret adds `protocol-relay-key`; IAM's `PROTOCOL_SERVICES` keeps the corresponding provider credential and Spacetime's existing sender key with `protocols.read`/`appstore.push` permissions. Spacetime sets `NOTIFICATION_PROTOCOL=appstore/1.0.0`. New native provider registrations carry this protocol marker and no store callback. The native listener, certificate/account checks, Android permission and Doze behavior below apply unchanged.
+
+## Legacy/direct backend configuration (independent stores and migration)
 
 Generate one random service key of at least 32 characters outside source control. Configure the **same value** as:
 

@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
 	"private-store/internal/gravitas"
 	"strings"
 	"sync"
@@ -68,6 +69,9 @@ func nativeFixture(t *testing.T) *Server {
 			}
 		default:
 			t.Fatal("unexpected IAM endpoint", r.URL.Path)
+		}
+		if subject := os.Getenv("NOTIFICATION_INTEROP_SUBJECT"); subject != "" {
+			body = strings.ReplaceAll(body, "stable-user", subject)
 		}
 		return &http.Response{StatusCode: status, Header: make(http.Header), Body: io.NopCloser(strings.NewReader(body))}, nil
 	})

@@ -193,6 +193,15 @@
                   {
                     "name": "NOTIFICATION_GATEWAY_ADDR",
                     "value": "traefik.traefik.svc.cluster.local:443"
+                  },
+                  {
+                    "name": "PROTOCOL_RELAY_KEY",
+                    "valueFrom": {
+                      "secretKeyRef": {
+                        "name": "appstore-notifications",
+                        "key": "protocol-relay-key"
+                      }
+                    }
                   }
                 ],
                 "envFrom": [

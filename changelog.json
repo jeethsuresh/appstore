@@ -1,9 +1,10 @@
 {
   "schemaVersion": 1,
-  "version": "0.4.1",
-  "versionCode": 8,
+  "version": "0.5.0",
+  "versionCode": 9,
   "changes": [
-    "Recognise installed copies of Atlas and show Installed or Update correctly.",
-    "Show small APK downloads in bytes or kB instead of rounding to 0.0 MB on Android and the web."
+    "Private Store now registers the appstore protocol with Gravitas when you sign in.",
+    "Supporting apps can send device-specific notifications through Gravitas without seeing your store provider.",
+    "Notifications retain durable delivery, replay protection and the existing battery-saving sleep behavior."
   ]
 }

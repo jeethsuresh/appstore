@@ -34,6 +34,7 @@ type Release struct {
 	Created     string `json:"createdAt"`
 }
 type Config struct {
+	ProtocolRelayKey                                                 string
 	DataDir, AdminToken, WebhookSecret, GitHubToken, AAPT, APKSigner string
 	Apps                                                             []App
 	Federation                                                       *gravitas.Client
