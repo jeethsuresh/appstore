@@ -20,7 +20,7 @@ func TestHavenCatalogPinsItsReleaseIdentityAndDescribesForegroundBackup(t *testi
 		s := testServer(t)
 		s.cfg.Apps = append(s.cfg.Apps, app)
 		page := request(s, "GET", "/apps/haven", "", "")
-		if page.Code != 200 || !strings.Contains(page.Body.String(), "while Haven is open") || !strings.Contains(page.Body.String(), "https://haven.gravitas.cool") {
+		if page.Code != 200 || !strings.Contains(page.Body.String(), "while Haven is open") || !strings.Contains(page.Body.String(), "https://haven.gravitas.cool") || !strings.Contains(page.Body.String(), "browser localStorage") || !strings.Contains(page.Body.String(), "device reports") || strings.Contains(page.Body.String(), "status and small thumbnails") {
 			t.Fatal("Haven's Store page must describe the real first-release behavior")
 		}
 		return
