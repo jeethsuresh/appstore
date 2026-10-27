@@ -28,7 +28,7 @@
     "repository": "jeethsuresh/appstore",
     "assetName": "appstore-android.apk",
     "certificateSha256": "e70b5b54a0d174f4ad8867889f6481a2b193dc9c130630f321563e12f3293793",
-    "description": "Your private app collection, Gravitas sign-in, and signed updates \u2014 including updates to Private Store itself."
+    "description": "Your private app collection, Gravitas sign-in, and signed updates — including updates to Private Store itself."
   },
   {
     "id": "launcher",
@@ -56,5 +56,14 @@
     "assetName": "Atlas-{tag}-android.apk",
     "certificateSha256": "ee7ce4ba953a4f64cb1b857c6cf0f124a68dc6cd90840b1a46259c9b759e7f4a",
     "description": "Your world, in layers: OpenStreetMap places, business lists, driving routes, street highlights and opt-in friend locations. Web and Android."
+  },
+  {
+    "id": "haven",
+    "name": "Haven",
+    "packageName": "cool.gravitas.haven",
+    "repository": "jeethsuresh/haven",
+    "assetName": "Haven-{tag}-android.apk",
+    "certificateSha256": "3c01375ebd40c543f9d6d1a6c1aeb18c689188eee35341a3b1ba3b89a397c085",
+    "description": "Back up permitted gallery media directly to your desktop sinks and browse thumbnails with Gravitas. Initial release runs while the app is open."
   }
 ]

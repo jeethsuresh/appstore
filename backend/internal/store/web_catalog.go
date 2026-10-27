@@ -29,6 +29,18 @@ type webView struct {
 }
 
 var appStories = map[string]appStory{
+	"haven": {
+		Category: "Media & backup", Tagline: "A home for every memory.",
+		Summary: "Back up permitted phone photos, videos and audio to the desktop devices you own. Browse a shared thumbnail library with your Gravitas account on Android, desktop and the web.",
+		Icon:    "haven.svg", Architecture: "ARM, ARM64 and x86-64", MinimumAndroid: "Android 8.0+", Website: "https://haven.gravitas.cool",
+		Features: []appFeature{
+			{"Choose your source", "Enable your Android gallery as a source and grant access to the media you want to back up. Your phone keeps its originals."},
+			{"Keep copies at home", "Enable a desktop as a sink and choose its repository folder. Haven transfers directly between devices and verifies each completed copy."},
+			{"See your library", "Browse photo, video and audio thumbnails, search filenames, inspect stored-copy counts and see connected devices."},
+		},
+		LocalData:  "Original media stays on your source and sink devices. The Haven service stores account-scoped filenames, revision descriptors, transfer status and small thumbnails. Haven retains previous sink versions when replacing files.",
+		Connection: "The initial release scans and transfers while Haven is open. Sign-in and coordination need a connection; restrictive networks may prevent a direct route. Background backup and native contacts/notes adapters are not included yet.",
+	},
 	"atlas": {
 		Category: "Maps & places", Tagline: "Your world, in layers.",
 		Summary: "Bring your places, your paths and your people together on an OpenStreetMap map. Save businesses to lists, highlight streets, plan a drive and choose when to share your location with friends, on Android and the web.",

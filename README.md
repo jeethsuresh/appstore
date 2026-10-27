@@ -138,3 +138,7 @@ identity domains use browser PKCE with a device session.
 ## Protocol capability registry
 
 See [the versioned protocol contract and integration](protocols/README.md) for Gravitas-facilitated push notifications and private protocol discovery.
+
+## Haven
+
+[Haven](https://apps.gravitas.cool/apps/haven) backs up gallery media directly to desktop sinks, with a shared thumbnail viewer at https://haven.gravitas.cool. Its initial Android release runs while the app is open. The package is `cool.gravitas.haven`; signed releases and checksums are published from `jeethsuresh/haven` and pinned in `config/apps.json`.
