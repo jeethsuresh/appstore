@@ -1,10 +1,9 @@
 {
   "schemaVersion": 1,
-  "version": "0.5.0",
-  "versionCode": 9,
+  "version": "0.5.1",
+  "versionCode": 10,
   "changes": [
-    "Private Store now registers the appstore protocol with Gravitas when you sign in.",
-    "Supporting apps can send device-specific notifications through Gravitas without seeing your store provider.",
-    "Notifications retain durable delivery, replay protection and the existing battery-saving sleep behavior."
+    "Haven joins the Private Store catalog for media backup to your own desktop devices.",
+    "Private Store can detect installed Haven copies and offer updates verified against Haven’s permanent signing certificate."
   ]
 }
