@@ -29,7 +29,8 @@ the website's desktop bootstrap downloads require a checked Gravitas session.
 Existing Electron releases can be ingested without upstream changes: assets
 named `*-mac-arm64.dmg`, `*-win-x64.exe` and `*-linux-x86_64.AppImage` (also
 `x64`, `arm64`, `aarch64`, `amd64`) supply their GitHub SHA-256 digest. The
-catalog name must equal the Electron `productName` for DMG/NSIS packages.
+catalog name selects the default app entry; a unique top-level app entry is
+detected when an existing native package uses a different executable name.
 Windows NSIS payloads are extracted without running their installer or changing
 an existing installation's uninstall registry. Legacy versions use
 `major*1000000+minor*1000+patch`, with each component below 1000. Missing digests,

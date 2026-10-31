@@ -152,7 +152,7 @@ app.whenReady().then(async () => {
   installed = state.installed; settings = state.settings; pendingSelf = state.pendingSelf; catalog = state.catalog || [];
   secureStorage = await safeStorage.isAsyncEncryptionAvailable();
   // Electron's Linux fallback is not secure credential storage.
-  if (process.platform === 'linux' && safeStorage.getSelectedStorageBackend() === 'basic_text') secureStorage = false;
+  if (process.platform === 'linux') secureStorage = secureStorage && safeStorage.isEncryptionAvailable() && ['gnome_libsecret', 'kwallet', 'kwallet5', 'kwallet6'].includes(safeStorage.getSelectedStorageBackend());
   if (secureStorage) {
     try { credential = JSON.parse(await safeStorage.decryptStringAsync(await fs.readFile(sessionPath))); }
     catch (e) { if (e.code !== 'ENOENT') error = 'Saved sign-in could not be unlocked. Sign in again.'; }

@@ -8,6 +8,7 @@ const yauzl = require('yauzl');
 // Extract files first and create validated symlinks last. No archive entry can
 // write through an earlier symlink, including macOS framework directory links.
 async function extractZip(file, { dir }) {
+  dir = await fs.realpath(dir);
   const zip = await new Promise((resolve, reject) => yauzl.open(file, { lazyEntries: true, strictFileNames: true }, (error, value) => error ? reject(error) : resolve(value)));
   const links = [], seen = new Set(); let total = 0;
   const inside = location => location.startsWith(dir + path.sep);

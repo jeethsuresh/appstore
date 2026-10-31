@@ -27,6 +27,7 @@ test('stream, verify and install; keep the previous runnable version and shortcu
   await downloadVerified(new Response(bytes), archive, artifact);
   const root = path.join(temp, 'apps'), current = target('linux', 'x64');
   const old = await installPackage({ app, archive, root, current });
+  assert.deepEqual(await installPackage({ app, archive, root, current }), old, 'a completed install can retry after shortcut or registry failure');
   const next = await installPackage({ app: fixture(2), archive, root, current });
   assert.equal(await fs.readFile(old.entry, 'utf8'), bytes.toString()); assert.equal(await fs.readFile(next.entry, 'utf8'), bytes.toString());
   if (process.platform !== 'win32') assert.equal((await fs.stat(next.entry)).mode & 0o777, 0o755);
@@ -63,4 +64,11 @@ test('archive extraction preserves internal framework links and rejects escaping
     await assert.rejects(extract(path.join(__dirname, 'fixtures', fixture), { dir }));
   }
   await assert.rejects(fs.access(path.join(temp, 'outside')));
+});
+
+test('archive containment uses canonical paths when the install root is a symlink', { skip: process.platform === 'win32' }, async t => {
+  const temp = await fs.mkdtemp(path.join(os.tmpdir(), 'store-alias-')); t.after(() => fs.rm(temp, { recursive: true, force: true }));
+  const real = path.join(temp, 'real'), alias = path.join(temp, 'alias'); await fs.mkdir(real); await fs.symlink(real, alias);
+  await require('../unzip.cjs')(path.join(__dirname, 'fixtures', 'safe.zip'), { dir: alias });
+  assert.equal(await fs.readFile(path.join(alias, 'App.app', 'Current', 'file'), 'utf8'), 'app');
 });

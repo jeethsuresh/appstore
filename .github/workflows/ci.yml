@@ -148,16 +148,46 @@ jobs:
         working-directory: desktop
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+      - name: Verify native package installation and launch
+        if: matrix.platform != 'linux'
+        run: node test/native-smoke.cjs ${{ matrix.arch }}
+        working-directory: desktop
+      - name: Verify Linux package installation and launch
+        if: matrix.platform == 'linux'
+        run: xvfb-run -a node test/native-smoke.cjs ${{ matrix.arch }}
+        working-directory: desktop
       - uses: actions/upload-artifact@v4
         with:
-          name: desktop-${{ matrix.platform }}-${{ matrix.arch }}
+          name: desktop-package-${{ matrix.platform }}-${{ matrix.arch }}
           path: |
             desktop/dist/*.zip
             desktop/dist/*.AppImage
           if-no-files-found: error
+  desktop-release-check:
+    needs: desktop-packages
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: desktop-package-*
+          path: desktop/dist
+          merge-multiple: true
+      - name: Require all six packages and generate verified release metadata
+        run: python3 scripts/desktop-release.py stage
+      - uses: actions/upload-artifact@v4
+        with:
+          name: verified-desktop-release
+          path: |
+            desktop/dist/*.zip
+            desktop/dist/*.AppImage
+            desktop/dist/desktop-release.json
+            desktop/dist/desktop-changelog.json
+            desktop/dist/SHA256SUMS
+          if-no-files-found: error
   desktop-publish:
     if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
-    needs: [backend, android, desktop, desktop-packages]
+    needs: [backend, android, desktop, desktop-release-check]
     runs-on: ubuntu-24.04
     permissions:
       contents: write
@@ -167,16 +197,15 @@ jobs:
           persist-credentials: false
       - uses: actions/download-artifact@v4
         with:
-          pattern: desktop-*
+          name: verified-desktop-release
           path: desktop/dist
-          merge-multiple: true
       - name: Publish the complete verified release with its changelog
         run: python3 scripts/desktop-release.py publish
         env:
           GH_TOKEN: ${{ github.token }}
   deploy:
     if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
-    needs: [backend, android, desktop, desktop-packages]
+    needs: [backend, android, desktop, desktop-release-check]
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     environment:

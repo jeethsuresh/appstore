@@ -483,7 +483,12 @@ func legacyDesktopManifest(a App, rel githubRelease) ([]byte, error) {
 		return nil, errors.New("legacy version must be newer than 0.0.0")
 	}
 	if notes := strings.TrimSpace(rel.Body); notes != "" && len(notes) <= 2000 {
-		result.Changes = strings.FieldsFunc(notes, func(r rune) bool { return r < ' ' })
+		result.Changes = nil
+		for _, line := range strings.FieldsFunc(notes, func(r rune) bool { return r < ' ' }) {
+			if strings.TrimSpace(line) != "" {
+				result.Changes = append(result.Changes, strings.TrimSpace(line))
+			}
+		}
 		if len(result.Changes) > 50 {
 			result.Changes = result.Changes[:50]
 		}

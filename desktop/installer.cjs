@@ -4,7 +4,7 @@ const path = require('node:path');
 const { execFile } = require('node:child_process');
 const { promisify } = require('node:util');
 const extract = require('./unzip.cjs');
-const { artifactFor, validID } = require('./core.cjs');
+const { artifactFor, validID, atomicJSON } = require('./core.cjs');
 const execute = promisify(execFile);
 
 // Versioned directories keep running executables untouched and retain the
@@ -12,6 +12,14 @@ const execute = promisify(execFile);
 async function installPackage({ app, archive, root, current, extractZip = extract }) {
   const artifact = artifactFor(app, current);
   const directory = path.join(root, app.id, String(app.desktopRelease.versionCode));
+  const result = entryName => ({ version: app.desktopRelease.version, versionCode: app.desktopRelease.versionCode, entry: path.join(directory, entryName), platform: artifact.platform });
+  try {
+    const completed = JSON.parse(await fs.readFile(path.join(directory, '.private-store-release.json'), 'utf8'));
+    if (completed.sha256 !== artifact.sha256 || typeof completed.entry !== 'string' || completed.entry !== path.basename(completed.entry)) throw new Error('An incompatible installation already exists for this version.');
+    const entry = await fs.lstat(path.join(directory, completed.entry));
+    if (entry.isSymbolicLink()) throw new Error('The installed launch entry is invalid.');
+    return result(completed.entry);
+  } catch (e) { if (e.code !== 'ENOENT') throw e; }
   await fs.mkdir(path.dirname(directory), { recursive: true, mode: 0o700 });
   const temporary = await fs.mkdtemp(path.join(path.dirname(directory), '.install-'));
   try {
@@ -30,23 +38,31 @@ async function installPackage({ app, archive, root, current, extractZip = extrac
     } else if (artifact.platform === 'windows' && artifact.file.endsWith('.exe')) {
       // Unpack Electron NSIS payloads without running their installer or
       // changing an existing app's Windows uninstall registry.
-      const sevenZip = require('7zip-bin').path7za.replace('app.asar' + path.sep, 'app.asar.unpacked' + path.sep);
-      const payload = await fs.mkdtemp(path.join(path.dirname(directory), '.payload-'));
-      try {
-        await execute(sevenZip, ['x', '-y', '-o' + payload, archive]);
-        const archiveName = artifact.arch === 'arm64' ? 'app-arm64.7z' : 'app-64.7z';
-        await execute(sevenZip, ['x', '-y', '-o' + temporary, path.join(payload, '$PLUGINSDIR', archiveName)]);
-      } finally { await fs.rm(payload, { recursive: true, force: true }); }
+      const bundled = process.platform === 'win32' && process.arch === 'arm64' ? path.join(path.dirname(require.resolve('7zip-bin/package.json')), 'win', 'x64', '7za.exe') : require('7zip-bin').path7za;
+      const sevenZip = bundled.replace('app.asar' + path.sep, 'app.asar.unpacked' + path.sep);
+      await execute(sevenZip, ['x', '-y', '-o' + temporary, archive], { maxBuffer: 16 * 1024 * 1024 });
+      const archiveName = artifact.arch === 'arm64' ? 'app-arm64.7z' : 'app-64.7z';
+      const inner = path.join(temporary, '$PLUGINSDIR', archiveName);
+      // Some Electron installers expose the embedded app archive directly;
+      // others expose NSIS plugin payloads containing a second archive.
+      if (await fs.access(inner).then(() => true, () => false)) await execute(sevenZip, ['x', '-y', '-o' + temporary, inner], { maxBuffer: 16 * 1024 * 1024 });
     } else {
       await extractZip(archive, { dir: temporary });
     }
-    const entry = path.join(temporary, artifact.entry);
+    let entryName = artifact.entry;
+    if ((artifact.file.endsWith('.exe') || artifact.file.endsWith('.dmg')) && !(await fs.access(path.join(temporary, entryName)).then(() => true, () => false))) {
+      const candidates = (await fs.readdir(temporary)).filter(name => artifact.platform === 'macos' ? name.endsWith('.app') : name.endsWith('.exe') && !/^(uninstall|elevate|notification_helper|chrome_pwa_launcher)/i.test(name));
+      if (candidates.length !== 1) throw new Error('The native package has no unambiguous app entry. Publish a desktop ZIP with an explicit entry.');
+      entryName = candidates[0];
+    }
+    const entry = path.join(temporary, entryName);
     const stat = await fs.lstat(entry);
     if (stat.isSymbolicLink() || (artifact.platform === 'macos' ? !stat.isDirectory() : !stat.isFile())) throw new Error('The downloaded app has no valid launch entry.');
     // macOS ZIPs contain a complete .app bundle; resolve CFBundleExecutable
     // through plutil when launching, without interpreting manifest shell text.
+    await atomicJSON(path.join(temporary, '.private-store-release.json'), { sha256: artifact.sha256, entry: entryName });
     await fs.rename(temporary, directory);
-    return { version: app.desktopRelease.version, versionCode: app.desktopRelease.versionCode, entry: path.join(directory, artifact.entry), platform: artifact.platform };
+    return result(entryName);
   } catch (e) { await fs.rm(temporary, { recursive: true, force: true }); throw e; }
 }
 async function executable(installed) {
