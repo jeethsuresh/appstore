@@ -22,6 +22,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
@@ -47,7 +48,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         SelfUpdateRecovery.reconcile(this)
         acceptCallback(intent)
-        setContent { MaterialTheme(colorScheme = lightColorScheme(primary = Color(0xFF47633F), background = Color(0xFFF8FAF4))) { Surface(Modifier.fillMaxSize()) { StoreScreen() } } }
+        setContent { MaterialTheme(colorScheme = if (isSystemInDarkTheme()) darkColorScheme(primary = Color(0xFFBAC3FF), background = Color(0xFF111318), surface = Color(0xFF191C22)) else lightColorScheme(primary = Color(0xFF344DCE), background = Color(0xFFF5F6FA), surface = Color.White)) { Surface(Modifier.fillMaxSize()) { StoreScreen() } } }
     }
     @OptIn(ExperimentalLayoutApi::class)
     @Composable private fun StoreScreen() {
@@ -56,7 +57,7 @@ class MainActivity : ComponentActivity() {
         var session by remember { mutableStateOf(runCatching { vault.load() }.getOrElse { vault.clear(); null }) }
         var apps by remember { mutableStateOf<List<StoreApp>>(emptyList()) }
         var busy by remember { mutableStateOf(false) }
-        var downloadFraction by remember { mutableFloatStateOf(0f) }
+        val transfers by Downloads.transfers.collectAsState()
         var revision by remember { mutableIntStateOf(0) }
         var server by remember { mutableStateOf(GravitasLogin.STORE) }
         var advanced by remember { mutableStateOf(false) }
@@ -66,7 +67,6 @@ class MainActivity : ComponentActivity() {
         var defaultDomain by remember { mutableStateOf("") }
         var defaultIssuer by remember { mutableStateOf("") }
         var name by remember { mutableStateOf(Build.MODEL) }
-        var selected by remember { mutableStateOf<StoreApp?>(null) }
         val prefs = remember { getSharedPreferences("updates", MODE_PRIVATE) }
         var auto by remember { mutableStateOf(prefs.getBoolean("auto", true)) }
         var appNotifications by remember { mutableStateOf(prefs.getBoolean("appNotifications", true)) }
@@ -138,10 +138,10 @@ class MainActivity : ComponentActivity() {
             onDispose { lifecycle.removeObserver(observer); prefs.unregisterOnSharedPreferenceChangeListener(listener);sessionPrefs.unregisterOnSharedPreferenceChangeListener(sessionListener) }
         }
         LaunchedEffect(session) { if (session != null) { UpdateWorker.schedule(this@MainActivity); refresh() } }
-        Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).statusBarsPadding().navigationBarsPadding().padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-            Text("Private Store", style = MaterialTheme.typography.headlineLarge)
-            Text(if (session == null) "Your apps, delivered privately." else "A small home for your apps.", style = MaterialTheme.typography.bodyLarge)
-            if (session == null) {
+        if (session == null) {
+            Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).statusBarsPadding().navigationBarsPadding().padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                Text("Private Store", style = MaterialTheme.typography.headlineLarge)
+                Text("Your apps, delivered privately.", style = MaterialTheme.typography.bodyLarge)
                 Text("Sign in with your Gravitas account to browse, install and update your apps. Your browser handles sign-in; Private Store never asks for your password.")
                 OutlinedTextField(name, { name = it }, label = { Text("Device name") }, singleLine = true, modifier = Modifier.fillMaxWidth())
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -163,7 +163,29 @@ class MainActivity : ComponentActivity() {
                     } catch (e: Exception) { message = e.message ?: "Enrollment failed" } finally { busy = false } }
                 }) { Text("Enroll this device") }
                 }
-            } else {
+            if (pending != null) Card(Modifier.fillMaxWidth()) { Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text("Sign-in is open in your browser", style = MaterialTheme.typography.titleMedium)
+                Text("Complete the Gravitas page, then choose Open Private Store if Android does not return here automatically.")
+                TextButton(enabled = !busy, onClick = { runCatching { openLogin(pending!!.authorizationUrl) }.onFailure { message = "No browser is available. Install or enable a browser, then try again." } }) { Text("Open sign-in again") }
+                TextButton(enabled = !busy, onClick = { vault.clearPending(); pending = null; message = "Sign-in cancelled" }) { Text("Cancel sign-in") }
+            } }
+            if (busy) { LinearProgressIndicator(Modifier.fillMaxWidth()) }
+            if (message.isNotBlank()) Text(message, color = MaterialTheme.colorScheme.primary)
+            }
+        } else {
+            val installed = remember(apps, revision) { apps.associate { it.packageName to Installer.installed(this@MainActivity, it.packageName) } }
+            val awaiting = remember(apps, revision) { apps.filter { prefs.getLong("pending.${it.packageName}", 0) > 0 }.map { it.packageName }.toSet() }
+            StoreCatalog(apps, installed, transfers, awaiting, busy, message, onRefresh = { refresh() }, onInstall = { requested ->
+                if (!packageManager.canRequestPackageInstalls()) permission.launch(Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:$packageName")))
+                else session?.let { current -> Downloads.enqueue(this@MainActivity, current, requested.filter { transfers[it.packageName]?.active != true }) }
+            }) {
+            if (pending != null) Card(Modifier.fillMaxWidth()) { Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text("Sign-in is open in your browser", style = MaterialTheme.typography.titleMedium)
+                Text("Complete the Gravitas page, then choose Open Private Store if Android does not return here automatically.")
+                TextButton(enabled = !busy, onClick = { runCatching { openLogin(pending!!.authorizationUrl) }.onFailure { message = "No browser is available. Install or enable a browser, then try again." } }) { Text("Open sign-in again") }
+                TextButton(enabled = !busy, onClick = { vault.clearPending(); pending = null; message = "Sign-in cancelled" }) { Text("Cancel sign-in") }
+            } }
+                Text("Account", style = MaterialTheme.typography.titleLarge)
                 Text(session!!.baseUrl, style = MaterialTheme.typography.bodySmall)
                 if (session!!.account.isNotBlank()) Text("Signed in as ${session!!.account}", style = MaterialTheme.typography.bodyMedium)
                 if (session!!.account.isBlank()) {
@@ -179,14 +201,10 @@ class MainActivity : ComponentActivity() {
                     TextButton(enabled = !busy, onClick = { if (Build.VERSION.SDK_INT >= 33 && !Notices.enabled(this@MainActivity)) notifications.launch(Manifest.permission.POST_NOTIFICATIONS) else startActivity(Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, packageName)) }) { Text("Notifications") }
                 }
                 if (!installAllowed) OutlinedButton(onClick = { permission.launch(Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:$packageName"))) }) { Text("Allow app installation") }
-                Row {
-                    Switch(checked = auto, onCheckedChange = { auto = it; prefs.edit().putBoolean("auto", it).apply() })
-                    Text("Automatic updates", modifier = Modifier.padding(start = 12.dp, top = 12.dp))
-                }
-                Row {
-                    Switch(checked = appNotifications, onCheckedChange = { appNotifications = it; prefs.edit().putBoolean("appNotifications", it).apply(); NotificationRelay.configure(this@MainActivity, session!!, apps, it) })
-                    Text("App notifications", modifier = Modifier.padding(start = 12.dp, top = 12.dp))
-                }
+                HorizontalDivider()
+                Text("Updates & notifications", style = MaterialTheme.typography.titleLarge)
+                SettingsToggle("Automatic updates", "Keep installed apps and Private Store current.", auto) { auto = it; prefs.edit().putBoolean("auto", it).apply() }
+                SettingsToggle("App notifications", "Use one shared connection for installed apps.", appNotifications) { appNotifications = it; prefs.edit().putBoolean("appNotifications", it).apply(); NotificationRelay.configure(this@MainActivity, session!!, apps, it) }
                 Text("One shared connection receives notifications for installed apps. Each app controls its own notification permission.", style = MaterialTheme.typography.bodySmall)
                 if (appNotifications && session!!.account.isNotBlank()) {
                     Text(if (batteryExempt) "Screen-off delivery is allowed. Your phone still needs an internet connection." else "Android can delay notifications while your phone is idle. Allow Private Store to run without battery optimization for screen-off delivery. This may use more battery.", style = MaterialTheme.typography.bodySmall)
@@ -203,38 +221,15 @@ class MainActivity : ComponentActivity() {
                 Text("Checks include Private Store itself and run about every 6 hours when connected and the battery is not low. Android may ask you to approve an update. Notifications must be enabled for background installation.", style = MaterialTheme.typography.bodySmall)
                 val checked = prefs.getLong("lastCheck", 0)
                 if (checked > 0) Text("Last background check: ${DateFormat.getDateTimeInstance().format(Date(checked))}", style = MaterialTheme.typography.bodySmall)
-                apps.forEach { app ->
-                    val r = app.release; val installed = remember(app.packageName, revision) { Installer.installed(this@MainActivity, app.packageName) }
-                    val update = r != null && Versions.newer(installed, r.versionCode)
-                    Card(Modifier.fillMaxWidth()) { Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        Text(app.name, style = MaterialTheme.typography.titleLarge)
-                        Text(app.description)
-                        Text(when { r == null -> "No verified release available"; installed == null -> "Version ${r.versionName} · ${DownloadSizes.format(r.size)}"; update -> "Update to ${r.versionName}"; installed > r.versionCode -> "Installed a newer version · code $installed"; else -> "Up to date · ${r.versionName}" }, style = MaterialTheme.typography.labelLarge)
-                        if (r != null && r.notes.isNotBlank()) TextButton(onClick = { selected = app }) { Text("Release notes") }
-                        Button(enabled = !busy && update && r!!.minSdk <= Build.VERSION.SDK_INT, onClick = {
-                            if (!packageManager.canRequestPackageInstalls()) { permission.launch(Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:$packageName"))) }
-                            else { val current = session!!; busy = true; downloadFraction = 0f; message = "Downloading ${app.name}…"; scope.launch { try {
-                                withContext(Dispatchers.IO) { Installer.install(this@MainActivity, StoreApi(current).download(this@MainActivity, app) { done,total -> scope.launch { downloadFraction = done.toFloat()/total.toFloat() } }, app, background = false) }
-                                message = "Follow Android's installation prompt, then check for updates."
-                            } catch (e: Exception) { message = e.message ?: "Installation failed" } finally { busy = false } } }
-                        }) { Text(if (installed == null) "Install" else if (update && app.packageName == packageName) "Update Private Store" else if (update) "Update" else "Installed") }
-                    } }
-                }
                 TextButton(enabled = !busy, onClick = { busy = true; scope.launch { try {
                     withContext(Dispatchers.IO) { try { StoreApi(session!!).revoke() } catch(e:ApiException) { if(e.code!=401) throw e } }
                     BrokerManager.clear(this@MainActivity,true); UpdateWorker.cancel(this@MainActivity); session = null; apps = emptyList(); message = "Device access revoked"
                 } catch (e: Exception) { message = "Could not revoke access: ${e.message}" } finally { busy = false } } }) { Text("Sign out and revoke this device") }
                 TextButton(enabled = !busy, onClick = { BrokerManager.clear(this@MainActivity,true); UpdateWorker.cancel(this@MainActivity); session = null; apps = emptyList(); message = "Signed out locally. Ask the administrator to revoke old device access." }) { Text("Forget local enrollment") }
+                HorizontalDivider()
+                Text("Private Store ${BuildConfig.VERSION_NAME}", style = MaterialTheme.typography.bodySmall)
+                Text("Verified downloads are saved privately until Android finishes installing. Failed or cancelled installs can reuse the saved file.", style = MaterialTheme.typography.bodySmall)
             }
-            if (pending != null) Card(Modifier.fillMaxWidth()) { Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Text("Sign-in is open in your browser", style = MaterialTheme.typography.titleMedium)
-                Text("Complete the Gravitas page, then choose Open Private Store if Android does not return here automatically.")
-                TextButton(enabled = !busy, onClick = { runCatching { openLogin(pending!!.authorizationUrl) }.onFailure { message = "No browser is available. Install or enable a browser, then try again." } }) { Text("Open sign-in again") }
-                TextButton(enabled = !busy, onClick = { vault.clearPending(); pending = null; message = "Sign-in cancelled" }) { Text("Cancel sign-in") }
-            } }
-            if (busy) { if (downloadFraction > 0f) LinearProgressIndicator(progress = { downloadFraction }, modifier = Modifier.fillMaxWidth()) else LinearProgressIndicator(Modifier.fillMaxWidth()) }
-            if (message.isNotBlank()) Text(message, color = MaterialTheme.colorScheme.primary)
         }
-        selected?.let { app -> AlertDialog(onDismissRequest = { selected = null }, title = { Text("${app.name} · ${app.release?.versionName}") }, text = { Text(app.release?.notes ?: "", modifier = Modifier.verticalScroll(rememberScrollState())) }, confirmButton = { TextButton(onClick = { selected = null }) { Text("Done") } }) }
     }
 }

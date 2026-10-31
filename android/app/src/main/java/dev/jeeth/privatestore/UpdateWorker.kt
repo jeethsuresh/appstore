@@ -8,6 +8,10 @@ import androidx.work.NetworkType
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.sync.Mutex
@@ -27,23 +31,28 @@ class UpdateWorker(context: Context, params: WorkerParameters) : CoroutineWorker
                 checkedSession = session
                 val api = StoreApi(session)
                 if (!prefs.getBoolean("appNotifications", true)) api.clearNotificationApps(NotificationRelay.registrationGeneration(context))
-                var failed = false
+                val failed = java.util.concurrent.atomic.AtomicBoolean(false)
                 // Commit other updates before replacing this process with the store update.
-                for (app in api.apps().sortedBy { it.packageName == context.packageName }) {
-                    val release = app.release ?: continue
-                    val installed = Installer.installed(context, app.packageName) ?: continue
-                    if (!Versions.newer(installed, release.versionCode) || release.minSdk > android.os.Build.VERSION.SDK_INT) continue
+                val catalog = api.apps()
+                suspend fun update(app: StoreApp) {
+                    val release = app.release ?: return
+                    val installed = Installer.installed(context, app.packageName) ?: return
+                    if (!Versions.newer(installed, release.versionCode) || release.minSdk > android.os.Build.VERSION.SDK_INT) return
                     if (!prefs.getBoolean("auto", true) || !context.packageManager.canRequestPackageInstalls() || !Notices.enabled(context)) {
                         Notices.show(context, 100, "Updates available", "Open Private Store to update your apps.")
-                        continue
+                        return
                     }
-                    if (prefs.getLong("pending.${app.packageName}", 0) == release.versionCode && context.packageManager.packageInstaller.mySessions.any { it.appPackageName == app.packageName }) continue
-                    try { Installer.install(context, api.download(context, app), app, background = true) }
-                    catch (e: Exception) { failed = true; prefs.edit().putString("status", "${app.name}: ${e.message}").apply() }
+                    if (prefs.getLong("pending.${app.packageName}", 0) == release.versionCode && context.packageManager.packageInstaller.mySessions.any { it.appPackageName == app.packageName }) return
+                    try { Downloads.install(context, session, app, background = true) }
+                    catch (e: CancellationException) { throw e }
+                    catch (e: Exception) { failed.set(true); prefs.edit().putString("status", "${app.name}: ${e.message}").apply() }
                 }
+                coroutineScope { catalog.filter { it.packageName != context.packageName }.map { app -> async { update(app) } }.awaitAll() }
+                catalog.firstOrNull { it.packageName == context.packageName }?.let { update(it) }
                 prefs.edit().putLong("lastCheck", System.currentTimeMillis()).apply()
-                if (failed) Result.retry() else Result.success()
-            } catch (e: ApiException) {
+                if (failed.get()) Result.retry() else Result.success()
+            } catch (e: CancellationException) { throw e }
+            catch (e: ApiException) {
                 prefs.edit().putString("status", e.message).apply()
                 if (e.code == 401) {
                     if (checkedSession?.let { BrokerManager.engine(context).invalidateDevice(it) } == true) Notices.show(context, 101, "Private Store needs sign-in", e.message ?: "Sign in again")

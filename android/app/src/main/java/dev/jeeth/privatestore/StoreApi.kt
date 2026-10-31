@@ -10,7 +10,6 @@ import java.net.HttpURLConnection
 import java.net.URI
 import java.net.URL
 import java.security.KeyStore
-import java.security.MessageDigest
 import javax.crypto.Cipher
 import javax.crypto.KeyGenerator
 import javax.crypto.SecretKey
@@ -125,23 +124,25 @@ class StoreApi(private val session: Session) {
     fun download(context: Context, app: StoreApp, progress: (Long, Long) -> Unit = { _, _ -> }): File {
         val release = requireNotNull(app.release)
         require(Versions.validDigest(release.sha256) && release.size in 1..314_572_800L) { "Invalid release metadata" }
-        val dir = File(context.cacheDir, "apks").apply { mkdirs() }
-        val dest = File(dir, "${release.sha256}.apk")
-        val temp = File.createTempFile("download-", ".part", dir)
-        val conn = connection("/v1/releases/${release.id}/apk")
-        try {
-            if (conn.responseCode != 200) throw ApiException(conn.responseCode, "APK download failed (${conn.responseCode})")
-            val hash = MessageDigest.getInstance("SHA-256"); var size = 0L; var lastProgress = 0L
-            conn.inputStream.use { input -> temp.outputStream().use { output ->
-                val buf = ByteArray(64 * 1024)
-                while (true) { val n = input.read(buf); if (n < 0) break; size += n; require(size <= release.size) { "APK exceeds expected size" }; hash.update(buf, 0, n); output.write(buf, 0, n); if (size - lastProgress >= 262144 || size == release.size) { progress(size, release.size); lastProgress = size } }
-            } }
-            require(size == release.size && hash.digest().toHex() == release.sha256) { "APK checksum or size mismatch" }
-            require(temp.renameTo(dest)) { "Cannot save APK" }
-            // Cache is only for installation handoff, never an archive of old APKs.
-            dir.listFiles()?.filter { it != dest && it.lastModified() < System.currentTimeMillis() - 86_400_000 }?.forEach { it.delete() }
-            return dest
-        } finally { conn.disconnect(); temp.delete() }
+        val key = ApkCache.Key(app.packageName, release.versionCode, release.sha256)
+        val file = ApkCache(File(context.filesDir, "downloads")).obtain(key, release.size) { temp ->
+            val conn = connection("/v1/releases/${release.id}/apk")
+            try {
+                if (conn.responseCode != 200) throw ApiException(conn.responseCode, "APK download failed (${conn.responseCode})")
+                var size = 0L; var lastProgress = 0L
+                conn.inputStream.use { input -> temp.outputStream().use { output ->
+                    val buffer = ByteArray(64 * 1024)
+                    while (true) {
+                        val count = input.read(buffer); if (count < 0) break
+                        size += count; require(size <= release.size) { "APK exceeds expected size" }
+                        output.write(buffer, 0, count)
+                        if (size - lastProgress >= 262144 || size == release.size) { progress(size, release.size); lastProgress = size }
+                    }
+                } }
+            } finally { conn.disconnect() }
+        }
+        progress(release.size, release.size)
+        return file
     }
 }
 fun ByteArray.toHex() = joinToString("") { "%02x".format(it) }
