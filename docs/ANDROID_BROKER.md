@@ -50,6 +50,27 @@ Cancellation stays cancelled. Missing consent or sign-in permits an explicit bro
 
 New native store login explicitly requests `profile.name native.broker` through the existing browser code/PKCE flow and exact store callback `https://apps.gravitas.cool/auth/android/callback`. Web and legacy store-only login do not obtain this privilege. The store backend returns its own origin-scoped IAM bundle only to an explicit native broker exchange request; Android keeps it encrypted with AndroidKeyStore.
 
-Discovery pins `native_broker_authorization_endpoint` to the IAM issuer. `POST /oauth/broker/authorize` takes the store access bearer and `{app_origin,redirect_uri,code_challenge,code_challenge_method:"S256",scope:"profile.name",state}`. The response contains `{code,state,issuer,app_origin,redirect_uri,session_id,sub,expires_in:60}`. Existing target consent and an active original login family are required; recursive delegation and broader scopes are forbidden.
+Discovery pins `native_broker_authorization_endpoint` to the IAM issuer. `POST /oauth/broker/authorize` takes the store access bearer and `{app_origin,redirect_uri,code_challenge,code_challenge_method:"S256",scope,state}`. Spacetime requests `profile.name`; River uses the fixed permission set below. The response contains `{code,state,issuer,app_origin,redirect_uri,session_id,sub,expires_in:60}`. Existing target consent and an active original login family are required; recursive delegation and arbitrary scope expansion are forbidden.
 
 Refresh is serialized, on demand and opportunistically during existing store update work. Rotation preserves the original absolute family expiry (maximum 30 days), never extends it. A revoked refresh requires reauthentication; outages retain encrypted state. Protected store browser/device requests validate the pinned live `session_check_endpoint` without positive caching. Central Gravitas logout revokes the same family and therefore store login, broker refresh, child codes and native child sessions. Existing store-local logout removes local broker/account state and revokes its device credential; it does not silently sign out an unrelated browser session.
+
+## River request
+
+Private Store 0.6.4 also accepts exactly `cool.gravitas.river`, with release
+certificate `6559956b5cf6b2f796824995b31da7fa2c176ba652e8fcb40741686d850bb6b0`.
+Its token type is `gravitas_code:river:v1:<challenge>:<state>`, using the same
+version, nonce, verifier, result and caller checks as Spacetime. The fixed target
+is `https://chat.gravitas.cool/auth/gravitas/callback`; the app origin is
+`https://chat.gravitas.cool`. River exchanges the code and private verifier at
+its `POST /api/native/broker`, checking subject, family, identity and every scope
+before saving its ordinary encrypted session.
+
+The exact requested scope set is `profile.name matrix.full chats.list chats.read
+chats.write groups.create groups.manage groups.join spaces.channels contacts.read
+contacts.manage calls.read calls.join posts.publish`. IAM requires prior consent
+covering every scope with full room access; the broker cannot create or expand
+that grant. A different account, missing consent, an absent/older Store, or an
+unavailable broker uses River's browser flow. Matrix device approval remains
+separate for a new or unlinked device. The selected caller determines the fixed
+service mapping; no request may substitute another client's token type or supply
+arbitrary URLs, scopes, packages or certificates.
