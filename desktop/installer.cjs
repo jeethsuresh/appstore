@@ -22,6 +22,7 @@ async function installPackage({ app, archive, root, current, extractZip = extrac
   } catch (e) { if (e.code !== 'ENOENT') throw e; }
   await fs.mkdir(path.dirname(directory), { recursive: true, mode: 0o700 });
   const temporary = await fs.mkdtemp(path.join(path.dirname(directory), '.install-'));
+  let entryName = artifact.entry;
   try {
     if (artifact.platform === 'linux') {
       await fs.copyFile(archive, path.join(temporary, artifact.entry));
@@ -30,7 +31,12 @@ async function installPackage({ app, archive, root, current, extractZip = extrac
       const mount = await fs.mkdtemp(path.join(path.dirname(directory), '.mount-'));
       try {
         await execute('/usr/bin/hdiutil', ['attach', '-nobrowse', '-readonly', '-mountpoint', mount, archive]);
-        await fs.cp(path.join(mount, artifact.entry), path.join(temporary, artifact.entry), { recursive: true, verbatimSymlinks: true });
+        if (!(await fs.access(path.join(mount, entryName)).then(() => true, () => false))) {
+          const apps = (await fs.readdir(mount)).filter(name => name.endsWith('.app'));
+          if (apps.length !== 1) throw new Error('The disk image has no unambiguous application bundle.');
+          entryName = apps[0];
+        }
+        await fs.cp(path.join(mount, entryName), path.join(temporary, entryName), { recursive: true, verbatimSymlinks: true });
       } finally {
         await execute('/usr/bin/hdiutil', ['detach', mount]).catch(() => {});
         await fs.rmdir(mount).catch(() => {});
@@ -38,7 +44,7 @@ async function installPackage({ app, archive, root, current, extractZip = extrac
     } else if (artifact.platform === 'windows' && artifact.file.endsWith('.exe')) {
       // Unpack Electron NSIS payloads without running their installer or
       // changing an existing app's Windows uninstall registry.
-      const bundled = process.platform === 'win32' && process.arch === 'arm64' ? path.join(path.dirname(require.resolve('7zip-bin/package.json')), 'win', 'x64', '7za.exe') : require('7zip-bin').path7za;
+      const bundled = require('7zip-bin').path7za;
       const sevenZip = bundled.replace('app.asar' + path.sep, 'app.asar.unpacked' + path.sep);
       await execute(sevenZip, ['x', '-y', '-o' + temporary, archive], { maxBuffer: 16 * 1024 * 1024 });
       const archiveName = artifact.arch === 'arm64' ? 'app-arm64.7z' : 'app-64.7z';
@@ -49,7 +55,6 @@ async function installPackage({ app, archive, root, current, extractZip = extrac
     } else {
       await extractZip(archive, { dir: temporary });
     }
-    let entryName = artifact.entry;
     if ((artifact.file.endsWith('.exe') || artifact.file.endsWith('.dmg')) && !(await fs.access(path.join(temporary, entryName)).then(() => true, () => false))) {
       const candidates = (await fs.readdir(temporary)).filter(name => artifact.platform === 'macos' ? name.endsWith('.app') : name.endsWith('.exe') && !/^(uninstall|elevate|notification_helper|chrome_pwa_launcher)/i.test(name));
       if (candidates.length !== 1) throw new Error('The native package has no unambiguous app entry. Publish a desktop ZIP with an explicit entry.');
