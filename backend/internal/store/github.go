@@ -69,6 +69,7 @@ func (s *Server) github(ctx context.Context, path, accept string) (*http.Respons
 func (s *Server) Sync(ctx context.Context, a App, tag string) error {
 	ctx, cancel := context.WithTimeout(ctx, 8*time.Minute)
 	defer cancel()
+	ctx = withReleaseDiscovery(ctx)
 	select {
 	case s.syncGate <- struct{}{}:
 		defer func() { <-s.syncGate }()

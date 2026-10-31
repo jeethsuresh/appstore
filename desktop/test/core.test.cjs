@@ -90,3 +90,22 @@ test('saved sign-in restores Electron async decrypt results and rotates encrypte
   assert.deepEqual(await loadCredential(file, storage), credential);
   assert.equal(writes, 2, 'current OS keys do not rewrite the session on every launch');
 });
+
+test('Linux ZIP installs the whole native bundle and keeps the old version runnable', async t => {
+  const { execFile } = require('node:child_process');
+  const { promisify } = require('node:util');
+  const temp = await fs.mkdtemp(path.join(os.tmpdir(), 'store-linux-zip-'));
+  t.after(() => fs.rm(temp, { recursive: true, force: true }));
+  const archive = path.join(__dirname, 'fixtures/linux-bundle.zip');
+  const data = await fs.readFile(archive);
+  const app = fixture(10);
+  app.desktopRelease.artifacts[0] = { platform: 'linux', arch: 'x64', file: 'calendar-linux-x64.zip', entry: 'calendar', size: data.length, sha256: createHash('sha256').update(data).digest('hex') };
+  const root = path.join(temp, 'apps'), current = target('linux', 'x64');
+  const previous = await installPackage({ app, archive, root, current });
+  app.desktopRelease.versionCode = 11;
+  const next = await installPackage({ app, archive, root, current });
+  for (const installed of [previous, next]) {
+    assert.equal(await fs.readFile(path.join(path.dirname(installed.entry), 'lib/libapp.so'), 'utf8'), 'native library fixture');
+    if (process.platform === 'linux') assert.equal((await promisify(execFile)(installed.entry)).stdout, 'native bundle data');
+  }
+});

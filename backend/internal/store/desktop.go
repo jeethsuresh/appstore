@@ -75,7 +75,7 @@ func parseDesktopManifest(data []byte, tag string) (*DesktopRelease, error) {
 		if !validTarget(a.Platform, a.Arch) || seen[key] || !desktopFilename.MatchString(a.File) || !hexDigest.MatchString(a.SHA256) || a.Size <= 0 || a.Size > maxDesktopAsset || !desktopFilename.MatchString(a.Entry) {
 			return nil, errors.New("invalid or duplicate desktop artifact")
 		}
-		if (a.Platform == "macos" && (!(strings.HasSuffix(a.File, ".zip") || strings.HasSuffix(a.File, ".dmg")) || !strings.HasSuffix(a.Entry, ".app"))) || (a.Platform == "windows" && (!(strings.HasSuffix(a.File, ".zip") || strings.HasSuffix(a.File, ".exe")) || !strings.HasSuffix(a.Entry, ".exe"))) || (a.Platform == "linux" && (!strings.HasSuffix(a.File, ".AppImage") || a.Entry != a.File)) {
+		if (a.Platform == "macos" && (!(strings.HasSuffix(a.File, ".zip") || strings.HasSuffix(a.File, ".dmg")) || !strings.HasSuffix(a.Entry, ".app"))) || (a.Platform == "windows" && (!(strings.HasSuffix(a.File, ".zip") || strings.HasSuffix(a.File, ".exe")) || !strings.HasSuffix(a.Entry, ".exe"))) || (a.Platform == "linux" && !(strings.HasSuffix(a.File, ".zip") || (strings.HasSuffix(a.File, ".AppImage") && a.Entry == a.File))) {
 			return nil, errors.New("unsupported desktop package format")
 		}
 		seen[key] = true
@@ -86,36 +86,65 @@ func parseDesktopManifest(data []byte, tag string) (*DesktopRelease, error) {
 
 // /latest can point at the other platform's release. Search published releases
 // by their assets so a desktop release can never displace an Android update.
-func (s *Server) findRelease(ctx context.Context, a App, tag string, matches func(githubRelease) bool) (githubRelease, error) {
-	path := "/repos/" + a.Repo + "/releases/latest"
-	if tag != "" {
-		path = "/repos/" + a.Repo + "/releases/tags/" + url.PathEscape(tag)
+type releaseDiscoveryKey struct{}
+
+// One poll shares release-list bytes between an app's mobile and desktop lookups.
+// The cache belongs to this sync context only: the next poll always discovers fresh releases.
+func withReleaseDiscovery(ctx context.Context) context.Context {
+	return context.WithValue(ctx, releaseDiscoveryKey{}, map[string][]byte{})
+}
+func (s *Server) releaseMetadata(ctx context.Context, path string, limit int64) ([]byte, error) {
+	cache, _ := ctx.Value(releaseDiscoveryKey{}).(map[string][]byte)
+	if data, ok := cache[path]; ok {
+		return data, nil
 	}
 	res, err := s.github(ctx, path, "application/vnd.github+json")
 	if err != nil {
-		return githubRelease{}, err
+		return nil, err
 	}
-	var rel githubRelease
-	err = json.NewDecoder(io.LimitReader(res.Body, 2<<20)).Decode(&rel)
-	res.Body.Close()
+	defer res.Body.Close()
+	data, err := io.ReadAll(io.LimitReader(res.Body, limit+1))
 	if err != nil {
-		return rel, err
+		return nil, err
 	}
-	if !rel.Draft && !rel.Prerelease && matches(rel) {
-		return rel, nil
+	if int64(len(data)) > limit {
+		return nil, errors.New("release metadata exceeds size limit")
 	}
-	if tag != "" {
-		return rel, errors.New("stable release is missing this platform's assets")
+	if cache != nil {
+		cache[path] = data
+	}
+	return data, nil
+}
+func (s *Server) findRelease(ctx context.Context, a App, tag string, matches func(githubRelease) bool) (githubRelease, error) {
+	var rel githubRelease
+	// A universal app's list contains both independent release streams. Fetch it
+	// once rather than separately fetching /latest and falling back for desktop.
+	if tag != "" || !a.Desktop || a.Package == "" {
+		path := "/repos/" + a.Repo + "/releases/latest"
+		if tag != "" {
+			path = "/repos/" + a.Repo + "/releases/tags/" + url.PathEscape(tag)
+		}
+		data, err := s.releaseMetadata(ctx, path, 2<<20)
+		if err != nil {
+			return rel, err
+		}
+		if err = json.Unmarshal(data, &rel); err != nil {
+			return rel, err
+		}
+		if !rel.Draft && !rel.Prerelease && matches(rel) {
+			return rel, nil
+		}
+		if tag != "" {
+			return rel, errors.New("stable release is missing this platform's assets")
+		}
 	}
 	for page := 1; page <= 4; page++ {
-		res, err = s.github(ctx, fmt.Sprintf("/repos/%s/releases?per_page=50&page=%d", a.Repo, page), "application/vnd.github+json")
+		data, err := s.releaseMetadata(ctx, fmt.Sprintf("/repos/%s/releases?per_page=50&page=%d", a.Repo, page), 8<<20)
 		if err != nil {
 			return rel, err
 		}
 		var releases []githubRelease
-		err = json.NewDecoder(io.LimitReader(res.Body, 8<<20)).Decode(&releases)
-		res.Body.Close()
-		if err != nil {
+		if err = json.Unmarshal(data, &releases); err != nil {
 			return rel, err
 		}
 		for _, candidate := range releases {

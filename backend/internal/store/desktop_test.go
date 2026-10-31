@@ -179,3 +179,50 @@ func TestDesktopEnrollmentUsesValidatedWebSessionAndRevocation(t *testing.T) {
 		t.Fatal("revocation failed")
 	}
 }
+
+func TestDesktopNativeLinuxZIP(t *testing.T) {
+	rel := desktopFixture()
+	rel.Artifacts[0].File = "Spacetime-linux-x64.zip"
+	rel.Artifacts[0].Entry = "spacetime"
+	data, _ := json.Marshal(rel)
+	parsed, err := parseDesktopManifest(data, "desktop-v1.0.0")
+	if err != nil || parsed.Artifacts[0].Entry != "spacetime" {
+		t.Fatalf("native Linux bundle rejected: %v", err)
+	}
+	rel.Artifacts[0].Entry = "../spacetime"
+	data, _ = json.Marshal(rel)
+	if _, err := parseDesktopManifest(data, "desktop-v1.0.0"); err == nil {
+		t.Fatal("unsafe native launch path accepted")
+	}
+}
+
+func TestUniversalDiscoverySharesRequestsAndRefreshesNextPoll(t *testing.T) {
+	requests := 0
+	latest := "v1.0.0"
+	api := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests++
+		if r.URL.Path != "/repos/owner/app/releases" {
+			t.Errorf("universal lookup wasted a latest request: %s", r.URL.Path)
+		}
+		fmt.Fprintf(w, `[{"tag_name":"desktop-%s","assets":[{"name":"desktop-release.json"}]},{"tag_name":"%s","assets":[{"name":"app.apk"}]}]`, latest, latest)
+	}))
+	defer api.Close()
+	s := &Server{api: api.URL, client: api.Client()}
+	app := App{Repo: "owner/app", Package: "example.universal", Desktop: true}
+	desktop := func(r githubRelease) bool { return strings.HasPrefix(r.Tag, "desktop-") }
+	mobile := func(r githubRelease) bool { return !strings.HasPrefix(r.Tag, "desktop-") }
+	ctx := withReleaseDiscovery(context.Background())
+	for _, matcher := range []func(githubRelease) bool{desktop, mobile} {
+		if _, err := s.findRelease(ctx, app, "", matcher); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if requests != 1 {
+		t.Fatalf("wanted one request for both platforms, got %d", requests)
+	}
+	latest = "v1.1.0"
+	rel, err := s.findRelease(withReleaseDiscovery(context.Background()), app, "", mobile)
+	if err != nil || rel.Tag != latest || requests != 2 {
+		t.Fatal("next poll did not discover fresh releases", err, rel.Tag, requests)
+	}
+}

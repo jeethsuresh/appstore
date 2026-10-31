@@ -22,7 +22,7 @@ function artifactFor(app, current = target()) {
   const a = artifacts[0];
   const safeName = name => typeof name === 'string' && /^[A-Za-z0-9][A-Za-z0-9._ -]{0,180}$/.test(name);
   if (!safeName(a.file) || !safeName(a.entry) || !/^[a-f0-9]{64}$/.test(a.sha256) || !Number.isSafeInteger(a.size) || a.size < 1 || a.size > 2 ** 31) throw new Error('Invalid download metadata.');
-  if (a.platform === 'linux' ? !a.file.endsWith('.AppImage') || a.entry !== a.file : !(a.file.endsWith('.zip') || a.file.endsWith(a.platform === 'macos' ? '.dmg' : '.exe')) || !a.entry.endsWith(a.platform === 'macos' ? '.app' : '.exe')) throw new Error('Unsupported desktop package.');
+  if (a.platform === 'linux' ? !(a.file.endsWith('.zip') || (a.file.endsWith('.AppImage') && a.entry === a.file)) : !(a.file.endsWith('.zip') || a.file.endsWith(a.platform === 'macos' ? '.dmg' : '.exe')) || !a.entry.endsWith(a.platform === 'macos' ? '.app' : '.exe')) throw new Error('Unsupported desktop package.');
   return a;
 }
 function updateAvailable(app, installed) {

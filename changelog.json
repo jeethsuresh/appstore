@@ -1,9 +1,9 @@
 {
   "schemaVersion": 1,
-  "version": "0.6.3",
-  "versionCode": 15,
+  "version": "0.6.4",
+  "versionCode": 16,
   "changes": [
-    "Update checks reuse verified release metadata so adding desktop apps does not exhaust the shared store\u2019s GitHub request allowance.",
-    "New releases still appear automatically, and downloads continue to require matching checksums and signing identities."
+    "River, Spacetime and Haven share their Store pages with native desktop versions, while Office and RSS Reader are available in the desktop catalog.",
+    "Android still shows only compatible mobile apps. Desktop releases and updates have independent version codes."
   ]
 }
