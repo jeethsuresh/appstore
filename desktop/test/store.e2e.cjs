@@ -3,6 +3,7 @@ const fs = require('node:fs/promises');
 const os = require('node:os');
 const path = require('node:path');
 const { createHash } = require('node:crypto');
+const storeVersionCode = require('../package.json').versionCode;
 
 test('desktop discovers compatible apps, signs in, installs, updates and stages its own restart', async () => {
   test.skip(process.platform !== 'linux', 'AppImage installation flow runs on Linux; platform packages are built separately.');
@@ -46,7 +47,7 @@ test('desktop discovers compatible apps, signs in, installs, updates and stages 
     await expect(page.getByRole('button', { name: 'Update ↓', exact: true })).toBeVisible();
     await page.getByRole('button', { name: 'Update all ↓' }).click();
     await expect(page.getByRole('button', { name: 'Open ↗' })).toBeVisible();
-    await electron.evaluate(() => { global.fixtureApps.push({ ...global.fixtureApps[0], id: 'appstore', name: 'Private Store', desktopRelease: { ...global.fixtureApps[0].desktopRelease, versionCode: 2, version: '0.1.1' } }); });
+    await electron.evaluate((_electron, code) => { global.fixtureApps.push({ ...global.fixtureApps[0], id: 'appstore', name: 'Private Store', desktopRelease: { ...global.fixtureApps[0].desktopRelease, versionCode: code + 1, version: '9.0.0' } }); }, storeVersionCode);
     await page.getByRole('button', { name: 'Check for updates' }).click();
     await page.getByRole('button', { name: 'Update all ↓' }).click();
     await expect(page.getByText('A new Private Store is ready.', { exact: false })).toBeVisible();
@@ -54,7 +55,7 @@ test('desktop discovers compatible apps, signs in, installs, updates and stages 
     await page.locator('#restart-button').click();
     await expect.poll(() => electron.evaluate(() => global.restartRequested)).toBe(true);
     const options = await electron.evaluate(() => global.restartOptions);
-    expect(options.execPath).toContain(path.join('appstore', '2'));
+    expect(options.execPath).toContain(path.join('appstore', String(storeVersionCode + 1)));
     expect(options.args).toEqual([]);
     await fs.access(options.execPath);
     await page.getByRole('button', { name: 'Settings', exact: false }).click();

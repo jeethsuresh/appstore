@@ -19,7 +19,8 @@
     "notifications": {
       "origin": "https://spacetime.gravitas.cool",
       "authority": "com.jeethsuresh.spacetime.notifications"
-    }
+    },
+    "desktop": true
   },
   {
     "id": "appstore",
@@ -47,7 +48,8 @@
     "repository": "jeethsuresh/river",
     "assetName": "River-{tag}-android.apk",
     "certificateSha256": "6559956b5cf6b2f796824995b31da7fa2c176ba652e8fcb40741686d850bb6b0",
-    "description": "Private Gravitas spaces, separate channels, friends, conversations, posts and discussions."
+    "description": "Private Gravitas spaces, separate channels, friends, conversations, posts and discussions.",
+    "desktop": true
   },
   {
     "id": "atlas",
@@ -65,7 +67,8 @@
     "repository": "jeethsuresh/haven",
     "assetName": "Haven-{tag}-android.apk",
     "certificateSha256": "3c01375ebd40c543f9d6d1a6c1aeb18c689188eee35341a3b1ba3b89a397c085",
-    "description": "Back up permitted gallery media directly to your desktop sinks and browse thumbnails with Gravitas. Initial release runs while the app is open."
+    "description": "Back up media directly between your Android phones and desktop sinks. Browse and receive originals on macOS, Windows and Linux while Haven is open.",
+    "desktop": true
   },
   {
     "id": "rss",
@@ -80,5 +83,12 @@
     "repository": "jeethsuresh/emails",
     "desktop": true,
     "description": "An offline desktop inbox with local mail storage and IMAP synchronization."
+  },
+  {
+    "id": "office",
+    "name": "Office",
+    "repository": "jeethsuresh/office",
+    "desktop": true,
+    "description": "A native desktop workspace for connected documents, canvases, slides and spreadsheets, with a local Go backend and offline storage."
   }
 ]

@@ -24,7 +24,7 @@ async function installPackage({ app, archive, root, current, extractZip = extrac
   const temporary = await fs.mkdtemp(path.join(path.dirname(directory), '.install-'));
   let entryName = artifact.entry;
   try {
-    if (artifact.platform === 'linux') {
+    if (artifact.platform === 'linux' && artifact.file.endsWith('.AppImage')) {
       await fs.copyFile(archive, path.join(temporary, artifact.entry));
       await fs.chmod(path.join(temporary, artifact.entry), 0o755);
     } else if (artifact.platform === 'macos' && artifact.file.endsWith('.dmg')) {
@@ -63,6 +63,7 @@ async function installPackage({ app, archive, root, current, extractZip = extrac
     const entry = path.join(temporary, entryName);
     const stat = await fs.lstat(entry);
     if (stat.isSymbolicLink() || (artifact.platform === 'macos' ? !stat.isDirectory() : !stat.isFile())) throw new Error('The downloaded app has no valid launch entry.');
+    if (artifact.platform === 'linux') await fs.chmod(entry, 0o755);
     // macOS ZIPs contain a complete .app bundle; resolve CFBundleExecutable
     // through plutil when launching, without interpreting manifest shell text.
     await atomicJSON(path.join(temporary, '.private-store-release.json'), { sha256: artifact.sha256, entry: entryName });
