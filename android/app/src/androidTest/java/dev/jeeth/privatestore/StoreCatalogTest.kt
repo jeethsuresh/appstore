@@ -2,6 +2,7 @@ package dev.jeeth.privatestore
 
 import android.content.Context
 import android.graphics.Bitmap
+import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.activity.compose.setContent
 import androidx.compose.material3.*
 import androidx.compose.runtime.mutableStateOf
@@ -21,7 +22,8 @@ class StoreCatalogTest {
     @get:Rule val compose = createAndroidComposeRule<MainActivity>()
     private val context get() = InstrumentationRegistry.getInstrumentation().targetContext
     private fun screenshot(name: String) {
-        val image = InstrumentationRegistry.getInstrumentation().uiAutomation.takeScreenshot()
+        compose.waitForIdle()
+        val image = compose.onRoot().captureToImage().asAndroidBitmap()
         File(context.filesDir, "$name.png").outputStream().use { image.compress(Bitmap.CompressFormat.PNG, 100, it) }
         image.recycle()
     }
@@ -34,7 +36,7 @@ class StoreCatalogTest {
         val transfers = mutableStateOf<Map<String, Downloads.Transfer>>(emptyMap())
         var requested = emptyList<StoreApp>()
         compose.runOnUiThread { compose.activity.setContent {
-            MaterialTheme { StoreCatalog(apps, mapOf("dev.example.daybreak" to 1L), transfers.value, emptySet(), false, "", {}, { requested = it }) { Text("Settings content") } }
+            StoreTheme { StoreCatalog(apps, mapOf("dev.example.daybreak" to 1L), transfers.value, emptySet(), false, "", {}, { requested = it }) { Text("Settings content") } }
         } }
         compose.onNodeWithText("Daybreak").assertIsDisplayed()
         screenshot("catalog-grid")
@@ -42,7 +44,7 @@ class StoreCatalogTest {
         compose.onNodeWithContentDescription("Show two columns").assertExists()
         compose.onNodeWithText("Search apps").performTextInput("Atlas")
         compose.onNodeWithText("Daybreak").assertDoesNotExist()
-        compose.onNodeWithText("Atlas").performClick()
+        compose.onNode(hasText("Atlas") and hasClickAction() and !hasSetTextAction()).performClick()
         compose.onNodeWithText("About this app").assertIsDisplayed()
         compose.onNodeWithText("Release notes").performScrollTo().assertIsDisplayed()
         screenshot("app-details")
@@ -53,7 +55,7 @@ class StoreCatalogTest {
         compose.onNodeWithText("Update all").performClick()
         compose.runOnIdle { assertEquals(listOf(apps.first()), requested); transfers.value = mapOf("dev.example.daybreak" to Downloads.Transfer("Downloading", 0.45f)) }
         compose.onNodeWithText("Downloading").assertIsNotEnabled()
-        compose.onNodeWithText("Settings").performClick()
+        compose.onNode(hasText("Settings") and hasClickAction()).performClick()
         compose.onNodeWithText("Settings content").assertIsDisplayed()
         compose.onNodeWithText("Apps").performClick()
         compose.onNodeWithText("Downloading").assertIsNotEnabled()
@@ -68,13 +70,13 @@ class StoreCatalogTest {
         try {
             vault.save(Session("https://127.0.0.1:9", "isolated-ui-fixture", "@fixture:example.invalid"))
             compose.activityRule.scenario.recreate()
-            compose.onNodeWithText("Settings").performClick()
+            compose.onNode(hasText("Settings") and hasClickAction()).performClick()
             compose.onNodeWithText("Automatic updates").assertIsDisplayed()
             compose.onAllNodes(isToggleable())[0].performClick()
             compose.runOnIdle { assertEquals(!originalAuto, prefs.getBoolean("auto", true)) }
             screenshot("settings")
             compose.activityRule.scenario.recreate()
-            compose.onNodeWithText("Settings").performClick()
+            compose.onNode(hasText("Settings") and hasClickAction()).performClick()
             compose.onNodeWithText("Automatic updates").assertIsDisplayed()
             compose.runOnIdle { assertEquals(!originalAuto, prefs.getBoolean("auto", true)) }
             compose.waitUntil(30_000) { !compose.onNodeWithText("Forget local enrollment").fetchSemanticsNode().config.contains(androidx.compose.ui.semantics.SemanticsProperties.Disabled) }

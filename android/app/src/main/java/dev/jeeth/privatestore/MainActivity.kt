@@ -21,8 +21,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
@@ -48,7 +46,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         SelfUpdateRecovery.reconcile(this)
         acceptCallback(intent)
-        setContent { MaterialTheme(colorScheme = if (isSystemInDarkTheme()) darkColorScheme(primary = Color(0xFFBAC3FF), background = Color(0xFF111318), surface = Color(0xFF191C22)) else lightColorScheme(primary = Color(0xFF344DCE), background = Color(0xFFF5F6FA), surface = Color.White)) { Surface(Modifier.fillMaxSize()) { StoreScreen() } } }
+        setContent { StoreTheme { Surface(Modifier.fillMaxSize()) { StoreScreen() } } }
     }
     @OptIn(ExperimentalLayoutApi::class)
     @Composable private fun StoreScreen() {
