@@ -3,8 +3,6 @@ package store
 import (
 	"bytes"
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -71,21 +69,9 @@ func (s *Server) releaseNotes(ctx context.Context, a App, rel githubRelease, inf
 	if rel.Tag != "v"+info.VersionName {
 		return "", fmt.Errorf("changelog release tag does not match the verified APK")
 	}
-	res, err := s.github(ctx, fmt.Sprintf("/repos/%s/releases/assets/%d", a.Repo, assetID), "application/octet-stream")
+	data, err := s.verifiedMetadata(ctx, a, assetID, size, digest, maxChangelog)
 	if err != nil {
 		return "", err
-	}
-	defer res.Body.Close()
-	data, err := io.ReadAll(io.LimitReader(res.Body, maxChangelog+1))
-	if err != nil {
-		return "", err
-	}
-	if int64(len(data)) != size || len(data) > maxChangelog {
-		return "", fmt.Errorf("changelog asset size mismatch")
-	}
-	actual := sha256.Sum256(data)
-	if digest != "" && digest != "sha256:"+hex.EncodeToString(actual[:]) {
-		return "", fmt.Errorf("GitHub changelog asset digest mismatch")
 	}
 	return changelogNotes(data, info)
 }

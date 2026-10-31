@@ -263,20 +263,7 @@ func (s *Server) desktopAsset(ctx context.Context, a App, rel githubRelease, nam
 	if id == 0 {
 		return nil, errors.New("missing desktop manifest")
 	}
-	res, err := s.github(ctx, fmt.Sprintf("/repos/%s/releases/assets/%d", a.Repo, id), "application/octet-stream")
-	if err != nil {
-		return nil, err
-	}
-	defer res.Body.Close()
-	data, err := io.ReadAll(io.LimitReader(res.Body, limit+1))
-	if err != nil {
-		return nil, err
-	}
-	sum := sha256.Sum256(data)
-	if int64(len(data)) != size || (digest != "" && digest != "sha256:"+hex.EncodeToString(sum[:])) {
-		return nil, errors.New("desktop manifest checksum/size mismatch")
-	}
-	return data, nil
+	return s.verifiedMetadata(ctx, a, id, size, digest, limit)
 }
 func (s *Server) desktopCatalog(w http.ResponseWriter, r *http.Request) {
 	platform, arch := r.URL.Query().Get("platform"), r.URL.Query().Get("arch")

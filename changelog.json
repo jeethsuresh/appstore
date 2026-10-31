@@ -1,9 +1,9 @@
 {
   "schemaVersion": 1,
-  "version": "0.6.2",
-  "versionCode": 14,
+  "version": "0.6.3",
+  "versionCode": 15,
   "changes": [
-    "Keep the Android catalog focused on mobile apps while desktop apps use their own releases.",
-    "Private Store updates now wait for delayed release metadata before publishing verified downloads."
+    "Update checks reuse verified release metadata so adding desktop apps does not exhaust the shared store\u2019s GitHub request allowance.",
+    "New releases still appear automatically, and downloads continue to require matching checksums and signing identities."
   ]
 }
