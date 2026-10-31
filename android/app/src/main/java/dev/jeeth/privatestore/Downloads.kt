@@ -27,6 +27,7 @@ object Downloads {
         try {
             queue.run(app.packageName, queued = { state(Transfer("Queued")) }) {
                 withContext(Dispatchers.IO) {
+                    check(SessionVault(context).load() == session) { "Sign in again to install this download" }
                     state(Transfer("Downloading", 0f))
                     val file = StoreApi(session).download(context, app) { done, total -> state(Transfer("Downloading", done.toFloat() / total)) }
                     // A sign-out or replacement enrollment must not install an in-flight download.
@@ -38,6 +39,8 @@ object Downloads {
                             check(SessionVault(context).load() == session) { "Sign in again to install this download" }
                         }
                     }
+                    currentCoroutineContext().ensureActive()
+                    check(!background || context.getSharedPreferences("updates", Context.MODE_PRIVATE).getBoolean("auto", true)) { "Automatic updates are turned off" }
                     state(Transfer("Verifying"))
                     Installer.install(context, file, app, background)
                     state(Transfer("Waiting for Android", active = false))

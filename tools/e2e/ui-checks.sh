@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Run while the disposable emulator is alive, retaining screenshots even if a UI assertion fails.
 set -uo pipefail
-./android/gradlew -p android --no-daemon -PstoreTestBuildType=e2e -Pandroid.testInstrumentationRunnerArguments.class=dev.jeeth.privatestore.NotificationRelayPowerTest,dev.jeeth.privatestore.StoreCatalogTest connectedE2eAndroidTest
+./android/gradlew -p android --no-daemon -PstoreTestBuildType=e2e -Pandroid.testInstrumentationRunnerArguments.class=dev.jeeth.privatestore.NotificationRelayPowerTest,dev.jeeth.privatestore.StoreCatalogTest,dev.jeeth.privatestore.InstallCacheTest connectedE2eAndroidTest
 result=$?
 mkdir -p android/app/build/reports/ui
 for name in catalog-grid app-details parallel-progress settings; do

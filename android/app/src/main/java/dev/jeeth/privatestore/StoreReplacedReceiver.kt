@@ -21,7 +21,7 @@ object SelfUpdateRecovery {
             check(prefs.edit().remove("pending.${context.packageName}")
                 .putString("status", "Private Store updated successfully").commit())
         }
-        ApkCache(java.io.File(context.filesDir, "downloads")).complete(context.packageName, installed)
+        ApkCache(java.io.File(context.filesDir, "downloads")).reconcile { Installer.installed(context, it) }
         // Package replacement retains the app UID, private data and Keystore keys.
         // Re-establish the unique schedule even if the old worker died at commit.
         if (runCatching { SessionVault(context).load() }.getOrNull() != null) UpdateWorker.schedule(context)

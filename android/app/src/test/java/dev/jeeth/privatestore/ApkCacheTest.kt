@@ -22,7 +22,7 @@ class ApkCacheTest {
             val futureFile = cache.obtain(future, bytes.size.toLong()) { it.writeBytes(bytes) }
             cache.complete(key.packageName, 1); assertTrue(file.exists())
             cache.complete(key.packageName, 2); assertFalse(file.exists()); assertTrue(futureFile.exists())
-            cache.complete(key.packageName, 3); assertFalse(futureFile.exists())
+            cache.reconcile { if (it == key.packageName) 3 else null }; assertFalse(futureFile.exists())
         } finally { dir.deleteRecursively() }
     }
     @Test fun corruptedCacheAndInterruptedDownloadsAreNeverReused() {

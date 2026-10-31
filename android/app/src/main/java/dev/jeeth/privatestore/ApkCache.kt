@@ -32,6 +32,11 @@ class ApkCache(private val directory: File) {
             if (match.groupValues[1] == packageName && match.groupValues[2].toLongOrNull()?.let { it <= installedVersion } == true) file.delete()
         }
     }
+    fun reconcile(installed: (String) -> Long?) {
+        directory.listFiles()?.mapNotNull { filename.matchEntire(it.name)?.groupValues?.get(1) }?.distinct()?.forEach { pkg ->
+            installed(pkg)?.let { complete(pkg, it) }
+        }
+    }
     companion object {
         private val locks = Array(32) { Any() }
         private val filename = Regex("(.+)\\.([0-9]+)\\.([a-f0-9]{64})\\.apk")
