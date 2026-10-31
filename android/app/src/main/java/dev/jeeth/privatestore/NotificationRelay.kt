@@ -28,6 +28,14 @@ import javax.crypto.spec.GCMParameterSpec
 /** Small, encrypted AtomicFile shared across processes; no SharedPreferences
  * cache or UI/account-broker initialization in the listener process. */
 object NotificationRelay {
+    fun ignoresBatteryOptimizations(c: Context): Boolean =
+        c.getSystemService(PowerManager::class.java).isIgnoringBatteryOptimizations(c.packageName)
+
+    fun canConnect(c: Context, networkValidated: Boolean): Boolean = NotificationRelayPolicy.canConnect(
+        c.getSystemService(PowerManager::class.java).isDeviceIdleMode,
+        ignoresBatteryOptimizations(c), networkValidated,
+    )
+
     @Synchronized fun registrationGeneration(c: Context, advance: Boolean = false): Long {
         java.io.RandomAccessFile(File(c.filesDir, "notification-relay-generation"), "rw").use { file ->
             file.channel.lock().use {
@@ -118,25 +126,31 @@ object NotificationRelay {
 }
 
 /** One blocking socket/thread, no wake lock, client heartbeat, polling, alarms,
- * UI or WorkManager. Android may suspend networking in Doze. */
+ * UI or WorkManager. Doze networking requires a user-granted power exemption. */
 class NotificationRelayService : Service() {
     companion object { @Volatile var active: NotificationRelayService? = null }
     private val worker = Executors.newSingleThreadScheduledExecutor()
     private val main = Handler(Looper.getMainLooper())
     private lateinit var networks: ConnectivityManager
-    private lateinit var power: PowerManager
     @Volatile private var connection: HttpURLConnection? = null
     @Volatile private var stopped = false
     @Volatile private var generation = 0
     private var retry: ScheduledFuture<*>? = null
     private var failures = 0
     private var configuration: String? = null
+    private var batteryExempt = false
     private val network = object : ConnectivityManager.NetworkCallback() {
         override fun onAvailable(network: Network) { main.post { reconnect() } }
         override fun onLost(network: Network) { main.post { reconnect() } }
         override fun onCapabilitiesChanged(n: Network, caps: NetworkCapabilities) { main.post { if (connection == null && caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)) reconnect() } }
     }
-    private val idle = object : BroadcastReceiver() { override fun onReceive(c: Context, i: Intent) { reconnect() } }
+    private val idle = object : BroadcastReceiver() {
+        override fun onReceive(c: Context, i: Intent) {
+            // Keep an exempt connection alive when the screen-off device enters
+            // Doze; only reconnect if the power policy blocks it or it is absent.
+            if (!connectionAllowed() || connection == null) reconnect()
+        }
+    }
     private val packages = object : BroadcastReceiver() {
         override fun onReceive(c: Context, i: Intent) {
             if (i.getBooleanExtra(Intent.EXTRA_REPLACING, false) && i.action != Intent.ACTION_PACKAGE_REPLACED) return
@@ -147,12 +161,11 @@ class NotificationRelayService : Service() {
     }
     override fun onCreate() {
         super.onCreate(); active = this
-        networks = getSystemService(ConnectivityManager::class.java); power = getSystemService(PowerManager::class.java)
+        networks = getSystemService(ConnectivityManager::class.java)
         val manager = getSystemService(NotificationManager::class.java)
         manager.createNotificationChannel(NotificationChannel("app-notification-relay", "App notification connection", NotificationManager.IMPORTANCE_LOW).apply { setSound(null, null); enableVibration(false); setShowBadge(false) })
-        val open = PendingIntent.getActivity(this, 910, Intent(this, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
-        val notice = Notification.Builder(this, "app-notification-relay").setSmallIcon(R.drawable.ic_store_foreground).setContentTitle("App notifications enabled")
-            .setContentText("One shared connection · sleeps with your phone").setContentIntent(open).setOngoing(true).setOnlyAlertOnce(true).setShowWhen(false).build()
+        batteryExempt = NotificationRelay.ignoresBatteryOptimizations(this)
+        val notice = notification()
         if (Build.VERSION.SDK_INT >= 34) startForeground(910, notice, ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE) else startForeground(910, notice)
         networks.registerDefaultNetworkCallback(network)
         registerReceiver(idle, IntentFilter(PowerManager.ACTION_DEVICE_IDLE_MODE_CHANGED))
@@ -161,16 +174,29 @@ class NotificationRelayService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         val config = NotificationRelay.read(this)?.toString()
         if (config == null) { stopSelf(); return START_NOT_STICKY }
-        if (config != configuration || connection == null) { configuration = config; reconnect() }
+        val exempt = NotificationRelay.ignoresBatteryOptimizations(this)
+        val powerChanged = exempt != batteryExempt
+        batteryExempt = exempt
+        if (powerChanged) getSystemService(NotificationManager::class.java).notify(910, notification())
+        if (config != configuration || connection == null || powerChanged) { configuration = config; reconnect() }
         return START_STICKY
+    }
+    private fun notification(): Notification {
+        val open = PendingIntent.getActivity(this, 910, Intent(this, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
+        return Notification.Builder(this, "app-notification-relay").setSmallIcon(R.drawable.ic_store_foreground).setContentTitle("App notifications enabled")
+            .setContentText(if (batteryExempt) "One shared connection · allowed while phone is idle" else "One shared connection · may wait while phone is idle")
+            .setContentIntent(open).setOngoing(true).setOnlyAlertOnce(true).setShowWhen(false).build()
     }
     fun reconnect() {
         if (stopped) return
         generation++; connection?.disconnect(); connection = null; retry?.cancel(false); retry = null
-        val caps = networks.getNetworkCapabilities(networks.activeNetwork)
-        if (power.isDeviceIdleMode || caps?.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED) != true) return
+        if (!connectionAllowed()) return
         val current = generation
         retry = worker.schedule({ listen(current) }, 1, TimeUnit.SECONDS)
+    }
+    private fun connectionAllowed(): Boolean {
+        val caps = networks.getNetworkCapabilities(networks.activeNetwork)
+        return NotificationRelay.canConnect(this, caps?.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED) == true)
     }
     private fun connect(config: JSONObject, path: String, method: String = "GET"): HttpURLConnection =
         (URL(Versions.baseUrl(config.getString("baseUrl")) + path).openConnection() as HttpURLConnection).apply {
@@ -234,15 +260,14 @@ class NotificationRelayService : Service() {
                 }
             }
         } catch (_: Exception) {
-            // Backoff is a non-wakeup timer, cancelled offline/in Doze. No tight
-            // reconnect loops and no exemptions from Android power management.
+            // Backoff is a non-wakeup timer, cancelled offline or when Doze
+            // blocks networking. A user-granted exemption also permits retries.
         } finally {
             live?.disconnect(); connection = null
             main.post {
                 retry = null
                 if (!stopped && current == generation && NotificationRelay.read(this) != null) {
-                    val caps = networks.getNetworkCapabilities(networks.activeNetwork)
-                    if (!power.isDeviceIdleMode && caps?.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED) == true) {
+                    if (connectionAllowed()) {
                         val connectedMillis = if (connectedAt == 0L) 0L else SystemClock.elapsedRealtime() - connectedAt
                         failures = NotificationRelayPolicy.afterDisconnect(failures, connectedMillis)
                         val delay = NotificationRelayPolicy.retryDelaySeconds(failures, java.util.Random().nextInt(30))
@@ -307,6 +332,9 @@ class NotificationRelayProvider : ContentProvider() {
 }
 
 internal object NotificationRelayPolicy {
+    fun canConnect(deviceIdle: Boolean, batteryExempt: Boolean, networkValidated: Boolean): Boolean =
+        networkValidated && (!deviceIdle || batteryExempt)
+
     fun afterDisconnect(failures: Int, connectedMillis: Long): Int =
         if (connectedMillis >= 5 * 60_000L) 1 else (failures.coerceIn(0, 7) + 1).coerceAtMost(7)
     fun retryDelaySeconds(failures: Int, jitter: Int): Long =

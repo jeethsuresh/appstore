@@ -5,6 +5,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.contentDescription
 
 import android.Manifest
+import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
@@ -69,6 +70,7 @@ class MainActivity : ComponentActivity() {
         val prefs = remember { getSharedPreferences("updates", MODE_PRIVATE) }
         var auto by remember { mutableStateOf(prefs.getBoolean("auto", true)) }
         var appNotifications by remember { mutableStateOf(prefs.getBoolean("appNotifications", true)) }
+        var batteryExempt by remember { mutableStateOf(NotificationRelay.ignoresBatteryOptimizations(this)) }
         var installAllowed by remember { mutableStateOf(packageManager.canRequestPackageInstalls()) }
         val scope = rememberCoroutineScope()
         val notifications = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { allowed -> revision++; if (!allowed) message = "Enable notifications in Android settings to receive update confirmations." }
@@ -114,7 +116,16 @@ class MainActivity : ComponentActivity() {
         }
         DisposableEffect(session) {
             val observer = LifecycleEventObserver { _, event ->
-                if (event == Lifecycle.Event.ON_RESUME) { runCatching { BrokerAccounts.reconcile(this@MainActivity) };installAllowed = packageManager.canRequestPackageInstalls(); revision++; if (session != null && !busy) refresh() }
+                if (event == Lifecycle.Event.ON_RESUME) {
+                    runCatching { BrokerAccounts.reconcile(this@MainActivity) }
+                    installAllowed = packageManager.canRequestPackageInstalls()
+                    batteryExempt = NotificationRelay.ignoresBatteryOptimizations(this@MainActivity)
+                    // Recheck power policy immediately, even if catalog refresh
+                    // is busy or fails after returning from Android settings.
+                    if (session != null && appNotifications) NotificationRelay.start(this@MainActivity)
+                    revision++
+                    if (session != null && !busy) refresh()
+                }
             }
             lifecycle.addObserver(observer)
             val listener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
@@ -176,7 +187,19 @@ class MainActivity : ComponentActivity() {
                     Switch(checked = appNotifications, onCheckedChange = { appNotifications = it; prefs.edit().putBoolean("appNotifications", it).apply(); NotificationRelay.configure(this@MainActivity, session!!, apps, it) })
                     Text("App notifications", modifier = Modifier.padding(start = 12.dp, top = 12.dp))
                 }
-                Text("A small shared listener receives notifications for installed apps. It sleeps with your phone; delivery can wait until Android restores networking. Each app controls its own notification permission.", style = MaterialTheme.typography.bodySmall)
+                Text("One shared connection receives notifications for installed apps. Each app controls its own notification permission.", style = MaterialTheme.typography.bodySmall)
+                if (appNotifications && session!!.account.isNotBlank()) {
+                    Text(if (batteryExempt) "Screen-off delivery is allowed. Your phone still needs an internet connection." else "Android can delay notifications while your phone is idle. Allow Private Store to run without battery optimization for screen-off delivery. This may use more battery.", style = MaterialTheme.typography.bodySmall)
+                    TextButton(enabled = !busy, onClick = {
+                        val settings = if (batteryExempt) Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)
+                            else Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, Uri.parse("package:$packageName"))
+                        try { startActivity(settings) }
+                        catch (_: ActivityNotFoundException) {
+                            try { startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName"))) }
+                            catch (_: ActivityNotFoundException) { message = "Open Android settings and allow unrestricted battery use for Private Store." }
+                        }
+                    }) { Text(if (batteryExempt) "Battery settings" else "Allow screen-off notifications") }
+                }
                 Text("Checks include Private Store itself and run about every 6 hours when connected and the battery is not low. Android may ask you to approve an update. Notifications must be enabled for background installation.", style = MaterialTheme.typography.bodySmall)
                 val checked = prefs.getLong("lastCheck", 0)
                 if (checked > 0) Text("Last background check: ${DateFormat.getDateTimeInstance().format(Date(checked))}", style = MaterialTheme.typography.bodySmall)
