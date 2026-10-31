@@ -1,11 +1,9 @@
 {
   "schemaVersion": 1,
-  "version": "0.6.0",
-  "versionCode": 12,
+  "version": "0.6.1",
+  "versionCode": 13,
   "changes": [
-    "Browse a searchable two-column app catalog or switch to a compact list, with app icons and dedicated pages for app information and release notes.",
-    "Find update and notification preferences, Android permissions and sign-out controls on the new Settings page.",
-    "Download up to three apps at once with individual progress, and update installed apps together.",
-    "Keep verified downloads in private storage until installation succeeds, so cancelled or failed installs can retry without downloading again."
+    "Keep the Android catalog focused on mobile apps as Private Store adds separate desktop releases.",
+    "Find macOS, Windows and Linux store downloads and platform-specific release notes on app pages."
   ]
 }

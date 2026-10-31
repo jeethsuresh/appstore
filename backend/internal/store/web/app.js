@@ -24,7 +24,7 @@ window.addEventListener('pageshow', (event) => { if (event.persisted) window.loc
 // The page stays public, but an open signed-in view must follow central logout.
 if (document.querySelector('#logout')) {
   const notice = document.querySelector('#session-feedback');
-  const links = [...document.querySelectorAll('a[href="/download/appstore.apk"]')];
+  const links = [...document.querySelectorAll('a[href="/download/appstore.apk"], a[href^="/download/desktop/"]')];
   let checking = false;
   function unavailable(value) {
     if (notice) { notice.hidden = !value; notice.textContent = value ? 'Gravitas is temporarily unavailable. Please try again shortly.' : ''; }

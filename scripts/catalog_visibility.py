@@ -13,7 +13,7 @@ ANDROID_NAME = "{http://schemas.android.com/apk/res/android}name"
 
 
 def required_packages(catalog):
-    return {app["packageName"] for app in catalog} - {"dev.jeeth.privatestore"}
+    return {app["packageName"] for app in catalog if app.get("packageName")} - {"dev.jeeth.privatestore"}
 
 
 def source_packages(manifest):

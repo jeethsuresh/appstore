@@ -8,6 +8,9 @@ class CatalogVisibilityTest(unittest.TestCase):
         self.assertEqual({"cool.gravitas.atlas"}, visibility.required_packages([
             {"packageName": "dev.jeeth.privatestore"}, {"packageName": "cool.gravitas.atlas"}]))
 
+    def test_desktop_only_apps_need_no_android_visibility(self):
+        self.assertEqual(set(), visibility.required_packages([{"id": "office", "desktop": True}]))
+
     def test_catalog_addition_requires_a_visibility_declaration(self):
         visible = visibility.source_packages('''<manifest xmlns:android="http://schemas.android.com/apk/res/android">
             <queries><package android:name="cool.gravitas.river"/></queries>

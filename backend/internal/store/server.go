@@ -83,6 +83,10 @@ func New(cfg Config) (*Server, error) {
 		db.Close()
 		return nil, err
 	}
+	if err := s.initDesktop(); err != nil {
+		db.Close()
+		return nil, err
+	}
 	s.inspect = s.inspectAPK
 	if err := s.registerWeb(); err != nil {
 		db.Close()
@@ -330,7 +334,21 @@ func (s *Server) latest(ctx context.Context, id string) (*Release, error) {
 	return &v, err
 }
 func (s *Server) catalog(w http.ResponseWriter, r *http.Request) {
-	apps := append([]App{}, s.cfg.Apps...)
+	platform, arch := r.URL.Query().Get("platform"), r.URL.Query().Get("arch")
+	if platform != "" && platform != "android" {
+		s.desktopCatalog(w, r)
+		return
+	}
+	if arch != "" {
+		fail(w, 400, "arch requires a desktop platform")
+		return
+	}
+	apps := []App{}
+	for _, a := range s.cfg.Apps {
+		if a.Package != "" {
+			apps = append(apps, a)
+		}
+	}
 	for i := range apps {
 		v, err := s.latest(r.Context(), apps[i].ID)
 		if err != nil {

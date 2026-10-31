@@ -82,6 +82,7 @@
       {{end}}
       <p id="feedback" role="status" aria-live="polite"></p>
     </main>
+    <section class="details" id="desktop-store" aria-labelledby="desktop-heading"><div><p class="eyebrow">ON YOUR DESKTOP</p><h2 id="desktop-heading">A home for every screen.</h2><p>Private Store for macOS, Windows and Linux. Browse desktop apps, read what changed, and keep your collection current. The store updates itself, too.</p><p>Choose your operating system and processor. macOS and Windows downloads are ZIPs; extract before opening. On Linux, make the AppImage executable. Initial builds are distributed without an Apple or Microsoft signing identity.</p></div><div>{{range .Apps}}{{if eq .ID "appstore"}}{{if .DesktopRelease}}{{range .DesktopRelease.Artifacts}}<p>{{if $.SignedIn}}<a class="button" href="/download/desktop/{{.Platform}}/{{.Arch}}">{{.Platform}} · {{.Arch}} ↓</a>{{else}}<a href="#get-store">Sign in above for {{.Platform}} · {{.Arch}}</a>{{end}}</p>{{end}}{{else}}<p>Desktop downloads will appear after the first verified desktop release is published.</p>{{end}}{{end}}{{end}}</div></section>
     <footer><span>Small by design. Independent by choice.</span><span>PART OF <a href="https://gravitas.cool">GRAVITAS <span aria-hidden="true">↗</span></a></span></footer>
   </div>
 </body>

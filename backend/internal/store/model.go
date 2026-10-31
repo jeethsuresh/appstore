@@ -10,15 +10,17 @@ import (
 )
 
 type App struct {
-	ID            string           `json:"id"`
-	Name          string           `json:"name"`
-	Package       string           `json:"packageName"`
-	Repo          string           `json:"repository"`
-	Asset         string           `json:"assetName"`
-	Certificate   string           `json:"certificateSha256"`
-	Description   string           `json:"description"`
-	Release       *Release         `json:"release,omitempty"`
-	Notifications *NotificationApp `json:"notifications,omitempty"`
+	ID             string           `json:"id"`
+	Name           string           `json:"name"`
+	Package        string           `json:"packageName"`
+	Repo           string           `json:"repository"`
+	Asset          string           `json:"assetName"`
+	Certificate    string           `json:"certificateSha256"`
+	Description    string           `json:"description"`
+	Desktop        bool             `json:"desktop,omitempty"`
+	DesktopRelease *DesktopRelease  `json:"desktopRelease,omitempty"`
+	Release        *Release         `json:"release,omitempty"`
+	Notifications  *NotificationApp `json:"notifications,omitempty"`
 }
 type Release struct {
 	ConfigHash  string `json:"-"`
@@ -60,7 +62,7 @@ func LoadApps(path string) ([]App, error) {
 	for i := range apps {
 		a := &apps[i]
 		a.Certificate = strings.ToLower(strings.ReplaceAll(a.Certificate, ":", ""))
-		if !regexp.MustCompile(`^[a-z][a-z0-9-]{0,63}$`).MatchString(a.ID) || !regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9-]{0,38}/[A-Za-z0-9_][A-Za-z0-9_.-]*$`).MatchString(a.Repo) || !regexp.MustCompile(`^[A-Za-z][A-Za-z0-9_]*(\.[A-Za-z][A-Za-z0-9_]*)+$`).MatchString(a.Package) || a.Name == "" || strings.ContainsAny(a.Asset, "/\\") || !strings.HasSuffix(a.Asset, ".apk") || (a.Certificate != "" && !hexDigest.MatchString(a.Certificate)) || seen[a.ID] || packages[a.Package] {
+		if !regexp.MustCompile(`^[a-z][a-z0-9-]{0,63}$`).MatchString(a.ID) || !regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9-]{0,38}/[A-Za-z0-9_][A-Za-z0-9_.-]*$`).MatchString(a.Repo) || (a.Package == "" && !a.Desktop) || (a.Package != "" && !regexp.MustCompile(`^[A-Za-z][A-Za-z0-9_]*(\.[A-Za-z][A-Za-z0-9_]*)+$`).MatchString(a.Package)) || a.Name == "" || strings.ContainsAny(a.Asset, "/\\") || (a.Package != "" && !strings.HasSuffix(a.Asset, ".apk")) || (a.Package == "" && (a.Asset != "" || a.Certificate != "" || a.Notifications != nil)) || (a.Certificate != "" && !hexDigest.MatchString(a.Certificate)) || seen[a.ID] || (a.Package != "" && packages[a.Package]) {
 			return nil, fmt.Errorf("invalid or duplicate app configuration: %s", a.ID)
 		}
 		seen[a.ID] = true

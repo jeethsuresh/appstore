@@ -26,3 +26,7 @@ Increase both the stable version and Android version code for a new release. A p
 Before merging changes intended for Android users, explicitly increase both the stable version and Android version code in `android/app/build.gradle.kts`. CI publishes the version declared in source; do not replace this with automatic version allocation or overwrite an existing release.
 
 Every new version must update the tracked [`changelog.json`](changelog.json) in the same PR. Use schema version 1, matching `version` and integer `versionCode`, and a nonempty `changes` array of concise, user-facing plain-text strings. Explain actual behavior changes, fixes, and relevant limitations. CI must reject a missing, malformed or mismatched changelog before signing. Publish `changelog.json` as a verified release asset alongside the APK, checksums and manifest so Private Store can show users what changed. Verify both the public changelog download and its notes in the live Store catalog before declaring the release complete.
+
+## Automatic desktop publishing
+
+Desktop releases use `desktop/package.json` version/versionCode and a matching `desktop/changelog.json`. Keep desktop and Android version codes independent. Main automatically publishes all six desktop packages only after backend, Android, desktop flow and packaging checks pass. Preserve draft upload verification, immutable versions, `desktop-vX.Y.Z` tags, and `make_latest: false` so desktop publication does not displace Android release discovery. See [DESKTOP_RELEASES.md](DESKTOP_RELEASES.md).
