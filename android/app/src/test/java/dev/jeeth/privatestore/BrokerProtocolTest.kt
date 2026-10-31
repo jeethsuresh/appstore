@@ -24,4 +24,17 @@ class BrokerProtocolTest {
         assertTrue(BrokerProtocol.scopes("profile.name native.broker"));assertTrue(BrokerProtocol.scopes("native.broker profile.name"))
         for(scope in listOf("profile.name","native.broker","profile.name native.broker chats.read","profile.name native.broker native.broker")) assertFalse(BrokerProtocol.scopes(scope))
     }
+    @Test fun riverUsesItsOwnPinnedCallerAndFixedTarget() {
+        val river=BrokerProtocol.client("cool.gravitas.river")!!
+        val request=BrokerProtocol.request(river.prefix+challenge+":"+state,1,challenge,state,river.packageName)
+        assertEquals(river,request.client)
+        assertEquals("https://chat.gravitas.cool/auth/gravitas/callback",river.redirect)
+        assertTrue(river.scope.split(' ').containsAll(listOf("matrix.full","contacts.read","contacts.manage")))
+        assertFalse(river.scope.split(' ').contains("native.broker"))
+        assertTrue(BrokerProtocol.approved(listOf(river.packageName),river.packageName,listOf(river.certificate)))
+        assertFalse(BrokerProtocol.approved(listOf(river.packageName),river.packageName,listOf(BrokerProtocol.CLIENT_CERT)))
+        assertFalse(BrokerProtocol.approved(listOf(river.packageName,"shared.uid"),river.packageName,listOf(river.certificate)))
+        assertTrue(runCatching { BrokerProtocol.request(river.prefix+challenge+":"+state,1,challenge,state,BrokerProtocol.CLIENT_PACKAGE) }.isFailure)
+        assertTrue(runCatching { BrokerProtocol.request(type,1,challenge,state,river.packageName) }.isFailure)
+    }
 }

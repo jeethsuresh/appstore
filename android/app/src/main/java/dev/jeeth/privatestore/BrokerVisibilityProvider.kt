@@ -14,7 +14,9 @@ class BrokerVisibilityProvider : ContentProvider() {
     override fun onCreate() = true
     override fun call(method: String,arg: String?,extras: Bundle?): Bundle {
         val ctx=requireNotNull(context)
-        if(method!="prepare" || arg!=null || (extras!=null && !extras.isEmpty) || !BrokerAccounts.verifiedCaller(ctx,Binder.getCallingUid(),BrokerProtocol.CLIENT_PACKAGE)) throw SecurityException("Unapproved broker caller")
+        val uid=Binder.getCallingUid()
+        val caller=ctx.packageManager.getPackagesForUid(uid)?.singleOrNull()
+        if(method!="prepare" || arg!=null || (extras!=null && !extras.isEmpty) || !BrokerAccounts.verifiedCaller(ctx,uid,caller)) throw SecurityException("Unapproved broker caller")
         BrokerAccounts.reconcile(ctx)
         val available=android.accounts.AccountManager.get(ctx).getAccountsByType(BrokerAccounts.type(ctx)).size==1
         return Bundle().apply { putInt("protocolVersion",1);putBoolean("available",available) }
