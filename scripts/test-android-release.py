@@ -88,6 +88,22 @@ class ReleaseChecks(unittest.TestCase):
             return {"draft": False}
         self.assertFalse(release.publication_plan(self.config, "1.2.3", 9, request))
 
+    def test_uploaded_draft_waits_for_github_visibility(self):
+        draft = {"draft": True, "tag_name": "v1.2.3", "assets": []}
+        responses = [[], [{"draft": False, "tag_name": "v1.2.2"}], [draft]]
+        pauses = []
+        actual = release.uploaded_draft("v1.2.3", request=lambda path: responses.pop(0), pause=pauses.append)
+        self.assertEqual(actual, draft)
+        self.assertEqual(pauses, [1, 2])
+
+    def test_draft_visibility_retries_are_bounded_and_never_accept_a_published_release(self):
+        pauses = []
+        with self.assertRaises(ValueError):
+            release.uploaded_draft("v1.2.3", request=lambda path: [], pause=pauses.append, attempts=3)
+        self.assertEqual(pauses, [1, 2])
+        with self.assertRaises(ValueError):
+            release.uploaded_draft("v1.2.3", request=lambda path: [{"tag_name": "v1.2.3", "draft": False}], pause=pauses.append)
+
     def test_drafts_and_orphan_tags_fail_closed(self):
         for responses in ([{"draft": True}], [None, {"ref": "refs/tags/v1.2.3"}]):
             with self.subTest(responses=responses), self.assertRaises(ValueError):
