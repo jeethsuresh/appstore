@@ -9,3 +9,7 @@
 **/.kotlin
 android
 data
+
+desktop/node_modules
+desktop/dist
+desktop/test-results

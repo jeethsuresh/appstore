@@ -1,6 +1,6 @@
 # Private Store
 
-A personal Android app distribution platform with Gravitas account sign-in, optional invitation-based device enrollment, GitHub release ingestion, and a native Kotlin/Jetpack Compose client. Daybreak and Spacetime are the first two supported apps.
+A personal Android and desktop app distribution platform with Gravitas account sign-in, optional invitation-based device enrollment, GitHub release ingestion, and a native Kotlin/Jetpack Compose client. Daybreak and Spacetime are the first two supported apps.
 
 The signed [0.4.1 release](https://github.com/jeethsuresh/appstore/releases/tag/v0.4.1) updates existing installations in place, recognises installed Atlas copies, and shows small downloads in kB.
 
@@ -142,3 +142,7 @@ See [the versioned protocol contract and integration](protocols/README.md) for G
 ## Haven
 
 [Haven](https://apps.gravitas.cool/apps/haven) backs up gallery media directly to desktop sinks, with a shared thumbnail viewer at https://haven.gravitas.cool. Its initial Android release runs while the app is open. The package is `cool.gravitas.haven`; signed releases and checksums are published from `jeethsuresh/haven` and pinned in `config/apps.json`.
+
+## Desktop
+
+Private Store also runs on macOS, Windows and Linux, with x64 and ARM64 packages, Gravitas sign-in, verified installations, app pages, changelogs, automatic app updates and self-update. See [desktop installation, catalog targeting and release publishing](DESKTOP_RELEASES.md). Existing Android entries remain mobile-only; `"desktop": true` adds compatible desktop releases, and desktop-only entries omit the Android package fields.

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"private-store/internal/gravitas"
+	"strings"
 )
 
 type appFeature struct{ Title, Description string }
@@ -18,7 +19,8 @@ type appStory struct {
 type webApp struct {
 	App
 	appStory
-	Size string
+	Size      string
+	Platforms string
 }
 type webView struct {
 	SignedIn, Enabled, Error                                            bool
@@ -82,7 +84,7 @@ var appStories = map[string]appStory{
 	},
 	"appstore": {
 		Category: "Apps & updates", Tagline: "A small home for your apps.",
-		Summary: "Install independent Android apps, keep them current, and sign in with Gravitas. Private Store keeps itself up to date through the same verified release channel.",
+		Summary: "Install independent apps on Android, macOS, Windows and Linux, keep them current, and sign in with Gravitas. Private Store keeps itself up to date through the same verified release channel.",
 		Icon:    "icon.svg", Architecture: "ARM, ARM64 and x86-64", MinimumAndroid: "Android 8.0+",
 		Features: []appFeature{
 			{"Keep the store current", "New signed versions of Private Store appear alongside your other app updates. Check now or let periodic checks find them; Android may ask you to approve installation."},
@@ -150,7 +152,39 @@ func (s *Server) webApps(ctx context.Context) ([]webApp, error) {
 		if !ok {
 			story = appStory{Category: "Independent app", Tagline: app.Name, Summary: app.Description, Icon: "icon.svg", Architecture: "See the Android store for compatibility", MinimumAndroid: "See the Android store"}
 		}
+		desktop, err := s.latestDesktop(ctx, app)
+		if err != nil {
+			return nil, err
+		}
+		if app.Desktop {
+			app.DesktopRelease = desktop
+		}
 		item := webApp{App: app, appStory: story}
+		platforms := []string{}
+		if app.Package != "" {
+			platforms = append(platforms, "Android")
+		}
+		if app.Desktop {
+			found := map[string]bool{}
+			if desktop != nil {
+				for _, artifact := range desktop.Artifacts {
+					found[artifact.Platform] = true
+				}
+			}
+			for _, pair := range [][2]string{{"macos", "macOS"}, {"windows", "Windows"}, {"linux", "Linux"}} {
+				if found[pair[0]] {
+					platforms = append(platforms, pair[1])
+				}
+			}
+			if desktop == nil {
+				platforms = append(platforms, "Desktop (release pending)")
+			}
+		}
+		item.Platforms = strings.Join(platforms, " · ")
+		if app.Package == "" {
+			item.Architecture = "See available desktop builds"
+			item.MinimumAndroid = "Desktop"
+		}
 		if release != nil {
 			item.Size = downloadSize(release.Size)
 			versions := map[int]string{21: "5.0", 22: "5.1", 23: "6.0", 24: "7.0", 25: "7.1", 26: "8.0", 27: "8.1", 28: "9", 29: "10", 30: "11", 31: "12", 32: "12L", 33: "13", 34: "14", 35: "15", 36: "16"}
@@ -165,7 +199,7 @@ func (s *Server) webApps(ctx context.Context) ([]webApp, error) {
 	return apps, nil
 }
 func (s *Server) webData(w http.ResponseWriter, r *http.Request) (webView, error) {
-	data := webView{Enabled: s.cfg.Federation != nil, Error: r.URL.Query().Get("error") != "", Digest: clientSHA256, ClientVersion: clientVersion, ClientSize: downloadSize(clientSize), Title: "Private Store · Gravitas", Description: "A small home for independent Android apps. Get Private Store with your Gravitas account.", Next: "/", StoreURL: "https://apps.gravitas.cool"}
+	data := webView{Enabled: s.cfg.Federation != nil, Error: r.URL.Query().Get("error") != "", Digest: clientSHA256, ClientVersion: clientVersion, ClientSize: downloadSize(clientSize), Title: "Private Store · Gravitas", Description: "A small home for independent apps on Android, macOS, Windows and Linux. Get Private Store with your Gravitas account.", Next: "/", StoreURL: "https://apps.gravitas.cool"}
 	if s.cfg.Federation != nil {
 		data.DefaultDomain = s.cfg.Federation.DefaultDomain()
 	}

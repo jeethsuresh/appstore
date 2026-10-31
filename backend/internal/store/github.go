@@ -12,7 +12,6 @@ import (
 	"log/slog"
 	"net"
 	"net/http"
-	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -81,7 +80,14 @@ func (s *Server) Sync(ctx context.Context, a App, tag string) error {
 		if ctx.Err() != nil {
 			return ctx.Err()
 		}
-		err = s.syncOnce(ctx, a, tag)
+		if a.Desktop {
+			err = s.syncDesktop(ctx, a, tag)
+		} else {
+			err = nil
+		}
+		if a.Package != "" {
+			err = errors.Join(err, s.syncOnce(ctx, a, tag))
+		}
 		if err == nil || !transient(err) {
 			return err
 		}
@@ -101,22 +107,16 @@ func (s *Server) syncOnce(ctx context.Context, a App, tag string) error {
 	if !hexDigest.MatchString(a.Certificate) {
 		return fmt.Errorf("%s: configure the existing release certificate fingerprint before ingestion", a.ID)
 	}
-	path := "/repos/" + a.Repo + "/releases/latest"
-	if tag != "" {
-		path = "/repos/" + a.Repo + "/releases/tags/" + url.PathEscape(tag)
-	}
-	res, err := s.github(ctx, path, "application/vnd.github+json")
+	rel, err := s.findRelease(ctx, a, tag, func(r githubRelease) bool {
+		for _, asset := range r.Assets {
+			if asset.Name == strings.ReplaceAll(a.Asset, "{tag}", r.Tag) {
+				return true
+			}
+		}
+		return false
+	})
 	if err != nil {
 		return err
-	}
-	var rel githubRelease
-	err = json.NewDecoder(io.LimitReader(res.Body, 2<<20)).Decode(&rel)
-	res.Body.Close()
-	if err != nil {
-		return err
-	}
-	if rel.Draft || rel.Prerelease {
-		return fmt.Errorf("only published stable releases are supported")
 	}
 	var assetID, size int64
 	var digest string
@@ -150,7 +150,7 @@ func (s *Server) syncOnce(ctx context.Context, a App, tag string) error {
 			return notesErr
 		}
 	}
-	res, err = s.github(ctx, fmt.Sprintf("/repos/%s/releases/assets/%d", a.Repo, assetID), "application/octet-stream")
+	res, err := s.github(ctx, fmt.Sprintf("/repos/%s/releases/assets/%d", a.Repo, assetID), "application/octet-stream")
 	if err != nil {
 		return err
 	}

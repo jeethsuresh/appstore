@@ -96,9 +96,87 @@ jobs:
         with:
           name: private-store-debug
           path: android/app/build/outputs/apk/debug/app-debug.apk
+  desktop:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: desktop/package-lock.json
+      - run: npm ci
+        working-directory: desktop
+      - run: |
+          python3 scripts/test-desktop-release.py
+          python3 scripts/desktop-release.py validate
+      - run: npm test
+        working-directory: desktop
+      - name: Exercise desktop login, install, updates and self-update staging
+        run: xvfb-run -a npm run test:e2e
+        working-directory: desktop
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: desktop-flow-results
+          path: desktop/test-results
+          if-no-files-found: ignore
+  desktop-packages:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {os: ubuntu-24.04, platform: linux, arch: x64}
+          - {os: ubuntu-24.04, platform: linux, arch: arm64}
+          - {os: macos-15, platform: mac, arch: x64}
+          - {os: macos-15, platform: mac, arch: arm64}
+          - {os: windows-2022, platform: win, arch: x64}
+          - {os: windows-2022, platform: win, arch: arm64}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: desktop/package-lock.json
+      - run: npm ci
+        working-directory: desktop
+      - run: npm test
+        working-directory: desktop
+      - run: npm run package -- --${{ matrix.platform }} --${{ matrix.arch }}
+        working-directory: desktop
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: desktop-${{ matrix.platform }}-${{ matrix.arch }}
+          path: |
+            desktop/dist/*.zip
+            desktop/dist/*.AppImage
+          if-no-files-found: error
+  desktop-publish:
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    needs: [backend, android, desktop, desktop-packages]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: desktop-*
+          path: desktop/dist
+          merge-multiple: true
+      - name: Publish the complete verified release with its changelog
+        run: python3 scripts/desktop-release.py publish
+        env:
+          GH_TOKEN: ${{ github.token }}
   deploy:
     if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
-    needs: [backend, android]
+    needs: [backend, android, desktop, desktop-packages]
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     environment:

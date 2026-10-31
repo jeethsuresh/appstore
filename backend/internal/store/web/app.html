@@ -28,20 +28,20 @@
           {{if .SignedIn}}
           <p id="session-feedback" class="notice" role="status" hidden></p>
           <p class="session"><span class="status-dot"></span> Signed in as <strong>{{.Username}}</strong></p>
-          <a class="button" href="/download/appstore.apk">Get Private Store <span aria-hidden="true">↓</span></a>
+          {{if .Selected.Package}}<a class="button" href="/download/appstore.apk">Get Private Store for Android <span aria-hidden="true">↓</span></a>{{end}}{{if .Selected.Desktop}} <a class="button" href="/#desktop-store">Get Private Store for desktop ↗</a>{{end}}
           {{else if .Enabled}}
           <form class="gravitas-login" action="/auth/gravitas/start" method="get"><input type="hidden" name="next" value="{{.Next}}"><label for="gravitas-username">Username</label><div class="gravitas-login-row"><input id="gravitas-username" name="username" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="username@{{.DefaultDomain}}" maxlength="256" required><button class="button" type="submit" aria-label="Sign in" title="Sign in">🔥</button></div><small>Without a domain, sign in at {{.DefaultDomain}}.</small></form><p class="register"><a href="/auth/gravitas/register?next={{.Next}}">Register at {{.DefaultDomain}}</a></p>
           {{else}}<p class="notice" role="status">Store downloads will be available when Gravitas sign-in is configured.</p>{{end}}
-          <p class="button-note">{{if eq .Selected.ID "appstore"}}Download once; future updates appear inside the store.{{else}}Install {{.Selected.Name}} inside Private Store.{{end}}<br>Android 8.0+ · Sign in with your Gravitas account.</p>
+          <p class="button-note">{{if eq .Selected.ID "appstore"}}Download once; future updates appear inside the store.{{else}}Install {{.Selected.Name}} inside Private Store.{{end}}<br>{{if .Selected.Package}}Private Store for Android requires Android 8.0+. {{end}}{{.Selected.Platforms}} · Sign in with your Gravitas account.</p>
         </div>
         <aside class="app-facts" aria-label="App information">
           <p class="eyebrow">AT A GLANCE</p>
           <dl>
             <div><dt>Category</dt><dd>{{.Selected.Category}}</dd></div>
-            <div><dt>App compatibility</dt><dd>{{.Selected.MinimumAndroid}}</dd></div>
+            <div><dt>Platforms</dt><dd>{{.Selected.Platforms}}</dd></div>{{if .Selected.Package}}<div><dt>Android compatibility</dt><dd>{{.Selected.MinimumAndroid}}</dd></div>{{end}}
             <div><dt>Devices</dt><dd>{{.Selected.Architecture}}</dd></div>
             {{if .Selected.Release}}<div><dt>Latest store release</dt><dd>v{{.Selected.Release.VersionName}} <span>· {{.Selected.Size}}</span></dd></div>{{end}}
-            <div><dt>Available through</dt><dd>Private Store for Android</dd></div>
+            <div><dt>Available through</dt><dd>{{.Selected.Platforms}}</dd></div>
           </dl>
           <a class="source-link" href="https://github.com/{{.Selected.Repo}}" target="_blank" rel="noopener noreferrer">View source on GitHub <span aria-hidden="true">↗</span></a>
         </aside>
@@ -55,6 +55,7 @@
         <div><h3>When it connects</h3><p>{{.Selected.Connection}}</p><p class="account-note">Use Gravitas to download and sign in to Private Store. {{if eq .Selected.ID "appstore"}}Your store sign-in also connects supported apps.{{else}}Any optional account inside {{.Selected.Name}} is managed by that app.{{end}}</p></div>
       </section>{{end}}
       {{if .Selected.Release}}{{if .Selected.Release.Notes}}<details class="release-notes"><summary>What’s new in v{{.Selected.Release.VersionName}} <span>Release notes</span></summary><div>{{.Selected.Release.Notes}}</div></details>{{end}}{{end}}
+      {{if .Selected.DesktopRelease}}<details class="release-notes"><summary>What’s new on desktop in v{{.Selected.DesktopRelease.Version}} <span>Release notes</span></summary><div>{{range .Selected.DesktopRelease.Changes}}<p>{{.}}</p>{{end}}</div></details>{{end}}
       {{if .SignedIn}}<section class="details" aria-labelledby="details-heading"><div><p class="eyebrow">YOUR NEXT STEP</p><h2 id="details-heading">Make yourself at home.</h2><p>Download Private Store above, sign in with your Gravitas account, {{if eq .Selected.ID "appstore"}}then check for updates to keep the store current.{{else}}then choose {{.Selected.Name}} to install it.{{end}}</p></div><div class="server-address"><code id="server-url">{{.StoreURL}}</code><button class="copy-button" id="copy">Copy address</button></div></section>{{end}}
       <section class="more-apps" aria-labelledby="more-heading"><h2 id="more-heading">A little more to explore.</h2>{{range .Apps}}{{if ne .ID $.Selected.ID}}<a href="/apps/{{.ID}}"><img src="/assets/{{.Icon}}" alt="" width="42" height="42"><span><strong>{{.Name}}</strong><small>{{.Tagline}}</small></span><span aria-hidden="true">↗</span></a>{{end}}{{end}}<a class="back-to-store" href="/#apps">Back to the collection <span aria-hidden="true">←</span></a></section>
       <p id="feedback" role="status" aria-live="polite"></p>

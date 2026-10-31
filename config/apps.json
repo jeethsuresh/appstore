@@ -28,7 +28,8 @@
     "repository": "jeethsuresh/appstore",
     "assetName": "appstore-android.apk",
     "certificateSha256": "e70b5b54a0d174f4ad8867889f6481a2b193dc9c130630f321563e12f3293793",
-    "description": "Your private app collection, Gravitas sign-in, and signed updates — including updates to Private Store itself."
+    "description": "Your private app collection, Gravitas sign-in, and verified updates on Android, macOS, Windows and Linux \u2014 including updates to Private Store itself.",
+    "desktop": true
   },
   {
     "id": "launcher",
@@ -65,5 +66,19 @@
     "assetName": "Haven-{tag}-android.apk",
     "certificateSha256": "3c01375ebd40c543f9d6d1a6c1aeb18c689188eee35341a3b1ba3b89a397c085",
     "description": "Back up permitted gallery media directly to your desktop sinks and browse thumbnails with Gravitas. Initial release runs while the app is open."
+  },
+  {
+    "id": "rss",
+    "name": "RSS Reader",
+    "repository": "jeethsuresh/rss",
+    "desktop": true,
+    "description": "Your feeds, saved locally. Read and organise RSS subscriptions on desktop with optional hosted synchronization."
+  },
+  {
+    "id": "email",
+    "name": "Email",
+    "repository": "jeethsuresh/emails",
+    "desktop": true,
+    "description": "An offline desktop inbox with local mail storage, IMAP synchronization and Gravitas sign-in."
   }
 ]
