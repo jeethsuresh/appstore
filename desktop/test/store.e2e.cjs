@@ -47,7 +47,7 @@ test('desktop discovers compatible apps, signs in, installs, updates and stages 
     await expect(page.getByRole('button', { name: 'Update ↓', exact: true })).toBeVisible();
     await page.getByRole('button', { name: 'Update all ↓' }).click();
     await expect(page.getByRole('button', { name: 'Open ↗' })).toBeVisible();
-    await electron.evaluate(code => { global.fixtureApps.push({ ...global.fixtureApps[0], id: 'appstore', name: 'Private Store', desktopRelease: { ...global.fixtureApps[0].desktopRelease, versionCode: code + 1, version: '9.0.0' } }); }, storeVersionCode);
+    await electron.evaluate((_electron, code) => { global.fixtureApps.push({ ...global.fixtureApps[0], id: 'appstore', name: 'Private Store', desktopRelease: { ...global.fixtureApps[0].desktopRelease, versionCode: code + 1, version: '9.0.0' } }); }, storeVersionCode);
     await page.getByRole('button', { name: 'Check for updates' }).click();
     await page.getByRole('button', { name: 'Update all ↓' }).click();
     await expect(page.getByText('A new Private Store is ready.', { exact: false })).toBeVisible();
