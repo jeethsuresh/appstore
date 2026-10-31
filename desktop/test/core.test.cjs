@@ -72,3 +72,21 @@ test('archive containment uses canonical paths when the install root is a symlin
   await require('../unzip.cjs')(path.join(__dirname, 'fixtures', 'safe.zip'), { dir: alias });
   assert.equal(await fs.readFile(path.join(alias, 'App.app', 'Current', 'file'), 'utf8'), 'app');
 });
+test('saved sign-in restores Electron async decrypt results and rotates encrypted keys', async t => {
+  const { saveCredential, loadCredential } = require('../core.cjs');
+  const temp = await fs.mkdtemp(path.join(os.tmpdir(), 'store-session-')); t.after(() => fs.rm(temp, { recursive: true, force: true }));
+  const file = path.join(temp, 'session.enc'), credential = { token: 'a'.repeat(64), account: 'desktop-user', expiresAt: 9999999999 };
+  let generation = 1, writes = 0;
+  const storage = {
+    encryptStringAsync: async plain => { writes++; return Buffer.from(JSON.stringify({ generation, ciphertext: Buffer.from(plain).toString('base64') })); },
+    decryptStringAsync: async encrypted => { const decoded = JSON.parse(encrypted); return { result: Buffer.from(decoded.ciphertext, 'base64').toString(), shouldReEncrypt: decoded.generation !== generation }; },
+  };
+  await saveCredential(file, credential, storage);
+  assert.equal((await fs.readFile(file, 'utf8')).includes(credential.token), false);
+  assert.deepEqual(await loadCredential(file, storage), credential);
+  generation = 2;
+  assert.deepEqual(await loadCredential(file, storage), credential);
+  assert.equal(writes, 2, 'rotated OS keys cause a new encrypted write');
+  assert.deepEqual(await loadCredential(file, storage), credential);
+  assert.equal(writes, 2, 'current OS keys do not rewrite the session on every launch');
+});

@@ -38,6 +38,19 @@ async function readJSON(file, fallback) {
   try { return JSON.parse(await fs.readFile(file, 'utf8')); }
   catch (e) { if (e.code === 'ENOENT') return fallback; throw new Error('Saved store data could not be read. Restore it before continuing.'); }
 }
+async function saveCredential(file, credential, storage) {
+  const encrypted = await storage.encryptStringAsync(JSON.stringify(credential));
+  const temporary = file + '.' + require('node:crypto').randomUUID() + '.tmp';
+  await fs.writeFile(temporary, encrypted, { mode: 0o600 });
+  await fs.rename(temporary, file);
+}
+async function loadCredential(file, storage) {
+  const decrypted = await storage.decryptStringAsync(await fs.readFile(file));
+  const credential = JSON.parse(decrypted.result);
+  if (!credential || !/^[a-f0-9]{64}$/.test(credential.token) || typeof credential.account !== 'string') throw new Error('Saved sign-in is invalid.');
+  if (decrypted.shouldReEncrypt) await saveCredential(file, credential, storage);
+  return credential;
+}
 async function downloadVerified(response, destination, artifact, progress = () => {}) {
   if (!response.ok || !response.body) throw new Error(`Download failed (${response.status}).`);
   const length = response.headers.get('content-length');
@@ -58,4 +71,4 @@ function releasePath(app, current = target()) {
   artifactFor(app, current);
   return `/v1/desktop/releases/${app.id}/${app.desktopRelease.versionCode}/${current.platform}/${current.arch}`;
 }
-module.exports = { STORE_URL, target, validID, artifactFor, updateAvailable, atomicJSON, readJSON, downloadVerified, releasePath };
+module.exports = { STORE_URL, target, validID, artifactFor, updateAvailable, atomicJSON, readJSON, downloadVerified, releasePath, saveCredential, loadCredential };

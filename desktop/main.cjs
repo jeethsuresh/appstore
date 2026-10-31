@@ -7,6 +7,7 @@ const { pathToFileURL } = require('node:url');
 const { spawn } = require('node:child_process');
 const { randomUUID } = require('node:crypto');
 const { STORE_URL, target, validID, atomicJSON, readJSON, artifactFor, updateAvailable, downloadVerified, releasePath } = require('./core.cjs');
+const credentials = require('./core.cjs');
 const { installPackage, executable, createShortcut } = require('./installer.cjs');
 const version = require('./package.json');
 protocol.registerSchemesAsPrivileged([{ scheme: 'store', privileges: { standard: true, secure: true, supportFetchAPI: true } }]);
@@ -22,11 +23,9 @@ function snapshot() {
 function publish() { if (window && !window.isDestroyed()) window.webContents.send('store:state', snapshot()); }
 async function persist() { await atomicJSON(statePath, { installed, settings, pendingSelf, catalog }); }
 async function saveCredential() {
-  await fs.rm(sessionPath, { force: true });
   if (credential && secureStorage) {
-    const encrypted = await safeStorage.encryptStringAsync(JSON.stringify(credential));
-    await fs.writeFile(sessionPath, encrypted, { mode: 0o600 });
-  }
+    await credentials.saveCredential(sessionPath, credential, safeStorage);
+  } else await fs.rm(sessionPath, { force: true });
 }
 async function api(route, options = {}) {
   const headers = { ...options.headers };
@@ -154,7 +153,7 @@ app.whenReady().then(async () => {
   // Electron's Linux fallback is not secure credential storage.
   if (process.platform === 'linux') secureStorage = secureStorage && safeStorage.isEncryptionAvailable() && ['gnome_libsecret', 'kwallet', 'kwallet5', 'kwallet6'].includes(safeStorage.getSelectedStorageBackend());
   if (secureStorage) {
-    try { credential = JSON.parse(await safeStorage.decryptStringAsync(await fs.readFile(sessionPath))); }
+    try { credential = await credentials.loadCredential(sessionPath, safeStorage); }
     catch (e) { if (e.code !== 'ENOENT') error = 'Saved sign-in could not be unlocked. Sign in again.'; }
   }
   protocol.handle('store', request => {

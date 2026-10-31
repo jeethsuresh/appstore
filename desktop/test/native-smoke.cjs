@@ -22,7 +22,17 @@ async function smoke() {
     const release = { id: 'appstore', name: 'Private Store', desktopRelease: { version: packageInfo.version, versionCode: packageInfo.versionCode, artifacts: [artifact] } };
     const installed = await installPackage({ app: release, archive: file, root: path.join(temporary, 'apps'), current });
     const electron = await _electron.launch({ executablePath: await executable(installed), args: ['--no-sandbox'], env: { ...process.env, APPIMAGE_EXTRACT_AND_RUN: '1', XDG_CONFIG_HOME: temporary, XDG_DATA_HOME: path.join(temporary, 'local') }, timeout: 60000 });
-    try { const page = await electron.firstWindow({ timeout: 30000 }); await page.waitForSelector('#content', { timeout: 30000 }); if (await page.title() !== 'Private Store') throw new Error('Packaged UI failed to load'); }
+    try {
+      const page = await electron.firstWindow({ timeout: 30000 }); await page.waitForSelector('#content', { timeout: 30000 });
+      if (await page.title() !== 'Private Store') throw new Error('Packaged UI failed to load');
+      const roundTrip = await electron.evaluate(async ({ safeStorage }) => {
+        if (!(await safeStorage.isAsyncEncryptionAvailable())) return 'unavailable';
+        const encrypted = await safeStorage.encryptStringAsync('private-store-restart-check');
+        const decrypted = await safeStorage.decryptStringAsync(encrypted);
+        return decrypted.result;
+      });
+      if (roundTrip !== 'unavailable' && roundTrip !== 'private-store-restart-check') throw new Error('OS credential round trip failed');
+    }
     finally { await electron.close(); }
     console.log('Verified native package extraction and launch for ' + current.platform + '/' + current.arch);
     // Exercise both existing native installer conventions on matching runners.
