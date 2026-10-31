@@ -146,3 +146,13 @@ See [the versioned protocol contract and integration](protocols/README.md) for G
 ## Desktop
 
 Private Store also runs on macOS, Windows and Linux, with x64 and ARM64 packages, Gravitas sign-in, verified installations, app pages, changelogs, automatic app updates and self-update. See [desktop installation, catalog targeting and release publishing](DESKTOP_RELEASES.md). Existing Android entries remain mobile-only; `"desktop": true` adds compatible desktop releases, and desktop-only entries omit the Android package fields.
+
+### River account sign-in
+
+Private Store 0.6.4 adds River (`cool.gravitas.river`) to the native broker,
+with River's permanent release certificate pinned separately from Spacetime.
+River requests its fixed app origin, callback, and existing messaging/contact
+permissions. Gravitas must already have full River consent; the broker cannot
+create or expand it. Missing consent, another requested account, or an older
+Store uses River's browser flow. A new Matrix device still requires separate
+messaging approval. Store credentials never leave the Store.

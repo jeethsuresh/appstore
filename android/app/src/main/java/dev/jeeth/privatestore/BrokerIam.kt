@@ -50,14 +50,15 @@ class BrokerIam(private val transport: BrokerTransport=BrokerHTTP()) {
     }
     fun authorize(session: BrokerSession,request: BrokerRequest): JSONObject {
         discovery()
-        val body=JSONObject().put("app_origin",BrokerProtocol.ORIGIN).put("redirect_uri",BrokerProtocol.REDIRECT).put("scope","profile.name").put("code_challenge_method","S256").put("code_challenge",request.challenge).put("state",request.state)
+        val target=request.client
+        val body=JSONObject().put("app_origin",target.origin).put("redirect_uri",target.redirect).put("scope",target.scope).put("code_challenge_method","S256").put("code_challenge",request.challenge).put("state",request.state)
         val r=transport.request(BrokerProtocol.ISSUER+"/oauth/broker/authorize",session.accessToken,body.toString(),false)
         if(r.status==401) throw BrokerFailure(BrokerError.LOGIN_REQUIRED)
         if(r.status==403) throw BrokerFailure(if(json(r).optString("error")=="consent_required") BrokerError.CONSENT_REQUIRED else BrokerError.UNAUTHORIZED_CLIENT)
         if(r.status==400) throw BrokerFailure(BrokerError.INVALID_REQUEST)
         if(r.status!=200) throw BrokerFailure(BrokerError.UNAVAILABLE)
         val d=json(r);val code=d.optString("code")
-        if(d.optString("issuer")!=session.issuer || d.optString("app_origin")!=BrokerProtocol.ORIGIN || d.optString("redirect_uri")!=BrokerProtocol.REDIRECT || d.optString("state")!=request.state || d.optString("session_id")!=session.sessionId || d.optString("sub")!=session.subject || d.optLong("expires_in") !in 1..60 || code.isBlank() || code.length>2048 || code.any { it.isWhitespace() }) throw BrokerFailure(BrokerError.UNAVAILABLE)
+        if(d.optString("issuer")!=session.issuer || d.optString("app_origin")!=target.origin || d.optString("redirect_uri")!=target.redirect || d.optString("state")!=request.state || d.optString("session_id")!=session.sessionId || d.optString("sub")!=session.subject || d.optLong("expires_in") !in 1..60 || code.isBlank() || code.length>2048 || code.any { it.isWhitespace() }) throw BrokerFailure(BrokerError.UNAVAILABLE)
         return d
     }
 }

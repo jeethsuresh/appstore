@@ -1,9 +1,9 @@
 {
   "schemaVersion": 1,
-  "version": "0.6.3",
-  "versionCode": 15,
+  "version": "0.6.4",
+  "versionCode": 16,
   "changes": [
-    "Update checks reuse verified release metadata so adding desktop apps does not exhaust the shared store\u2019s GitHub request allowance.",
-    "New releases still appear automatically, and downloads continue to require matching checksums and signing identities."
+    "Allow the signed River Android app to reuse a signed-in Private Store account when its Gravitas permissions are already approved.",
+    "Keep account selection, new consent, and unavailable broker sign-ins in the browser."
   ]
 }
