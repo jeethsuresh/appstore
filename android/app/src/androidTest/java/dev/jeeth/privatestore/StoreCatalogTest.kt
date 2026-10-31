@@ -71,13 +71,13 @@ class StoreCatalogTest {
             vault.save(Session("https://127.0.0.1:9", "isolated-ui-fixture", "@fixture:example.invalid"))
             compose.activityRule.scenario.recreate()
             compose.onNode(hasText("Settings") and hasClickAction()).performClick()
-            compose.onNodeWithText("Automatic updates").assertIsDisplayed()
+            compose.onNodeWithText("Automatic updates").performScrollTo().assertIsDisplayed()
             compose.onAllNodes(isToggleable())[0].performClick()
             compose.runOnIdle { assertEquals(!originalAuto, prefs.getBoolean("auto", true)) }
             screenshot("settings")
             compose.activityRule.scenario.recreate()
             compose.onNode(hasText("Settings") and hasClickAction()).performClick()
-            compose.onNodeWithText("Automatic updates").assertIsDisplayed()
+            compose.onNodeWithText("Automatic updates").performScrollTo().assertIsDisplayed()
             compose.runOnIdle { assertEquals(!originalAuto, prefs.getBoolean("auto", true)) }
             compose.waitUntil(30_000) { !compose.onNodeWithText("Forget local enrollment").fetchSemanticsNode().config.contains(androidx.compose.ui.semantics.SemanticsProperties.Disabled) }
             compose.onNodeWithText("Forget local enrollment").performScrollTo().performClick()
