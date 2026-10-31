@@ -44,7 +44,7 @@ object Installer {
         require(context.packageManager.canRequestPackageInstalls()) { "Allow Private Store to install apps in Android settings" }
         val installer = context.packageManager.packageInstaller
         val prefs = context.getSharedPreferences("updates", Context.MODE_PRIVATE)
-        if (background && prefs.getLong("pending.${app.packageName}", 0) == app.release!!.versionCode && installer.mySessions.any { it.appPackageName == app.packageName }) { file.delete(); return }
+        if (background && prefs.getLong("pending.${app.packageName}", 0) == app.release!!.versionCode && installer.mySessions.any { it.appPackageName == app.packageName }) { return }
         // Avoid accumulating sessions while the user is considering a previous confirmation.
         installer.mySessions.filter { it.appPackageName == app.packageName }.forEach { installer.abandonSession(it.sessionId) }
         val params = PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL).apply {
@@ -63,7 +63,7 @@ object Installer {
                 session.commit(pending.intentSender)
             }
         } catch (e: Exception) { runCatching { installer.abandonSession(id) };prefs.edit().remove("pending.${app.packageName}").apply();throw e }
-        finally { file.delete() }
+        // Keep the verified APK until Android confirms success; failed/cancelled installs can reuse it.
     }
 }
 object Notices {
@@ -96,6 +96,7 @@ class InstallReceiver : BroadcastReceiver() {
             Notices.show(context, id, "Finish installing $name", "Tap to approve the Android installation.", confirm)
         } else {
             if(status==PackageInstaller.STATUS_SUCCESS) {
+                ApkCache(File(context.filesDir, "downloads")).complete(pkg, intent.getLongExtra("versionCode", 0))
                 runCatching { BrokerAccounts.reconcile(context) }
                 context.sendBroadcast(Intent(context, NotificationRelayReceiver::class.java).setAction(context.packageName + ".NOTIFICATION_APPS_CHANGED").setData(android.net.Uri.fromParts("package", pkg, null)))
             }

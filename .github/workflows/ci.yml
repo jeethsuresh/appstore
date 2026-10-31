@@ -76,19 +76,21 @@ jobs:
           mkdir -p android/app/build/generated/e2e-res/raw
           openssl req -x509 -newkey rsa:2048 -nodes -keyout "$RUNNER_TEMP/notification-power-ca.key" -out android/app/build/generated/e2e-res/raw/integration_ca.pem -days 2 -subj '/CN=Notification power test CA'
           rm "$RUNNER_TEMP/notification-power-ca.key"
-      - name: Test screen-off Doze delivery policy on Android
+      - name: Test Android navigation, settings and screen-off delivery
         uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2
         with:
           api-level: 35
           arch: x86_64
           disable-animations: true
-          script: ./android/gradlew -p android --no-daemon -PstoreTestBuildType=e2e -Pandroid.testInstrumentationRunnerArguments.class=dev.jeeth.privatestore.NotificationRelayPowerTest connectedE2eAndroidTest
+          script: ./tools/e2e/ui-checks.sh
       - name: Preserve notification power test results
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: notification-power-results
-          path: android/app/build/reports/androidTests/connected/**
+          path: |
+            android/app/build/reports/androidTests/connected/**
+            android/app/build/reports/ui/**
           if-no-files-found: ignore
       - uses: actions/upload-artifact@v4
         with:

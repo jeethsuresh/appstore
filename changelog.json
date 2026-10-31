@@ -1,10 +1,11 @@
 {
   "schemaVersion": 1,
-  "version": "0.5.2",
-  "versionCode": 11,
+  "version": "0.6.0",
+  "versionCode": 12,
   "changes": [
-    "Allow screen-off notifications in Private Store to request Android's battery exemption for the shared app notification connection.",
-    "Spacetime invitations and event updates can use the shared connection during Doze when the battery exemption is allowed. Without it, delivery can wait until Android restores networking.",
-    "Notification settings show whether screen-off delivery is allowed and provide a link to change battery settings."
+    "Browse a searchable two-column app catalog or switch to a compact list, with app icons and dedicated pages for app information and release notes.",
+    "Find update and notification preferences, Android permissions and sign-out controls on the new Settings page.",
+    "Download up to three apps at once with individual progress, and update installed apps together.",
+    "Keep verified downloads in private storage until installation succeeds, so cancelled or failed installs can retry without downloading again."
   ]
 }

@@ -1,7 +1,6 @@
-# Private Store 0.4.1
+# Private Store 0.6.0
 
-Private Store now recognises installed copies of Atlas, so its button correctly shows Installed or Update. Small APK downloads display in bytes or kB instead of rounding to 0.0 MB on Android and the web.
-
-Catalog package visibility is checked before and after the Android build, so adding an app without its required Android visibility declaration fails CI.
-
-Install **appstore-android.apk** over the existing Private Store. The package and permanent signing certificate are unchanged. GitHub now builds, verifies and publishes new signed versions automatically.
+- Browse a searchable two-column app catalog or switch to a compact list, with app icons and dedicated pages for app information and release notes.
+- Find update and notification preferences, Android permissions and sign-out controls on the new Settings page.
+- Download up to three apps at once with individual progress, and update installed apps together.
+- Keep verified downloads in private storage until installation succeeds, so cancelled or failed installs can retry without downloading again.
