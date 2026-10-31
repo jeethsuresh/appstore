@@ -225,4 +225,7 @@ func TestUniversalDiscoverySharesRequestsAndRefreshesNextPoll(t *testing.T) {
 	if err != nil || rel.Tag != latest || requests != 2 {
 		t.Fatal("next poll did not discover fresh releases", err, rel.Tag, requests)
 	}
+	app.Package = ""
+	rel, err = s.findRelease(withReleaseDiscovery(context.Background()), app, "", desktop)
+	if err != nil || rel.Tag != "desktop-"+latest || requests != 3 { t.Fatal("desktop-only app followed stale /latest", err, rel.Tag, requests) }
 }

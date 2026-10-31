@@ -117,9 +117,9 @@ func (s *Server) releaseMetadata(ctx context.Context, path string, limit int64) 
 }
 func (s *Server) findRelease(ctx context.Context, a App, tag string, matches func(githubRelease) bool) (githubRelease, error) {
 	var rel githubRelease
-	// A universal app's list contains both independent release streams. Fetch it
-	// once rather than separately fetching /latest and falling back for desktop.
-	if tag != "" || !a.Desktop || a.Package == "" {
+	// Desktop releases can follow an older GitHub /latest tag. Search the list
+	// and share it with mobile discovery for universal apps.
+	if tag != "" || !a.Desktop {
 		path := "/repos/" + a.Repo + "/releases/latest"
 		if tag != "" {
 			path = "/repos/" + a.Repo + "/releases/tags/" + url.PathEscape(tag)
