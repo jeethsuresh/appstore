@@ -71,6 +71,11 @@ jobs:
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
+      - name: Prepare isolated testbed certificate resource
+        run: |
+          mkdir -p android/app/build/generated/e2e-res/raw
+          openssl req -x509 -newkey rsa:2048 -nodes -keyout "$RUNNER_TEMP/notification-power-ca.key" -out android/app/build/generated/e2e-res/raw/integration_ca.pem -days 2 -subj '/CN=Notification power test CA'
+          rm "$RUNNER_TEMP/notification-power-ca.key"
       - name: Test screen-off Doze delivery policy on Android
         uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2
         with:
