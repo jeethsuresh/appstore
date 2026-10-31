@@ -53,6 +53,8 @@ def stage(directory):
     if found != TARGETS:
         raise ValueError(f"all six desktop targets must be present; missing {TARGETS - found}")
     manifest = {**changelog, "artifacts": artifacts}
+    if len((json.dumps(manifest, indent=2) + "\n").encode()) > 64 * 1024:
+        raise ValueError("desktop release manifest exceeds the ingestion size limit")
     (directory / "desktop-release.json").write_text(json.dumps(manifest, indent=2) + "\n")
     (directory / "desktop-changelog.json").write_text(json.dumps(changelog, indent=2) + "\n")
     files = [directory / a["file"] for a in artifacts] + [directory / "desktop-release.json", directory / "desktop-changelog.json"]

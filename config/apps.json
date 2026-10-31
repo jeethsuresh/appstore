@@ -79,6 +79,6 @@
     "name": "Email",
     "repository": "jeethsuresh/emails",
     "desktop": true,
-    "description": "An offline desktop inbox with local mail storage, IMAP synchronization and Gravitas sign-in."
+    "description": "An offline desktop inbox with local mail storage and IMAP synchronization."
   }
 ]

@@ -15,7 +15,7 @@
   },
   "dependencies": {
     "7zip-bin": "5.2.0",
-    "yauzl": "3.2.0"
+    "yauzl": "3.4.0"
   },
   "devDependencies": {
     "electron": "45.2.1",
