@@ -1,9 +1,9 @@
 {
   "schemaVersion": 1,
-  "version": "0.6.1",
-  "versionCode": 13,
+  "version": "0.6.2",
+  "versionCode": 14,
   "changes": [
-    "Keep the Android catalog focused on mobile apps as Private Store adds separate desktop releases.",
-    "Find macOS, Windows and Linux store downloads and platform-specific release notes on app pages."
+    "Keep the Android catalog focused on mobile apps while desktop apps use their own releases.",
+    "Private Store updates now wait for delayed release metadata before publishing verified downloads."
   ]
 }

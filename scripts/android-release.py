@@ -9,6 +9,7 @@ from pathlib import Path
 import re
 import shutil
 import subprocess
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -68,6 +69,7 @@ def api(path, missing=False):
         "Authorization": "Bearer " + os.environ["GH_TOKEN"],
         "Accept": "application/vnd.github+json",
         "X-GitHub-Api-Version": "2022-11-28",
+        "Cache-Control": "no-cache",
     })
     try:
         with urllib.request.urlopen(request, timeout=30) as response:
@@ -196,6 +198,20 @@ def stage(config, name, code):
     print("Verified", config["name"], name, "build", code, "SHA256", checksum)
 
 
+def uploaded_draft(tag, request=api, pause=time.sleep, attempts=10):
+    # GitHub's release list can briefly lag behind a successful draft upload.
+    # Keep every asset check below; never publish an unobserved draft.
+    for attempt in range(attempts):
+        release = next((item for item in request("releases?per_page=100") if item["tag_name"] == tag), None)
+        if release:
+            if not release["draft"]:
+                raise ValueError("The uploaded release is no longer a draft; refusing to change it")
+            return release
+        if attempt + 1 < attempts:
+            pause(min(2 ** attempt, 10))
+    raise ValueError("The uploaded draft could not be verified after bounded retries")
+
+
 def publish(config, name):
     tag = "v" + name
     if api("releases/tags/" + tag, missing=True) or api("git/ref/tags/" + tag, missing=True):
@@ -214,9 +230,7 @@ def publish(config, name):
     notes += "\n\nInstall the APK over the existing app. See SHA256SUMS and release-manifest.json for the package, permanent certificate and download digest."
     subprocess.run(["gh", "release", "create", tag, "--repo", repo, "--target", os.environ["GITHUB_SHA"],
                     "--draft", "--title", config["name"] + " " + name, "--notes", notes, *map(str, files)], check=True)
-    release = next((item for item in api("releases?per_page=100") if item["tag_name"] == tag), None)
-    if not release or not release["draft"]:
-        raise ValueError("The uploaded draft could not be verified")
+    release = uploaded_draft(tag, request=api)
     assets = {item["name"]: item for item in release["assets"]}
     if set(assets) != {p.name for p in files}:
         raise ValueError("Uploaded assets are incomplete; the draft remains unpublished")
