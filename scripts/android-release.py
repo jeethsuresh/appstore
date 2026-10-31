@@ -198,7 +198,7 @@ def stage(config, name, code):
     print("Verified", config["name"], name, "build", code, "SHA256", checksum)
 
 
-def uploaded_draft(tag, request=api, pause=time.sleep, attempts=8):
+def uploaded_draft(tag, request=api, pause=time.sleep, attempts=10):
     # GitHub's release list can briefly lag behind a successful draft upload.
     # Keep every asset check below; never publish an unobserved draft.
     for attempt in range(attempts):
