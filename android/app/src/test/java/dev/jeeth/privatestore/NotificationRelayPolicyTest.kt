@@ -4,6 +4,19 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class NotificationRelayPolicyTest {
+    @Test fun idleDeliveryHonorsTheUsersBatteryExemption() {
+        assertFalse(NotificationRelayPolicy.canConnect(deviceIdle = true, batteryExempt = false, networkValidated = true))
+        assertTrue(NotificationRelayPolicy.canConnect(deviceIdle = true, batteryExempt = true, networkValidated = true))
+    }
+    @Test fun powerExemptionDoesNotRetryWithoutAValidatedNetwork() {
+        for (idle in listOf(false, true)) for (exempt in listOf(false, true)) {
+            assertFalse(NotificationRelayPolicy.canConnect(idle, exempt, networkValidated = false))
+        }
+    }
+    @Test fun anAwakePhoneCanConnectWithoutAPowerExemption() {
+        assertTrue(NotificationRelayPolicy.canConnect(deviceIdle = false, batteryExempt = false, networkValidated = true))
+        assertTrue(NotificationRelayPolicy.canConnect(deviceIdle = false, batteryExempt = true, networkValidated = true))
+    }
     @Test fun failuresBackOffToHalfAnHourWithoutFastRetryStorms() {
         val delays = (1..100).map { NotificationRelayPolicy.retryDelaySeconds(it, 0) }
         assertEquals(60L, delays.first())

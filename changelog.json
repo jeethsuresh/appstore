@@ -1,9 +1,10 @@
 {
   "schemaVersion": 1,
-  "version": "0.5.1",
-  "versionCode": 10,
+  "version": "0.5.2",
+  "versionCode": 11,
   "changes": [
-    "Haven joins the Private Store catalog for media backup to your own desktop devices.",
-    "Private Store can detect installed Haven copies and offer updates verified against Haven’s permanent signing certificate."
+    "Allow screen-off notifications in Private Store to request Android's battery exemption for the shared app notification connection.",
+    "Spacetime invitations and event updates can use the shared connection during Doze when the battery exemption is allowed. Without it, delivery can wait until Android restores networking.",
+    "Notification settings show whether screen-off delivery is allowed and provide a link to change battery settings."
   ]
 }

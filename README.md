@@ -22,7 +22,7 @@ Background updates request installation without interaction when Android permits
 
 ## App notifications
 
-Private Store can share a minimal native notification connection across installed supporting apps. Spacetime sends event invitations and updates through its backend, the store backend and this listener, then posts its own native notification without starting Flutter. The listener runs in a separate process, uses no polling or wake locks, and sleeps during Doze. See [notification setup, protocol and battery validation](docs/NOTIFICATIONS.md).
+Private Store can share a minimal native notification connection across installed supporting apps. Spacetime sends event invitations and updates through its backend, the store backend and this listener, then posts its own native notification without starting Flutter. The listener runs in a separate process and uses no polling or wake locks. For delivery while the screen is off, select **Allow screen-off notifications** in Private Store and approve Android's battery exemption. Without that exemption, the listener waits during Doze and replays queued notifications when networking resumes. Each receiving app still needs notification permission. See [notification setup, protocol and battery validation](docs/NOTIFICATIONS.md).
 
 ## Supported apps
 
