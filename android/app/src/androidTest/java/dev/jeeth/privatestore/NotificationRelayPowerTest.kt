@@ -2,6 +2,7 @@ package dev.jeeth.privatestore
 
 import android.os.ParcelFileDescriptor
 import android.os.PowerManager
+import android.util.Log
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import org.junit.Assert.*
@@ -14,7 +15,7 @@ import org.junit.runner.RunWith
 class NotificationRelayPowerTest {
     private fun shell(command: String): String = ParcelFileDescriptor.AutoCloseInputStream(
         InstrumentationRegistry.getInstrumentation().uiAutomation.executeShellCommand(command),
-    ).bufferedReader().use { it.readText() }
+    ).bufferedReader().use { it.readText() }.also { Log.i("NotificationPower", "$command: $it") }
 
     private fun await(description: String, condition: () -> Boolean) {
         val until = System.nanoTime() + 10_000_000_000L
@@ -31,12 +32,18 @@ class NotificationRelayPowerTest {
         val pkg = context.packageName
         val power = context.getSystemService(PowerManager::class.java)
         val originallyExempt = NotificationRelay.ignoresBatteryOptimizations(context)
+        val originallyIdleEnabled = shell("dumpsys deviceidle enabled deep").trim() == "1"
         try {
             shell("dumpsys deviceidle whitelist -$pkg")
             await("battery optimization enabled") { !NotificationRelay.ignoresBatteryOptimizations(context) }
             shell("dumpsys battery unplug")
+            // AOSP emulator images can disable automatic deep idle by default.
+            // Enable the real controller before asking it to enter Doze.
+            shell("dumpsys deviceidle enable deep")
             shell("input keyevent KEYCODE_SLEEP")
+            await("screen off") { !power.isInteractive }
             shell("dumpsys deviceidle force-idle")
+            Log.i("NotificationPower", shell("dumpsys deviceidle"))
             await("screen off in Doze") { !power.isInteractive && power.isDeviceIdleMode }
             assertFalse("Non-exempt relay must wait in Doze", NotificationRelay.canConnect(context, networkValidated = true))
 
@@ -58,6 +65,7 @@ class NotificationRelayPowerTest {
             shell("dumpsys battery reset")
             shell("input keyevent KEYCODE_WAKEUP")
             shell("dumpsys deviceidle whitelist ${if (originallyExempt) "+" else "-"}$pkg")
+            if (!originallyIdleEnabled) shell("dumpsys deviceidle disable deep")
         }
     }
 }
