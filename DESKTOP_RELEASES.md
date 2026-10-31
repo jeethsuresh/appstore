@@ -65,7 +65,7 @@ never displaces the latest Android update.
 
 The backend fetches every binary from the configured GitHub repository's asset
 API, verifies size and SHA-256, and exposes the release only when every artifact
-has verified. The client verifies the downloaded bytes again before extracting.
+has verified. Verified changelogs and desktop manifests are cached by GitHub asset identity, size and digest across polls and backend restarts, reducing anonymous API usage. New release discovery still runs on every poll. The client verifies the downloaded bytes again before extracting.
 GitHub repository access and HTTPS are the desktop release trust root; checksums
 are not an independent publisher signature. ZIP extraction rejects path
 traversal, escaping symlinks, writes through symlinks and oversized expansions.
