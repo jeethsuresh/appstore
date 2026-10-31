@@ -82,13 +82,15 @@ jobs:
           api-level: 35
           arch: x86_64
           disable-animations: true
-          script: ./android/gradlew -p android --no-daemon -PstoreTestBuildType=e2e -Pandroid.testInstrumentationRunnerArguments.class=dev.jeeth.privatestore.NotificationRelayPowerTest,dev.jeeth.privatestore.StoreCatalogTest connectedE2eAndroidTest
+          script: ./tools/e2e/ui-checks.sh
       - name: Preserve notification power test results
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: notification-power-results
-          path: android/app/build/reports/androidTests/connected/**
+          path: |
+            android/app/build/reports/androidTests/connected/**
+            android/app/build/reports/ui/**
           if-no-files-found: ignore
       - uses: actions/upload-artifact@v4
         with:
