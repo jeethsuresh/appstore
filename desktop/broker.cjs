@@ -81,7 +81,7 @@ class BrokerEngine {
     if (s.accessExpiresAt <= Date.now() / 1000 + 60) credential = await this.rotate(credential);
     await this.status(credential.broker);
     if (signal?.aborted || this.getCredential() !== credential) throw new BrokerError('cancelled');
-    if (!await this.approve({ appOrigin: request.appOrigin, account: s.account })) throw new BrokerError('cancelled');
+    if (!await this.approve({ appOrigin: request.appOrigin, account: s.account, signal })) throw new BrokerError('cancelled');
     if (signal?.aborted || this.getCredential() !== credential) throw new BrokerError('cancelled');
     const body = { app_origin: request.appOrigin, redirect_uri: request.redirectUri, scope: 'profile.name', code_challenge_method: 'S256', code_challenge: request.codeChallenge, state: request.state };
     let r = await this.json('/oauth/broker/authorize', credential.broker.accessToken, body);
@@ -97,14 +97,14 @@ class BrokerEngine {
 }
 async function serveBroker({ file = discoveryPath(), launch, authorize }) {
   const nonce = randomBytes(32).toString('base64url');
-  let pending = false;
+  let pending = false, pendingAbort;
   const server = http.createServer(async (req, res) => {
     res.setHeader('Cache-Control', 'no-store'); res.setHeader('Content-Type', 'application/json');
     const reply = (status, body) => { res.writeHead(status); res.end(JSON.stringify(body)); };
     if (req.method !== 'POST' || req.url !== '/v1/authorize' || req.headers.host !== `127.0.0.1:${server.address().port}` || req.headers.origin !== undefined || req.headers.authorization !== 'Bearer ' + nonce || req.headers['content-type'] !== 'application/json') { reply(403, { status: 'invalid_request' }); return; }
     if (pending) { reply(429, { status: 'unavailable' }); return; }
     pending = true;
-    const abort = new AbortController();
+    const abort = new AbortController(); pendingAbort = abort;
     res.on('close', () => { if (!res.writableFinished) abort.abort(); });
     const timeout = setTimeout(() => { abort.abort(); res.destroy(); }, 90000);
     try {
@@ -114,14 +114,14 @@ async function serveBroker({ file = discoveryPath(), launch, authorize }) {
       try { input = JSON.parse(Buffer.concat(chunks)); } catch { throw new BrokerError('invalid_request'); }
       parseRequest(input);
       const result = await authorize(input, abort.signal);
-      if (!abort.signal.aborted) reply(200, result);
+      if (!res.destroyed) reply(200, abort.signal.aborted ? { protocolVersion: 1, status: 'cancelled' } : result);
     } catch (e) { if (!res.destroyed) reply(200, { protocolVersion: 1, status: e instanceof BrokerError ? e.status : 'unavailable' }); }
-    finally { clearTimeout(timeout); pending = false; }
+    finally { clearTimeout(timeout); pending = false; pendingAbort = null; }
   });
   server.requestTimeout = 15000; server.headersTimeout = 10000;
   await new Promise((resolve, reject) => { server.once('error', reject); server.listen(0, '127.0.0.1', resolve); });
   const descriptor = { protocolVersion: 1, endpoint: `http://127.0.0.1:${server.address().port}/v1/authorize`, nonce, launch };
   await atomicJSON(file, descriptor);
-  return { server, descriptor };
+  return { server, descriptor, cancelPending: () => pendingAbort?.abort() };
 }
 module.exports = { ISSUER, STORE, BrokerError, BrokerEngine, discoveryPath, parseRequest, validateSession, serveBroker, brokerLoginFor };

@@ -10,6 +10,7 @@ const { STORE_URL, target, validID, atomicJSON, readJSON, artifactFor, updateAva
 const credentials = require('./core.cjs');
 const { installPackage, executable, createShortcut } = require('./installer.cjs');
 const version = require('./package.json');
+const { CredentialVault } = require('./credential-vault.cjs');
 const { BrokerEngine, serveBroker, validateSession, brokerLoginFor } = require('./broker.cjs');
 protocol.registerSchemesAsPrivileged([{ scheme: 'store', privileges: { standard: true, secure: true, supportFetchAPI: true } }]);
 app.setName('Private Store');
@@ -17,25 +18,17 @@ if (!app.requestSingleInstanceLock()) app.quit();
 
 let window, loginWindow, credential, catalog = [], installed = {}, settings = { autoUpdate: true }, busy = false, checking = false, error = '', progress = null, pendingSelf = null, secureStorage = false;
 const current = target();
-let statePath, sessionPath, root, brokerServer, authGeneration = 0;
-let credentialWrites = Promise.resolve();
-function replaceCredential(expected, next, valid = () => true) {
-  const operation = credentialWrites.catch(() => {}).then(async () => {
-    if (credential !== expected || !valid()) return false;
-    if (next && secureStorage) await credentials.saveCredential(sessionPath, next, safeStorage);
+let statePath, sessionPath, root, brokerServer, brokerEngine, authGeneration = 0;
+const vault = new CredentialVault({
+  read: () => credential,
+  commit: value => { credential = value; publish(); },
+  persist: async value => {
+    if (value && secureStorage) await credentials.saveCredential(sessionPath, value, safeStorage);
     else await fs.rm(sessionPath, { force: true });
-    if (!valid()) {
-      if (expected && secureStorage) await credentials.saveCredential(sessionPath, expected, safeStorage);
-      else await fs.rm(sessionPath, { force: true });
-      return false;
-    }
-    credential = next;
-    publish();
-    return true;
-  });
-  credentialWrites = operation;
-  return operation;
-}
+  },
+});
+const replaceCredential = (...args) => vault.replace(...args);
+
 function snapshot() {
   return { apps: catalog, installed: { ...installed, appstore: { version: app.getVersion(), versionCode: version.versionCode } }, account: credential?.account || '', settings, busy, error, progress, pendingSelf: !!pendingSelf, platform: current, version: app.getVersion(), secureStorage, brokerReady: !!credential?.broker };
 }
@@ -46,7 +39,7 @@ async function api(route, options = {}) {
   const expected = credential;
   if (expected) headers.Authorization = `Bearer ${expected.token}`;
   const response = await net.fetch(STORE_URL + route, { ...options, headers, redirect: 'error' });
-  if (response.status === 401 && expected) await replaceCredential(expected, null);
+  if (response.status === 401 && expected && credential?.token === expected.token) { brokerServer?.cancelPending(); await vault.invalidate().cleared; }
   if (!response.ok) {
     const body = await response.json().catch(() => ({}));
     throw new Error(body.error || `Store request failed (${response.status}).`);
@@ -175,7 +168,20 @@ const actions = {
   updateAll,
   restart,
   settings: async value => { if (typeof value !== 'boolean') throw new Error('Invalid update preference.'); settings.autoUpdate = value; await persist(); publish(); },
-  logout: async () => { if (busy) throw new Error('Wait for the current installation to finish.'); authGeneration++; loginWindow?.close(); const expected = credential; try { await api('/v1/device', { method: 'DELETE' }); } finally { await replaceCredential(expected, null); await refresh(); } },
+  logout: async () => {
+    authGeneration++;
+    loginWindow?.close();
+    // Local sign-out takes effect before any network or filesystem await.
+    const { previous, cleared } = vault.invalidate();
+    brokerServer?.cancelPending();
+    await cleared;
+    try {
+      if (previous) {
+        const response = await net.fetch(STORE_URL + '/v1/device', { method: 'DELETE', redirect: 'error', headers: { Authorization: 'Bearer ' + previous.token }, signal: AbortSignal.timeout(20000) });
+        if (!response.ok && response.status !== 401) throw new Error('Signed out on this computer. The Store could not revoke its old device enrollment.');
+      }
+    } finally { await refresh(); }
+  },
 };
 app.whenReady().then(async () => {
   const directory = app.getPath('userData');
@@ -199,6 +205,7 @@ app.whenReady().then(async () => {
     return net.fetch(pathToFileURL(file).href);
   });
   ipcMain.handle('store:action', async (event, name, value) => {
+    if (quitting) throw new Error('Private Store is quitting.');
     if (event.sender !== window?.webContents || event.senderFrame !== window.webContents.mainFrame || event.senderFrame.url !== 'store://app/index.html' || !Object.hasOwn(actions, name)) throw new Error('Invalid store action.');
     try { return await actions[name](value); } catch (e) { error = e.message; publish(); throw e; }
   });
@@ -212,17 +219,25 @@ app.whenReady().then(async () => {
   }
   Menu.setApplicationMenu(Menu.buildFromTemplate([{ label: 'Private Store', submenu: [{ role: 'about' }, { role: 'quit' }] }, { role: 'editMenu' }, { role: 'windowMenu' }]));
   createWindow();
-  const broker = new BrokerEngine({ fetch: (...args) => net.fetch(...args), getCredential: () => credential, replaceCredential, approve: async ({ appOrigin, account }) => {
+  brokerEngine = new BrokerEngine({ fetch: (...args) => net.fetch(...args), getCredential: () => credential, replaceCredential, approve: async ({ appOrigin, account, signal }) => {
     if (!window || window.isDestroyed()) createWindow();
     window.show(); window.focus();
-    const result = await dialog.showMessageBox(window, { type: 'question', title: 'Sign in with Private Store', message: `Sign in to ${new URL(appOrigin).host}?`, detail: `Use ${account} from Private Store for ${appOrigin}.\n\nOnly your basic profile is shared. Approve only if you just asked an app to sign in to this service.`, buttons: ['Cancel', 'Sign in'], defaultId: 0, cancelId: 0, noLink: true });
+    const result = await dialog.showMessageBox(window, { signal, type: 'question', title: 'Sign in with Private Store', message: `Sign in to ${new URL(appOrigin).host}?`, detail: `Use ${account} from Private Store for ${appOrigin}.\n\nOnly your basic profile is shared. Approve only if you just asked an app to sign in to this service.`, buttons: ['Cancel', 'Sign in'], defaultId: 0, cancelId: 0, noLink: true });
     return result.response === 1;
   } });
   const launch = { file: process.env.APPIMAGE || process.execPath, args: app.isPackaged ? [] : [__dirname] };
-  brokerServer = await serveBroker({ launch, authorize: (request, signal) => broker.authorize(request, signal) });
+  brokerServer = await serveBroker({ launch, authorize: (request, signal) => brokerEngine.authorize(request, signal) });
   app.on('activate', () => { if (!BrowserWindow.getAllWindows().length) createWindow(); });
   setInterval(() => refresh(true).catch(e => { error = e.message; publish(); }), 6 * 60 * 60 * 1000).unref();
 }).catch(e => { console.error(e); app.quit(); });
-app.on('before-quit', () => { authGeneration++; brokerServer?.server.closeAllConnections(); brokerServer?.server.close(); });
+let quitReady = false, quitting = false;
+app.on('before-quit', event => {
+  if (quitReady) return;
+  event.preventDefault();
+  if (quitting) return;
+  quitting = true; authGeneration++;
+  brokerServer?.cancelPending(); brokerServer?.server.closeAllConnections(); brokerServer?.server.close();
+  Promise.resolve(brokerEngine?.queue).catch(() => {}).then(() => vault.settled()).catch(() => {}).finally(() => { quitReady = true; app.quit(); });
+});
 app.on('second-instance', () => { window?.show(); window?.focus(); });
 app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit(); });
