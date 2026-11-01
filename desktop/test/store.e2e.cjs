@@ -11,7 +11,7 @@ test('desktop discovers compatible apps, signs in, installs, updates and stages 
   const electron = await _electron.launch({ args: ['--no-sandbox', path.resolve(__dirname, '..')], env: { ...process.env, XDG_CONFIG_HOME: temporary, XDG_DATA_HOME: path.join(temporary, 'local'), HOME: temporary } });
   try {
     await electron.evaluate(({ net, app, dialog }, digest) => {
-      global.brokerAccount = { issuer: 'https://gravitas.cool', appOrigin: 'https://apps.gravitas.cool', account: '@desktop-user:gravitas.cool', subject: 'desktop-user', sessionId: '11111111-1111-4111-8111-111111111111', accessToken: 'a'.repeat(43), refreshToken: 'r'.repeat(43), sessionCheckToken: 'p'.repeat(43), scope: 'profile.name native.broker', accessExpiresAt: Math.floor(Date.now()/1000) + 1800, sessionExpiresAt: Math.floor(Date.now()/1000) + 10000 };
+      global.brokerAccount = { issuer: 'https://gravitas.cool', appOrigin: 'https://apps.gravitas.cool', account: '@desktop-user:gravitas.cool', subject: 'desktop-user', sessionId: '11111111-1111-4111-8111-111111111111', accessToken: 'a'.repeat(43), refreshToken: 'r'.repeat(43), sessionCheckToken: 'p'.repeat(43), scope: 'profile.name profile.username native.broker', accessExpiresAt: Math.floor(Date.now()/1000) + 1800, sessionExpiresAt: Math.floor(Date.now()/1000) + 10000 };
       global.brokerDecision = 1;
       dialog.showMessageBox = async (_window, options) => { global.brokerPrompt = options; return { response: global.brokerDecision }; };
       const bytes = '#!/bin/sh\nexit 0\n';

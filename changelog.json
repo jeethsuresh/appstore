@@ -1,9 +1,8 @@
 {
   "schemaVersion": 1,
-  "version": "0.6.4",
-  "versionCode": 16,
+  "version": "0.6.5",
+  "versionCode": 17,
   "changes": [
-    "River, Spacetime and Haven share their Store pages with native desktop versions, while Office and RSS Reader are available in the desktop catalog.",
-    "Android still shows only compatible mobile apps. Desktop releases and updates have independent version codes."
+    "Ask separately for username access when enabling the Gravitas sign-in broker. Keep browser sign-in compatible with full-name-only profiles."
   ]
 }

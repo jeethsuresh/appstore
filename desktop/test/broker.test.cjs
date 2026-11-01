@@ -12,7 +12,7 @@ const origin = 'https://spacetime.gravitas.cool';
 function input() { return { protocolVersion: 1, appOrigin: origin, codeChallenge: proof(), state: proof() }; }
 function fixture(options = {}) {
   const now = Math.floor(Date.now() / 1000);
-  let credential = { token: 'f'.repeat(64), broker: { issuer: 'https://gravitas.cool', appOrigin: 'https://apps.gravitas.cool', account: '@alice:gravitas.cool', subject: 'subject', sessionId: '11111111-1111-4111-8111-111111111111', accessToken: proof(), refreshToken: proof(), sessionCheckToken: proof(), scope: 'profile.name native.broker', accessExpiresAt: now + 1000, sessionExpiresAt: now + 10000 } };
+  let credential = { token: 'f'.repeat(64), broker: { issuer: 'https://gravitas.cool', appOrigin: 'https://apps.gravitas.cool', account: '@alice:gravitas.cool', subject: 'subject', sessionId: '11111111-1111-4111-8111-111111111111', accessToken: proof(), refreshToken: proof(), sessionCheckToken: proof(), scope: 'profile.name profile.username native.broker', accessExpiresAt: now + 1000, sessionExpiresAt: now + 10000 } };
   const calls = [], grants = new Map();
   let approvals = 0, rotations = 0;
   const fetch = async (url, init) => {
