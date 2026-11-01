@@ -90,5 +90,34 @@ test('desktop discovers compatible apps, signs in, installs, updates and stages 
     await page.getByLabel('Automatic app updates').uncheck();
     await expect(page.getByLabel('Automatic app updates')).not.toBeChecked();
     await page.screenshot({ path: path.join(__dirname, '..', 'test-results', 'desktop-settings.png') });
+    // A code response and failed device revocation may arrive after sign-out.
+    // Neither is allowed to revive the Store account or complete app sign-in.
+    await electron.evaluate(({ net }) => {
+      const original = net.fetch;
+      net.fetch = async (url, options) => {
+        if (String(url).endsWith('/oauth/broker/authorize')) {
+          global.authorizationPending = true;
+          return new Promise(resolve => { global.finishAuthorization = async () => resolve(await original(url, options)); });
+        }
+        if (String(url).endsWith('/v1/device') && options.method === 'DELETE') {
+          global.deletingToken = options.headers.Authorization;
+          global.deviceDeletePending = true;
+          return new Promise(resolve => { global.finishDelete = () => resolve(Response.json({ error: 'offline' }, { status: 503 })); });
+        }
+        return original(url, options);
+      };
+    });
+    const pendingSignIn = authorizeDesktopStore(request).then(value => ({ value }), error => ({ error: error.constructor.name }));
+    await expect.poll(() => electron.evaluate(() => global.authorizationPending)).toBe(true);
+    await page.evaluate(() => { window.signOutResult = window.store.action('logout').catch(error => error.message); });
+    await expect(page.getByLabel('Gravitas username')).toBeVisible();
+    await expect.poll(() => electron.evaluate(() => global.deviceDeletePending)).toBe(true);
+    expect(await electron.evaluate(() => global.deletingToken)).toBe('Bearer ' + 'a'.repeat(64));
+    await electron.evaluate(() => global.finishAuthorization());
+    expect(await pendingSignIn).toEqual({ error: 'StoreSignInCancelled' });
+    await electron.evaluate(() => global.finishDelete());
+    expect(await page.evaluate(() => window.signOutResult)).toContain('Signed out on this computer');
+    expect((await page.evaluate(() => window.store.action('state'))).account).toBe('');
+
   } finally { await electron.evaluate(({ app }) => { if (global.originalQuit) app.quit = global.originalQuit; }).catch(() => {}); await electron.close(); await fs.rm(temporary, { recursive: true, force: true }); }
 });

@@ -1,9 +1,9 @@
 {
   "schemaVersion": 1,
-  "version": "0.1.2",
-  "versionCode": 3,
+  "version": "0.1.3",
+  "versionCode": 4,
   "changes": [
-    "Sign in to desktop apps with the Gravitas account held by Private Store, with approval for each service.",
-    "App sign-in uses one-use codes and keeps Store credentials encrypted and private. Existing Store accounts can enable app sign-in in Settings."
+    "Signing out immediately stops app sign-in, even while a credential refresh or network request is still in progress.",
+    "A delayed refresh cannot restore a signed-out account. Private Store finishes queued credential writes before quitting."
   ]
 }

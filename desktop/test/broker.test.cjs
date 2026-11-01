@@ -133,3 +133,17 @@ test('Store retains profile-only login for other identity domains', () => {
   for (const user of ['alice', 'alice@gravitas.cool', '@alice:gravitas.cool']) assert.equal(brokerLoginFor(user), true);
   for (const user of ['alice@remote.example', '@alice:remote.example']) assert.equal(brokerLoginFor(user), false);
 });
+test('server cancellation discards even a late successful authorization response', async t => {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'broker-cancel-')), file = path.join(dir, 'broker.json');
+  t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  let entered, finish;
+  const ready = new Promise(resolve => { entered = resolve; });
+  const ipc = await serveBroker({ file, launch: { file: process.execPath, args: [] }, authorize: async request => {
+    entered(); await new Promise(resolve => { finish = resolve; });
+    return { protocolVersion: 1, status: 'authorized', issuer: 'https://gravitas.cool', appOrigin: request.appOrigin, redirectUri: request.appOrigin + '/auth/gravitas/callback', state: request.state, codeChallenge: request.codeChallenge, code: 'c'.repeat(43), sub: 'alice', session_id: 'family', expires_in: 60 };
+  } });
+  t.after(() => { ipc.server.closeAllConnections(); ipc.server.close(); });
+  const result = authorizeDesktopStore({ appOrigin: origin, challenge: proof(), state: proof(), file }).then(value => ({ value }), error => ({ error }));
+  await ready; ipc.cancelPending(); finish();
+  assert.ok((await result).error instanceof StoreSignInCancelled);
+});

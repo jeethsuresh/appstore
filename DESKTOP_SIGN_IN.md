@@ -102,7 +102,10 @@ Refresh is serialized; the rotated pair is persisted before any further IAM call
 Every authorization checks the live family and IAM's bound code response. Refresh
 never extends the fixed family expiry. Central logout/revocation invalidates
 Store delegation and resulting app sessions under the apps' normal live checks.
-Store-only logout clears local Store credentials and revokes its device enrollment.
+Store-only logout immediately disables delegation, drains queued encrypted writes
+and clears local credentials before requesting device revocation. Slow or failed
+network requests cannot restore the account, and quitting waits for queued
+credential writes to settle.
 
 ## Verification
 
