@@ -215,7 +215,10 @@ func (s *Server) webData(w http.ResponseWriter, r *http.Request) (webView, error
 				s.cfg.Federation.ClearSession(w)
 			}
 		}
-		data.SignedIn, data.Username, data.StoreURL = identity.Subject != "", identity.Username, s.cfg.Federation.AppURL
+		data.SignedIn, data.Username, data.StoreURL = identity.Subject != "", identity.Name, s.cfg.Federation.AppURL
+		if data.SignedIn && strings.TrimSpace(data.Username) == "" {
+			data.Username = "Gravitas account"
+		}
 	}
 	var err error
 	data.Apps, err = s.webApps(r.Context())

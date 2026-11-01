@@ -23,7 +23,7 @@ class GravitasLoginTest {
         rejected(valid,pending.expiresAt);rejected(valid,now-20_000)
     }
     @Test fun authorizationCannotChangeProviderCallbackStateOrPermissions() {
-        val params=mapOf("callerURL" to pending.baseUrl,"redirectURL" to pending.baseUrl+GravitasLogin.CALLBACK,"codeChallenge" to GravitasLogin.challenge(pending.verifier),"codeChallengeMethod" to "S256","scope" to "profile.name native.broker","state" to pending.state)
+        val params=mapOf("callerURL" to pending.baseUrl,"redirectURL" to pending.baseUrl+GravitasLogin.CALLBACK,"codeChallenge" to GravitasLogin.challenge(pending.verifier),"codeChallengeMethod" to "S256","scope" to "profile.name profile.username native.broker","state" to pending.state)
         val address="https://gravitas.cool/oauth/start?"+params.entries.joinToString("&") { (k,v)->k+"="+URLEncoder.encode(v,"UTF-8") }
         assertEquals(address,GravitasLogin.authorization(pending,address,pending.baseUrl+GravitasLogin.CALLBACK))
         for (bad in listOf(address.replace("gravitas.cool/oauth","evil.example/oauth"),address+"&state=other",address.replace("profile.name","chats.read"),address.replace("S256","plain"),address+"#x")) {
@@ -36,7 +36,7 @@ class GravitasLoginTest {
         assertEquals("@alice:remote.example" to "https://remote.example", GravitasLogin.identity("alice@remote.example", "accounts.example"))
         for (bad in listOf("", "alice@", "alice@remote.example/path", "alice@remote.example@evil.example", "alice@remote.example:443")) assertTrue(runCatching { GravitasLogin.identity(bad,"accounts.example") }.isFailure)
         val remote = pending.copy(issuer="https://remote.example", username="@alice:remote.example", broker=false)
-        val params = mapOf("callerURL" to remote.baseUrl, "redirectURL" to remote.baseUrl+GravitasLogin.CALLBACK, "codeChallenge" to GravitasLogin.challenge(remote.verifier), "codeChallengeMethod" to "S256", "scope" to "profile.name", "state" to remote.state, "login_hint" to remote.username)
+        val params = mapOf("callerURL" to remote.baseUrl, "redirectURL" to remote.baseUrl+GravitasLogin.CALLBACK, "codeChallenge" to GravitasLogin.challenge(remote.verifier), "codeChallengeMethod" to "S256", "scope" to "profile.name profile.username", "state" to remote.state, "login_hint" to remote.username)
         val address = "https://remote.example/oauth/start?"+params.entries.joinToString("&") { (k,v)->k+"="+URLEncoder.encode(v,"UTF-8") }
         assertEquals(address,GravitasLogin.authorization(remote,address,remote.baseUrl+GravitasLogin.CALLBACK))
         assertTrue(runCatching { GravitasLogin.authorization(remote,address.replace("remote.example/oauth","evil.example/oauth"),remote.baseUrl+GravitasLogin.CALLBACK) }.isFailure)

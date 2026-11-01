@@ -29,7 +29,7 @@ function brokerLoginFor(username) {
 }
 function validateSession(s) {
   const now = Math.floor(Date.now() / 1000);
-  if (!s || s.issuer !== ISSUER || s.appOrigin !== STORE || !s.subject || !s.account || !proof(s.accessToken) || !proof(s.refreshToken) || !proof(s.sessionCheckToken) || !s.sessionId || (typeof s.scope !== 'string' || s.scope.split(' ').length !== 2 || !s.scope.split(' ').includes('profile.name') || !s.scope.split(' ').includes('native.broker')) || !Number.isSafeInteger(s.sessionExpiresAt) || s.sessionExpiresAt <= now || s.sessionExpiresAt > now + 2592060 || !Number.isSafeInteger(s.accessExpiresAt) || s.accessExpiresAt > now + 3660 || s.accessExpiresAt > s.sessionExpiresAt) throw new BrokerError('login_required');
+  if (!s || s.issuer !== ISSUER || s.appOrigin !== STORE || !s.subject || !s.account || !proof(s.accessToken) || !proof(s.refreshToken) || !proof(s.sessionCheckToken) || !s.sessionId || (typeof s.scope !== 'string' || ![2, 3].includes(s.scope.split(' ').length) || new Set(s.scope.split(' ')).size !== s.scope.split(' ').length || !s.scope.split(' ').includes('profile.name') || !s.scope.split(' ').includes('native.broker') || s.scope.split(' ').some(v => !['profile.name', 'profile.username', 'native.broker'].includes(v))) || !Number.isSafeInteger(s.sessionExpiresAt) || s.sessionExpiresAt <= now || s.sessionExpiresAt > now + 2592060 || !Number.isSafeInteger(s.accessExpiresAt) || s.accessExpiresAt > now + 3660 || s.accessExpiresAt > s.sessionExpiresAt) throw new BrokerError('login_required');
   return s;
 }
 class BrokerEngine {
