@@ -1,37 +1,52 @@
 'use strict';
-const { app, BrowserWindow, ipcMain, protocol, net, session, safeStorage, shell, Menu } = require('electron');
+const { app, BrowserWindow, ipcMain, protocol, net, session, safeStorage, shell, Menu, dialog } = require('electron');
 const fs = require('node:fs/promises');
 const path = require('node:path');
 const os = require('node:os');
 const { pathToFileURL } = require('node:url');
 const { spawn } = require('node:child_process');
-const { randomUUID } = require('node:crypto');
+const { randomUUID, randomBytes, createHash } = require('node:crypto');
 const { STORE_URL, target, validID, atomicJSON, readJSON, artifactFor, updateAvailable, downloadVerified, releasePath } = require('./core.cjs');
 const credentials = require('./core.cjs');
 const { installPackage, executable, createShortcut } = require('./installer.cjs');
 const version = require('./package.json');
+const { BrokerEngine, serveBroker, validateSession, brokerLoginFor } = require('./broker.cjs');
 protocol.registerSchemesAsPrivileged([{ scheme: 'store', privileges: { standard: true, secure: true, supportFetchAPI: true } }]);
 app.setName('Private Store');
 if (!app.requestSingleInstanceLock()) app.quit();
 
 let window, loginWindow, credential, catalog = [], installed = {}, settings = { autoUpdate: true }, busy = false, checking = false, error = '', progress = null, pendingSelf = null, secureStorage = false;
 const current = target();
-let statePath, sessionPath, root;
+let statePath, sessionPath, root, brokerServer, authGeneration = 0;
+let credentialWrites = Promise.resolve();
+function replaceCredential(expected, next, valid = () => true) {
+  const operation = credentialWrites.catch(() => {}).then(async () => {
+    if (credential !== expected || !valid()) return false;
+    if (next && secureStorage) await credentials.saveCredential(sessionPath, next, safeStorage);
+    else await fs.rm(sessionPath, { force: true });
+    if (!valid()) {
+      if (expected && secureStorage) await credentials.saveCredential(sessionPath, expected, safeStorage);
+      else await fs.rm(sessionPath, { force: true });
+      return false;
+    }
+    credential = next;
+    publish();
+    return true;
+  });
+  credentialWrites = operation;
+  return operation;
+}
 function snapshot() {
-  return { apps: catalog, installed: { ...installed, appstore: { version: app.getVersion(), versionCode: version.versionCode } }, account: credential?.account || '', settings, busy, error, progress, pendingSelf: !!pendingSelf, platform: current, version: app.getVersion(), secureStorage };
+  return { apps: catalog, installed: { ...installed, appstore: { version: app.getVersion(), versionCode: version.versionCode } }, account: credential?.account || '', settings, busy, error, progress, pendingSelf: !!pendingSelf, platform: current, version: app.getVersion(), secureStorage, brokerReady: !!credential?.broker };
 }
 function publish() { if (window && !window.isDestroyed()) window.webContents.send('store:state', snapshot()); }
 async function persist() { await atomicJSON(statePath, { installed, settings, pendingSelf, catalog }); }
-async function saveCredential() {
-  if (credential && secureStorage) {
-    await credentials.saveCredential(sessionPath, credential, safeStorage);
-  } else await fs.rm(sessionPath, { force: true });
-}
 async function api(route, options = {}) {
   const headers = { ...options.headers };
-  if (credential) headers.Authorization = `Bearer ${credential.token}`;
+  const expected = credential;
+  if (expected) headers.Authorization = `Bearer ${expected.token}`;
   const response = await net.fetch(STORE_URL + route, { ...options, headers, redirect: 'error' });
-  if (response.status === 401 && credential) { credential = null; await saveCredential(); publish(); }
+  if (response.status === 401 && expected) await replaceCredential(expected, null);
   if (!response.ok) {
     const body = await response.json().catch(() => ({}));
     throw new Error(body.error || `Store request failed (${response.status}).`);
@@ -56,28 +71,48 @@ async function refresh(runUpdates = false) {
 async function login(username) {
   if (typeof username !== 'string' || !username.trim() || username.length > 256) throw new Error('Enter your Gravitas username.');
   if (loginWindow) { loginWindow.focus(); return; }
+  const generation = ++authGeneration;
+  const brokerRequested = brokerLoginFor(username);
+  const state = randomBytes(32).toString('base64url'), verifier = randomBytes(32).toString('base64url');
+  const challenge = createHash('sha256').update(verifier).digest('base64url');
+  const response = await net.fetch(STORE_URL + '/v1/auth/gravitas/start', { method: 'POST', redirect: 'error', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ state, codeChallenge: challenge, username: username.trim(), broker: brokerRequested }), signal: AbortSignal.timeout(20000) });
+  const start = await response.json();
+  if (!response.ok || start.redirectUri !== STORE_URL + '/auth/android/callback' || new URL(start.authorizationUrl).protocol !== 'https:') throw new Error('Could not start Gravitas sign-in.');
+  if (generation !== authGeneration) return;
   const authSession = session.fromPartition('login-' + randomUUID());
   authSession.setPermissionRequestHandler((_wc, _permission, answer) => answer(false));
-  loginWindow = new BrowserWindow({ title: 'Sign in with Gravitas', width: 620, height: 760, parent: window, webPreferences: { session: authSession, nodeIntegration: false, contextIsolation: true, sandbox: true } });
-  loginWindow.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
-  loginWindow.webContents.on('will-navigate', (event, url) => { if (!url.startsWith('https://')) event.preventDefault(); });
-  let exchanging = false;
-  const finish = async (_event, url) => {
-    if (url !== STORE_URL + '/desktop/connect' || exchanging) return;
+  const browser = new BrowserWindow({ title: 'Sign in with Gravitas', width: 620, height: 760, parent: window, webPreferences: { session: authSession, nodeIntegration: false, contextIsolation: true, sandbox: true } });
+  loginWindow = browser;
+  browser.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
+  browser.webContents.on('will-navigate', (event, url) => { if (!url.startsWith('https://')) event.preventDefault(); });
+  let exchanging = false, completed = false;
+  const finish = async (event, url) => {
+    const target = new URL(url);
+    if (target.origin + target.pathname !== start.redirectUri) return;
+    event?.preventDefault?.();
+    const q = target.searchParams;
+    if (exchanging || generation !== authGeneration || q.getAll('state').length !== 1 || q.get('state') !== state || q.getAll('code').length !== 1 || q.has('error')) return;
     exchanging = true;
     try {
-      const response = await authSession.fetch(STORE_URL + '/v1/auth/desktop/enroll', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Gravitas-CSRF': '1', Origin: STORE_URL }, body: JSON.stringify({ deviceName: `${os.hostname()} (${current.platform})`.slice(0, 120) }), redirect: 'error' });
-      const data = await response.json();
-      if (!response.ok || typeof data.token !== 'string' || !/^[a-f0-9]{64}$/.test(data.token)) throw new Error(data.error || 'Sign-in could not be completed.');
-      credential = data;
-      await saveCredential();
-      loginWindow?.close();
+      const exchange = await net.fetch(STORE_URL + '/v1/auth/gravitas/exchange', { method: 'POST', redirect: 'error', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code: q.get('code'), codeVerifier: verifier, username: username.trim(), deviceName: `${os.hostname()} (${current.platform})`.slice(0, 120), broker: brokerRequested }), signal: AbortSignal.timeout(20000) });
+      const data = await exchange.json();
+      if (!exchange.ok || typeof data.token !== 'string' || !/^[a-f0-9]{64}$/.test(data.token)) throw new Error('Sign-in could not be completed.');
+      if (brokerRequested) validateSession(data.broker);
+      if (generation !== authGeneration) return;
+      if (!await replaceCredential(credential, data, () => generation === authGeneration)) return;
+      completed = true;
+      browser.close();
       await refresh(true);
     } catch (e) { error = e.message; publish(); exchanging = false; }
   };
-  loginWindow.webContents.on('did-navigate', finish);
-  loginWindow.on('closed', () => { loginWindow = null; authSession.clearStorageData().catch(() => {}); });
-  await loginWindow.loadURL(STORE_URL + '/auth/gravitas/start?' + new URLSearchParams({ username: username.trim(), next: '/desktop/connect' }));
+  browser.webContents.on('will-redirect', finish);
+  browser.webContents.on('did-navigate', finish);
+  browser.on('closed', () => {
+    if (!completed && generation === authGeneration) authGeneration++;
+    if (loginWindow === browser) loginWindow = null;
+    authSession.clearStorageData().catch(() => {});
+  });
+  await browser.loadURL(start.authorizationUrl);
 }
 async function install(id) {
   if (!credential) throw new Error('Sign in with Gravitas to install apps.');
@@ -140,7 +175,7 @@ const actions = {
   updateAll,
   restart,
   settings: async value => { if (typeof value !== 'boolean') throw new Error('Invalid update preference.'); settings.autoUpdate = value; await persist(); publish(); },
-  logout: async () => { if (busy) throw new Error('Wait for the current installation to finish.'); await api('/v1/device', { method: 'DELETE' }); credential = null; await saveCredential(); await refresh(); },
+  logout: async () => { if (busy) throw new Error('Wait for the current installation to finish.'); authGeneration++; loginWindow?.close(); const expected = credential; try { await api('/v1/device', { method: 'DELETE' }); } finally { await replaceCredential(expected, null); await refresh(); } },
 };
 app.whenReady().then(async () => {
   const directory = app.getPath('userData');
@@ -177,8 +212,17 @@ app.whenReady().then(async () => {
   }
   Menu.setApplicationMenu(Menu.buildFromTemplate([{ label: 'Private Store', submenu: [{ role: 'about' }, { role: 'quit' }] }, { role: 'editMenu' }, { role: 'windowMenu' }]));
   createWindow();
+  const broker = new BrokerEngine({ fetch: (...args) => net.fetch(...args), getCredential: () => credential, replaceCredential, approve: async ({ appOrigin, account }) => {
+    if (!window || window.isDestroyed()) createWindow();
+    window.show(); window.focus();
+    const result = await dialog.showMessageBox(window, { type: 'question', title: 'Sign in with Private Store', message: `Sign in to ${new URL(appOrigin).host}?`, detail: `Use ${account} from Private Store for ${appOrigin}.\n\nOnly your basic profile is shared. Approve only if you just asked an app to sign in to this service.`, buttons: ['Cancel', 'Sign in'], defaultId: 0, cancelId: 0, noLink: true });
+    return result.response === 1;
+  } });
+  const launch = { file: process.env.APPIMAGE || process.execPath, args: app.isPackaged ? [] : [__dirname] };
+  brokerServer = await serveBroker({ launch, authorize: (request, signal) => broker.authorize(request, signal) });
   app.on('activate', () => { if (!BrowserWindow.getAllWindows().length) createWindow(); });
   setInterval(() => refresh(true).catch(e => { error = e.message; publish(); }), 6 * 60 * 60 * 1000).unref();
 }).catch(e => { console.error(e); app.quit(); });
+app.on('before-quit', () => { authGeneration++; brokerServer?.server.closeAllConnections(); brokerServer?.server.close(); });
 app.on('second-instance', () => { window?.show(); window?.focus(); });
 app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit(); });

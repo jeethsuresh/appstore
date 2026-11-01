@@ -21,10 +21,21 @@ async function smoke() {
     const artifact = { ...current, file: files[0], entry: current.platform === 'macos' ? 'Private Store.app' : current.platform === 'windows' ? 'Private Store.exe' : files[0], sha256: createHash('sha256').update(bytes).digest('hex'), size: bytes.length };
     const release = { id: 'appstore', name: 'Private Store', desktopRelease: { version: packageInfo.version, versionCode: packageInfo.versionCode, artifacts: [artifact] } };
     const installed = await installPackage({ app: release, archive: file, root: path.join(temporary, 'apps'), current });
-    const electron = await _electron.launch({ executablePath: await executable(installed), args: ['--no-sandbox'], env: { ...process.env, APPIMAGE_EXTRACT_AND_RUN: '1', XDG_CONFIG_HOME: temporary, XDG_DATA_HOME: path.join(temporary, 'local') }, timeout: 60000 });
+    const launchEnv = { ...process.env, HOME: temporary, APPDATA: path.join(temporary, 'roaming'), APPIMAGE_EXTRACT_AND_RUN: '1', XDG_CONFIG_HOME: temporary, XDG_DATA_HOME: path.join(temporary, 'local') };
+    const electron = await _electron.launch({ executablePath: await executable(installed), args: ['--no-sandbox'], env: launchEnv, timeout: 60000 });
     try {
       const page = await electron.firstWindow({ timeout: 30000 }); await page.waitForSelector('#content', { timeout: 30000 });
       if (await page.title() !== 'Private Store') throw new Error('Packaged UI failed to load');
+      const discovery = require('../broker.cjs').discoveryPath(process.platform, launchEnv, temporary);
+      let descriptor;
+      for (let attempt = 0; attempt < 50; attempt++) {
+        try { descriptor = JSON.parse(await fs.readFile(discovery, 'utf8')); break; }
+        catch (e) { if (e.code !== 'ENOENT') throw e; await new Promise(resolve => setTimeout(resolve, 100)); }
+      }
+      if (!descriptor || descriptor.protocolVersion !== 1 || !descriptor.endpoint.startsWith('http://127.0.0.1:')) throw new Error('Packaged Store broker discovery unavailable');
+      const brokerReply = await fetch(descriptor.endpoint, { method: 'POST', headers: { Authorization: 'Bearer ' + descriptor.nonce, 'Content-Type': 'application/json' }, body: JSON.stringify({ protocolVersion: 1, appOrigin: 'https://spacetime.gravitas.cool', codeChallenge: 'c'.repeat(43), state: 's'.repeat(43) }) });
+      if ((await brokerReply.json()).status !== 'login_required') throw new Error('Packaged broker did not require an authenticated Store account');
+
       const roundTrip = await electron.evaluate(async ({ safeStorage }) => {
         if (!(await safeStorage.isAsyncEncryptionAvailable())) return 'unavailable';
         const encrypted = await safeStorage.encryptStringAsync('private-store-restart-check');

@@ -141,3 +141,7 @@ tests on actual macOS/Windows machines remain useful before expanding native
 installer compatibility beyond the documented Electron formats.
 
 Native Flutter Linux bundles can use ZIPs with an explicit root executable entry and adjacent `lib/` and `data/` directories. The same traversal, symlink, checksum and versioned-install checks apply to these ZIPs. River, Spacetime and Haven are universal catalog entries; Office, RSS Reader and Email are desktop-only.
+
+Desktop Private Store also supplies foreground Gravitas app sign-in. See
+[DESKTOP_SIGN_IN.md](DESKTOP_SIGN_IN.md) for the protocol, account upgrade and
+reusable Dart/Electron helpers.
