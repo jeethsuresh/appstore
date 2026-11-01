@@ -82,7 +82,8 @@ test('authenticated loopback IPC rejects browser origins, wrong hosts/nonces, ex
   const f = fixture(), file = path.join(dir, 'broker.json');
   const { server, descriptor: d } = await serveBroker({ file, launch: { file: process.execPath, args: [] }, authorize: (...args) => f.engine.authorize(...args) });
   t.after(() => { server.closeAllConnections(); server.close(); });
-  assert.equal((await fs.stat(file)).mode & 0o077, 0);
+  // Windows uses the user profile's inherited ACL, not POSIX group/mode bits.
+  if (process.platform !== 'win32') assert.equal((await fs.stat(file)).mode & 0o077, 0);
   const send = (headers, body = input()) => fetch(d.endpoint, { method: 'POST', headers: { Authorization: 'Bearer ' + d.nonce, 'Content-Type': 'application/json', ...headers }, body: JSON.stringify(body) });
   for (const headers of [{ Authorization: 'Bearer bad' }, { Origin: 'https://evil.example' }, { Origin: 'null' }]) assert.equal((await send(headers)).status, 403);
   const hostStatus = await new Promise((resolve, reject) => { const req = require('node:http').request(d.endpoint, { method: 'POST', headers: { Host: 'evil.example', Authorization: 'Bearer ' + d.nonce, 'Content-Type': 'application/json' } }, res => { res.resume(); resolve(res.statusCode); }); req.on('error', reject); req.end(JSON.stringify(input())); });
@@ -113,9 +114,9 @@ test('helper wakes a closed Store and rereads the fresh endpoint and nonce', asy
   assert.equal(result.status, 'authorized'); assert.equal(wakes, 1); assert.notEqual(old.descriptor.nonce, next.descriptor.nonce);
 });
 test('discovery uses the current OS user application data on all platforms', () => {
-  assert.equal(discoveryPath('linux', { XDG_DATA_HOME: '/data' }, '/home/user'), '/data/Gravitas/Private Store/broker-v1.json');
-  assert.equal(discoveryPath('darwin', {}, '/Users/user'), '/Users/user/Library/Application Support/Gravitas/Private Store/broker-v1.json');
-  assert.equal(discoveryPath('win32', { APPDATA: '/AppData/Roaming' }, '/Users/user'), '/AppData/Roaming/Gravitas/Private Store/broker-v1.json');
+  assert.equal(discoveryPath('linux', { XDG_DATA_HOME: '/data' }, '/home/user'), path.join('/data', 'Gravitas', 'Private Store', 'broker-v1.json'));
+  assert.equal(discoveryPath('darwin', {}, '/Users/user'), path.join('/Users/user/Library/Application Support', 'Gravitas', 'Private Store', 'broker-v1.json'));
+  assert.equal(discoveryPath('win32', { APPDATA: '/AppData/Roaming' }, '/Users/user'), path.join('/AppData/Roaming', 'Gravitas', 'Private Store', 'broker-v1.json'));
 });
 test('cold-start helper spawns a separate Store process without a shell', async t => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'broker-spawn-')), file = path.join(dir, 'broker.json'), script = path.join(dir, 'fixture.cjs');
