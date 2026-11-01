@@ -61,7 +61,11 @@ function render() {
     copy.append(text('h3', 'Keep installed apps current'), text('p', 'Check at launch and every six hours while Private Store is open. Download updates for installed apps, including the store. Restart the store when its update is ready.'));
     const toggle = document.createElement('input'); toggle.type = 'checkbox'; toggle.checked = !!state.settings.autoUpdate; toggle.setAttribute('aria-label', 'Automatic app updates'); toggle.onchange = () => act('settings', toggle.checked); row.append(copy, toggle); content.append(row);
     const session = text('div', '', 'setting'); session.append(text('p', state.secureStorage ? 'Your sign-in is encrypted using your operating system’s credential storage.' : 'Secure credential storage is unavailable. Sign-in lasts for this session; no credential is saved to disk.'));
-    if (state.account) session.append(button('Sign out ↗', () => act('logout'))); content.append(session);
+    if (state.account) {
+      if (!state.brokerReady && (!state.account.includes(':') || state.account.endsWith(':gravitas.cool'))) session.append(button('Enable app sign-in ↗', () => act('login', state.account.replace(/^@/, '').replace(':', '@'))));
+      session.append(button('Sign out ↗', () => act('logout')));
+    }
+    content.append(text('p', state.brokerReady ? 'Private Store can sign you in to desktop apps. Each service asks for your approval; your Store credentials stay private.' : 'Sign in again with your gravitas.cool account to enable app sign-in. Other identity domains use browser sign-in.')); content.append(session);
     content.append(text('p', 'Apps use separate versions on Android and desktop. This store shows only published builds compatible with this computer. Desktop notifications are not required.', 'lede')); return;
   }
   if (selectedID) { const selected = state.apps.find(app => app.id === selectedID); if (selected) { content.append(detail(selected)); return; } selectedID = null; }
