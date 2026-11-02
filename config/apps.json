@@ -49,7 +49,11 @@
     "assetName": "River-{tag}-android.apk",
     "certificateSha256": "6559956b5cf6b2f796824995b31da7fa2c176ba652e8fcb40741686d850bb6b0",
     "description": "Private Gravitas spaces, separate channels, friends, conversations, posts and discussions.",
-    "desktop": true
+    "desktop": true,
+    "notifications": {
+      "origin": "https://chat.gravitas.cool",
+      "authority": "cool.gravitas.river.notifications"
+    }
   },
   {
     "id": "atlas",

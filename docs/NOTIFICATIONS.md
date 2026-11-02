@@ -72,3 +72,11 @@ Before release, install both permanently signed APKs on a disposable device and 
 - Spacetime: its pinned Flutter 3.32.0-0.2.pre SDK and unchanged dependency lockfile passed analysis and all 143 Flutter tests. Its debug APK build, native unit tests, device-test Kotlin compilation and Android lint passed.
 - Merged manifests confirm the store listener uses `:notifications` and Spacetime uses `android.app.Application`; the native provider does not create a Flutter engine.
 - No Android device/emulator was connected. Device tests were compiled, not executed. Signed APK interoperability, Doze behavior and physical battery drain still need the device validation above. No production deployment or signed release was performed.
+
+## River messages
+
+The catalog also supports `cool.gravitas.river.notifications` at `https://chat.gravitas.cool`, pinned to River's existing permanent signing certificate. Add `river=THE_DISTINCT_RIVER_KEY` to `NOTIFICATION_APP_KEYS`; River uses the matching `NOTIFICATION_PROVIDER_KEY`. IAM configures that sender origin with `protocols.read`, `appstore.push` and `appstore.push.broadcast`, and enables `MATRIX_APPSTORE_PUSH_ORIGIN=https://chat.gravitas.cool`.
+
+River uses `push.broadcast`; Private Store remains the sole owner of installed-device subscriptions. The River reconciliation endpoint acknowledges the authenticated protocol marker without duplicating that device registry. Matrix push rules decide which events notify. The native payload contains account, conversation and event identifiers plus a replay sequence; it contains no message content or credentials. In River enable **Settings → Message notifications** and approve Android's notification permission. Both apps must use the same Gravitas account. Existing Store installations pick up this catalog capability when next opened; no new Store APK is required.
+
+The disposable `TestRiverMatrixNotificationInterop` fixture is launched by IAM's integration test to exercise encrypted event → protocol relay → Store stream → acknowledgement. It is absent from production binaries.
