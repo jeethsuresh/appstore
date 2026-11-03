@@ -1,10 +1,9 @@
 package dev.jeeth.privatestore
 
-import android.content.ContentProvider
-import android.content.ContentValues
-import android.database.Cursor
 import android.net.Uri
 import android.os.Bundle
+import android.os.ParcelFileDescriptor
+import android.os.PowerManager
 import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -24,35 +23,6 @@ import javax.net.ssl.KeyManagerFactory
 import javax.net.ssl.SSLContext
 import javax.net.ssl.SSLServerSocket
 
-/** Installed only in the disposable instrumentation APK. Never shipped. */
-class RelayFixtureProvider : ContentProvider() {
-    override fun onCreate() = true
-    @Synchronized override fun call(method: String, arg: String?, extras: Bundle?): Bundle {
-        val p = requireNotNull(context).getSharedPreferences("relay-fixture", 0)
-        return when (method) {
-            "reset" -> { p.edit().clear().putBoolean("failFirst", extras?.getBoolean("failFirst") == true).commit(); Bundle() }
-            "notify" -> {
-                val id = requireNotNull(extras).getString("id")!!
-                val attempts = p.getInt("attempts:$id", 0) + 1
-                p.edit().putInt("attempts:$id", attempts).commit()
-                if (id == "1" && attempts == 1 && p.getBoolean("failFirst", false)) throw IllegalArgumentException("Temporary fixture provider failure")
-                p.edit().putBoolean("accepted:$id", true).commit()
-                Bundle().apply { putBoolean("accepted", true) }
-            }
-            "status" -> Bundle().apply {
-                putBoolean("accepted", p.getBoolean("accepted:$arg", false))
-                putInt("attempts", p.getInt("attempts:$arg", 0))
-            }
-            else -> throw IllegalArgumentException("Unknown test operation")
-        }
-    }
-    override fun query(u: Uri, p: Array<out String>?, s: String?, a: Array<out String>?, o: String?): Cursor? = throw UnsupportedOperationException()
-    override fun getType(u: Uri): String? = null
-    override fun insert(u: Uri, v: ContentValues?): Uri? = throw UnsupportedOperationException()
-    override fun delete(u: Uri, s: String?, a: Array<out String>?): Int = throw UnsupportedOperationException()
-    override fun update(u: Uri, v: ContentValues?, s: String?, a: Array<out String>?): Int = throw UnsupportedOperationException()
-}
-
 @RunWith(AndroidJUnit4::class)
 class NotificationRelayRecoveryTest {
     private val instrumentation get() = InstrumentationRegistry.getInstrumentation()
@@ -70,6 +40,7 @@ class NotificationRelayRecoveryTest {
         val acknowledged = ConcurrentHashMap.newKeySet<String>()
         private val workers = Executors.newCachedThreadPool()
         private val sockets = ConcurrentHashMap.newKeySet<Socket>()
+        @Volatile var releaseAlerts = firstStream != "paused"
         private val server: SSLServerSocket
         @Volatile private var closed = false
         init {
@@ -107,7 +78,7 @@ class NotificationRelayRecoveryTest {
                 if (number == 1 && firstStream == "drop") return
                 if (number == 1 && firstStream == "silent") { Thread.sleep(115_000); return }
                 while (!closed) {
-                    for (id in listOf("1", "2")) if (!acknowledged.contains(id)) {
+                    for (id in listOf("1", "2")) if (releaseAlerts && !acknowledged.contains(id)) {
                         output.write((JSONObject().put("id", id.toLong()).put("app", "relayfixture").put("payload", JSONObject().put("kind", "fixture")).toString() + "\n").toByteArray())
                     }
                     output.flush(); Thread.sleep(250)
@@ -159,4 +130,44 @@ class NotificationRelayRecoveryTest {
         await(110, "read deadline, automatic reconnect and replay") { server.streams.get() >= 2 && server.acknowledged.contains("1") }
         assertTrue(status("1").getBoolean("accepted"))
     }
+
+    private fun shell(command: String) = ParcelFileDescriptor.AutoCloseInputStream(
+        instrumentation.uiAutomation.executeShellCommand(command)
+    ).bufferedReader().use { it.readText() }
+
+    private fun idleDelivery(exempt: Boolean) = withRelay(firstStream = "paused") { server ->
+        val power = context.getSystemService(PowerManager::class.java)
+        val pkg = context.packageName
+        val originallyExempt = NotificationRelay.ignoresBatteryOptimizations(context)
+        val originallyEnabled = shell("dumpsys deviceidle enabled deep").trim() == "1"
+        try {
+            shell("dumpsys deviceidle whitelist ${if (exempt) "+" else "-"}$pkg")
+            await(10, "requested power exemption") { NotificationRelay.ignoresBatteryOptimizations(context) == exempt }
+            NotificationRelay.start(context)
+            await(10, "registered notification connection") { server.streams.get() >= 1 }
+            shell("dumpsys battery unplug"); shell("dumpsys deviceidle enable deep")
+            shell("input keyevent KEYCODE_SLEEP"); shell("dumpsys deviceidle force-idle")
+            await(10, "screen off in deep idle") { !power.isInteractive && power.isDeviceIdleMode }
+            // Wait for the real idle broadcast to apply the connection policy.
+            Thread.sleep(1000)
+            server.releaseAlerts = true
+            if (exempt) {
+                await(15, "screen-off app handoff and acknowledgement") { server.acknowledged.contains("1") }
+                assertTrue(status("1").getBoolean("accepted"))
+            } else {
+                Thread.sleep(1500)
+                assertTrue("Non-exempt idle must retain the queued alerts", server.acknowledged.isEmpty())
+                shell("dumpsys deviceidle unforce"); shell("input keyevent KEYCODE_WAKEUP")
+                await(15, "automatic replay after leaving idle") { server.acknowledged.contains("1") }
+                assertTrue(status("1").getBoolean("accepted"))
+            }
+        } finally {
+            shell("dumpsys deviceidle unforce"); shell("dumpsys battery reset"); shell("input keyevent KEYCODE_WAKEUP")
+            shell("dumpsys deviceidle whitelist ${if (originallyExempt) "+" else "-"}$pkg")
+            if (!originallyEnabled) shell("dumpsys deviceidle disable deep")
+        }
+    }
+
+    @Test fun exemptScreenOffPhoneReceivesAndAcknowledgesTheAlert() = idleDelivery(exempt = true)
+    @Test fun nonExemptIdlePhoneKeepsTheAlertQueuedAndReplaysItAfterWake() = idleDelivery(exempt = false)
 }
