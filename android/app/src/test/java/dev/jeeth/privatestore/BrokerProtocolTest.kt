@@ -21,8 +21,8 @@ class BrokerProtocolTest {
         assertFalse(BrokerProtocol.approved(listOf(pkg),pkg,listOf(pin,pin)))
     }
     @Test fun brokerCapabilityMustBeExplicitAndCannotExpandPermissions() {
-        assertTrue(BrokerProtocol.scopes("profile.name native.broker"));assertTrue(BrokerProtocol.scopes("native.broker profile.name"))
-        for(scope in listOf("profile.name","native.broker","profile.name native.broker chats.read","profile.name native.broker native.broker")) assertFalse(BrokerProtocol.scopes(scope))
+        assertTrue(BrokerProtocol.scopes("profile.name profile.username native.broker"));assertTrue(BrokerProtocol.scopes("native.broker profile.name"))
+        for(scope in listOf("profile.name","native.broker","profile.name profile.username native.broker chats.read","profile.name profile.username native.broker native.broker")) assertFalse(BrokerProtocol.scopes(scope))
     }
     @Test fun riverUsesItsOwnPinnedCallerAndFixedTarget() {
         val river=BrokerProtocol.client("cool.gravitas.river")!!

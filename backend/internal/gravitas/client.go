@@ -32,6 +32,7 @@ type Identity struct {
 	Issuer         string `json:"issuer"`
 	Subject        string `json:"sub"`
 	Username       string `json:"username"`
+	Name           string `json:"name"`
 	Domain         string `json:"domain"`
 	UserID         string `json:"user_id"`
 	SessionID      string `json:"session_id,omitempty"`
@@ -226,7 +227,7 @@ func (c *Client) Start(w http.ResponseWriter, r *http.Request, register bool) er
 		return err
 	}
 	h := sha256.Sum256([]byte(f.Verifier))
-	q := url.Values{"callerURL": {c.AppURL}, "redirectURL": {c.AppURL + "/auth/gravitas/callback"}, "codeChallenge": {base64.RawURLEncoding.EncodeToString(h[:])}, "codeChallengeMethod": {"S256"}, "scope": {"profile.name"}, "state": {f.State}}
+	q := url.Values{"callerURL": {c.AppURL}, "redirectURL": {c.AppURL + "/auth/gravitas/callback"}, "codeChallenge": {base64.RawURLEncoding.EncodeToString(h[:])}, "codeChallengeMethod": {"S256"}, "scope": {"profile.name profile.username"}, "state": {f.State}}
 	if register {
 		q.Set("screen", "register")
 	}
@@ -293,9 +294,9 @@ func (c *Client) NativeStartBroker(state, challenge string, broker bool) (string
 	if err != nil {
 		return "", err
 	}
-	q := url.Values{"callerURL": {c.AppURL}, "redirectURL": {c.NativeRedirect()}, "codeChallenge": {challenge}, "codeChallengeMethod": {"S256"}, "scope": {"profile.name"}, "state": {state}}
+	q := url.Values{"callerURL": {c.AppURL}, "redirectURL": {c.NativeRedirect()}, "codeChallenge": {challenge}, "codeChallengeMethod": {"S256"}, "scope": {"profile.name profile.username"}, "state": {state}}
 	if broker {
-		q.Set("scope", "profile.name native.broker")
+		q.Set("scope", "profile.name profile.username native.broker")
 	}
 	return m.Browser + "?" + q.Encode(), nil
 }

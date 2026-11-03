@@ -27,6 +27,6 @@ object BrokerProtocol {
     }
     fun approved(packages: List<String>, declared: String?, certificates: List<String>): Boolean =
         client(declared)?.let { packages == listOf(it.packageName) && certificates == listOf(it.certificate) } == true
-    fun scopes(value: String): Boolean = value.split(' ').filter { it.isNotEmpty() }.let { it.size == 2 && it.toSet() == setOf("profile.name","native.broker") }
+    fun scopes(value: String): Boolean = value.split(' ').filter { it.isNotEmpty() }.let { it.size == it.toSet().size && it.toSet() in listOf(setOf("profile.name","native.broker"), setOf("profile.name","profile.username","native.broker")) }
     fun credential(value: String) = proof.matches(value)
 }

@@ -149,7 +149,7 @@ Private Store also runs on macOS, Windows and Linux, with x64 and ARM64 packages
 
 ### River account sign-in
 
-Private Store 0.6.4 adds River (`cool.gravitas.river`) to the native broker,
+Private Store 0.6.7 adds River (`cool.gravitas.river`) to the native broker,
 with River's permanent release certificate pinned separately from Spacetime.
 River requests its fixed app origin, callback, and existing messaging/contact
 permissions. Gravitas must already have full River consent; the broker cannot

@@ -49,7 +49,7 @@ func nativeFixture(t *testing.T) *Server {
 				if code == "broker" {
 					data["access_token"] = strings.Repeat("a", 43)
 					data["refresh_token"] = strings.Repeat("r", 43)
-					data["scope"] = "profile.name native.broker"
+					data["scope"] = "profile.name profile.username native.broker"
 					data["expires_in"] = 3600
 				}
 				encoded, _ := json.Marshal(data)
@@ -86,7 +86,7 @@ func TestNativeSignInBindsDeviceAndRotatesLegacyCredential(t *testing.T) {
 	}
 	u, _ := url.Parse(field(t, w, "authorizationUrl"))
 	q := u.Query()
-	if u.Host != "gravitas.cool" || q.Get("scope") != "profile.name" || q.Get("codeChallengeMethod") != "S256" || q.Get("redirectURL") != "https://apps.gravitas.cool/auth/android/callback" || len(w.Result().Cookies()) != 0 {
+	if u.Host != "gravitas.cool" || q.Get("scope") != "profile.name profile.username" || q.Get("codeChallengeMethod") != "S256" || q.Get("redirectURL") != "https://apps.gravitas.cool/auth/android/callback" || len(w.Result().Cookies()) != 0 {
 		t.Fatal("invalid native authorization flow")
 	}
 	legacy, id := enrollDevice(t, s)

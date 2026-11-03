@@ -137,7 +137,6 @@ class NotificationRelayService : Service() {
     @Volatile private var generation = 0
     private var retry: ScheduledFuture<*>? = null
     private var failures = 0
-    private var configuration: String? = null
     private var batteryExempt = false
     private val network = object : ConnectivityManager.NetworkCallback() {
         override fun onAvailable(network: Network) { main.post { reconnect() } }
@@ -178,7 +177,9 @@ class NotificationRelayService : Service() {
         val powerChanged = exempt != batteryExempt
         batteryExempt = exempt
         if (powerChanged) getSystemService(NotificationManager::class.java).notify(910, notification())
-        if (config != configuration || connection == null || powerChanged) { configuration = config; reconnect() }
+        // A visible app's explicit start also recovers a silently dead socket.
+        // A non-null HttpURLConnection does not establish that it is alive.
+        reconnect()
         return START_STICKY
     }
     private fun notification(): Notification {
@@ -190,9 +191,10 @@ class NotificationRelayService : Service() {
     fun reconnect() {
         if (stopped) return
         generation++; connection?.disconnect(); connection = null; retry?.cancel(false); retry = null
+        failures = 0
         if (!connectionAllowed()) return
         val current = generation
-        retry = worker.schedule({ listen(current) }, 1, TimeUnit.SECONDS)
+        retry = worker.schedule({ listen(current) }, 0, TimeUnit.SECONDS)
     }
     private fun connectionAllowed(): Boolean {
         val caps = networks.getNetworkCapabilities(networks.activeNetwork)
@@ -211,7 +213,6 @@ class NotificationRelayService : Service() {
                 stopped = true
                 NotificationRelay.clear(this, unregister = false)
             } else {
-                configuration = saved?.toString()
                 if (saved == null) { stopped = true; stopSelf() } else reconnect()
             }
         }
@@ -234,7 +235,7 @@ class NotificationRelayService : Service() {
             } finally { registration.disconnect() }
             if (installed.isEmpty()) { stopped = true; stopSelf(); return }
             if (current != generation || stopped) return
-            live = connect(config, "/v1/notifications/stream").apply { readTimeout = 20 * 60_000 }
+            live = connect(config, "/v1/notifications/stream").apply { readTimeout = NotificationRelayPolicy.STREAM_READ_TIMEOUT_MILLIS }
             connection = live
             if (live.responseCode == 401) { unauthorized(config, current); return }
             require(live.responseCode == 200)
@@ -248,12 +249,16 @@ class NotificationRelayService : Service() {
                     val message = JSONObject(line.toString())
                     if (NotificationRelay.read(this)?.toString() != config.toString() || current != generation) return
                     val target = installed.singleOrNull { it.getString("id") == message.getString("app") }
-                    if (target != null && NotificationRelay.installed(this, target)) {
-                        val result = try { contentResolver.call(Uri.parse("content://${target.getString("authority")}"), "notify", null,
-                            Bundle().apply { putString("id", message.getLong("id").toString()); putString("payload", message.getJSONObject("payload").toString()) })
-                        } catch (_: IllegalArgumentException) { Bundle().apply { putBoolean("accepted", true) } }
-                        require(result?.getBoolean("accepted") == true)
-                    }
+                    // An exception, missing receiver or declined handoff is not
+                    // an acknowledgement. Leave it on the server for replay,
+                    // and keep processing the other apps on this stream.
+                    val accepted = target != null && NotificationRelay.installed(this, target) &&
+                        NotificationRelayDelivery.accepted {
+                            contentResolver.call(Uri.parse("content://${target.getString("authority")}"), "notify", null,
+                                Bundle().apply { putString("id", message.getLong("id").toString()); putString("payload", message.getJSONObject("payload").toString()) })
+                                ?.getBoolean("accepted") == true
+                        }
+                    if (!accepted) continue
                     val ack = connect(config, "/v1/notifications/${message.getLong("id")}", "DELETE")
                     connection = ack
                     try { require(ack.responseCode == 204) } finally { ack.disconnect(); connection = live }
@@ -332,11 +337,16 @@ class NotificationRelayProvider : ContentProvider() {
 }
 
 internal object NotificationRelayPolicy {
+    const val STREAM_READ_TIMEOUT_MILLIS = 90_000
     fun canConnect(deviceIdle: Boolean, batteryExempt: Boolean, networkValidated: Boolean): Boolean =
         networkValidated && (!deviceIdle || batteryExempt)
 
     fun afterDisconnect(failures: Int, connectedMillis: Long): Int =
-        if (connectedMillis >= 5 * 60_000L) 1 else (failures.coerceIn(0, 7) + 1).coerceAtMost(7)
+        if (connectedMillis >= 30_000L) 1 else (failures.coerceIn(0, 6) + 1).coerceAtMost(6)
     fun retryDelaySeconds(failures: Int, jitter: Int): Long =
-        (30L shl failures.coerceIn(1, 7)).coerceAtMost(1800L) + jitter.coerceIn(0, 29)
+        (5L shl (failures.coerceIn(1, 6) - 1)).coerceAtMost(120L) + jitter.coerceIn(0, 4)
+}
+
+internal object NotificationRelayDelivery {
+    fun accepted(deliver: () -> Boolean): Boolean = try { deliver() } catch (_: Exception) { false }
 }

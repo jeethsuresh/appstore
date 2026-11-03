@@ -127,7 +127,7 @@ func (c *Client) NativeBrokerExchange(code, verifier string) (Identity, *BrokerB
 	for _, scope := range fields {
 		scopes[scope] = true
 	}
-	if len(fields) != 2 || len(scopes) != 2 || !scopes["profile.name"] || !scopes["native.broker"] || !proofPattern.MatchString(tokens.AccessToken) || !proofPattern.MatchString(tokens.RefreshToken) || tokens.ExpiresIn < 1 || tokens.ExpiresIn > 3600 {
+	if len(fields) != 3 || len(scopes) != 3 || !scopes["profile.name"] || !scopes["profile.username"] || !scopes["native.broker"] || identity.UserID == "" || !proofPattern.MatchString(tokens.AccessToken) || !proofPattern.MatchString(tokens.RefreshToken) || tokens.ExpiresIn < 1 || tokens.ExpiresIn > 3600 {
 		return Identity{}, nil, ErrLoginRequired
 	}
 	expiry := min(time.Now().Unix()+tokens.ExpiresIn, identity.SessionExpires)

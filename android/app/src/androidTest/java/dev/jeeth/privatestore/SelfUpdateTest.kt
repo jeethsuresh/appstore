@@ -19,7 +19,7 @@ class SelfUpdateTest {
     private fun isolated() { assumeTrue(context.packageName.endsWith(".testbed") && InstrumentationRegistry.getArguments().getString("selfUpdateTest")=="true") }
     private fun broker():BrokerSession {
         val now=System.currentTimeMillis()/1000
-        return BrokerSession(BrokerProtocol.ISSUER,GravitasLogin.STORE,"self-update-fixture","@selfupdate:gravitas.cool","a".repeat(43),"b".repeat(43),"profile.name native.broker",now+3000,"self-update-family","c".repeat(43),now+7200)
+        return BrokerSession(BrokerProtocol.ISSUER,GravitasLogin.STORE,"self-update-fixture","@selfupdate:gravitas.cool","a".repeat(43),"b".repeat(43),"profile.name profile.username native.broker",now+3000,"self-update-family","c".repeat(43),now+7200)
     }
     @Suppress("DEPRECATION")
     @Test fun beginVerifiedSelfUpdate() {

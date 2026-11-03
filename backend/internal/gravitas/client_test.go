@@ -82,7 +82,7 @@ func start(t *testing.T, c *Client) (flow, *http.Cookie, *httptest.ResponseRecor
 	}
 	sum := sha256.Sum256([]byte(f.Verifier))
 	q := location.Query()
-	if q.Get("codeChallenge") != base64.RawURLEncoding.EncodeToString(sum[:]) || q.Get("codeChallengeMethod") != "S256" || q.Get("scope") != "profile.name" || q.Get("state") != f.State || q.Get("redirectURL") != c.AppURL+"/auth/gravitas/callback" {
+	if q.Get("codeChallenge") != base64.RawURLEncoding.EncodeToString(sum[:]) || q.Get("codeChallengeMethod") != "S256" || q.Get("scope") != "profile.name profile.username" || q.Get("state") != f.State || q.Get("redirectURL") != c.AppURL+"/auth/gravitas/callback" {
 		t.Fatal("invalid PKCE request")
 	}
 	if strings.Contains(location.String(), f.Verifier) {

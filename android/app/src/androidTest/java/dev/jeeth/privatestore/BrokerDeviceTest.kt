@@ -18,7 +18,7 @@ import java.util.concurrent.TimeUnit
 class BrokerDeviceTest {
     private val context=InstrumentationRegistry.getInstrumentation().targetContext
     private val now get()=System.currentTimeMillis()/1000
-    private fun sample(expiredAccess: Boolean=false)=BrokerSession(BrokerProtocol.ISSUER,GravitasLogin.STORE,"fixture-subject","@fixture:gravitas.cool","a".repeat(43),"b".repeat(43),"profile.name native.broker",now+if(expiredAccess) -1 else 1200,"fixture-family","c".repeat(43),now+7200)
+    private fun sample(expiredAccess: Boolean=false)=BrokerSession(BrokerProtocol.ISSUER,GravitasLogin.STORE,"fixture-subject","@fixture:gravitas.cool","a".repeat(43),"b".repeat(43),"profile.name profile.username native.broker",now+if(expiredAccess) -1 else 1200,"fixture-family","c".repeat(43),now+7200)
     @Before fun isolated() { assumeTrue(context.packageName.endsWith(".testbed"));BrokerManager.clear(context,true) }
     @After fun cleanup() { if(context.packageName.endsWith(".testbed")) BrokerManager.clear(context,true) }
     private fun failure(reason: BrokerError,block:()->Unit) { try { block();fail("Expected ${reason.wire}") } catch(e:BrokerFailure) { assertEquals(reason,e.reason) } }

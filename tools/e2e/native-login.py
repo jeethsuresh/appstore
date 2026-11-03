@@ -46,7 +46,7 @@ def fetch(address,form=None):
 def authorize(address):
  u=urllib.parse.urlsplit(address);q=urllib.parse.parse_qs(u.query)
  assert u.scheme=='https' and u.netloc=='gravitas.cool' and u.path=='/oauth/start'
- assert q['scope'] in (['profile.name'], ['profile.name native.broker']) and q['codeChallengeMethod']==['S256'] and q['redirectURL']==['https://apps.gravitas.cool/auth/android/callback']
+ assert q['scope'] in (['profile.name'], ['profile.name profile.username native.broker']) and q['codeChallengeMethod']==['S256'] and q['redirectURL']==['https://apps.gravitas.cool/auth/android/callback']
  for _ in range(18):
   if address.startswith('https://apps.gravitas.cool/auth/android/callback?'):return address
   status,headers,body=fetch(address)

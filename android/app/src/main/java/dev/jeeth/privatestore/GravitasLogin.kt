@@ -31,7 +31,7 @@ object GravitasLogin {
     fun authorization(pending: PendingLogin, address: String, redirect: String): String {
         val uri = URI(address); val q = query(uri)
         require(uri.scheme == "https" && uri.host == URI(pending.issuer).host && uri.port == URI(pending.issuer).port && uri.userInfo == null && uri.fragment == null && uri.path == "/oauth/start") { "The store returned an untrusted sign-in address" }
-        val expected = mapOf("callerURL" to pending.baseUrl, "redirectURL" to pending.baseUrl + CALLBACK, "codeChallenge" to challenge(pending.verifier), "codeChallengeMethod" to "S256", "scope" to if(pending.broker) "profile.name native.broker" else "profile.name", "state" to pending.state)
+        val expected = mapOf("callerURL" to pending.baseUrl, "redirectURL" to pending.baseUrl + CALLBACK, "codeChallenge" to challenge(pending.verifier), "codeChallengeMethod" to "S256", "scope" to if(pending.broker) "profile.name profile.username native.broker" else "profile.name profile.username", "state" to pending.state)
         require(redirect == pending.baseUrl + CALLBACK && expected.all { (key, value) -> q[key] == listOf(value) }) { "The sign-in request does not match this device" }
         require(pending.username.isEmpty() || q["login_hint"] == listOf(pending.username)) { "The sign-in account did not match" }
         return uri.toASCIIString()

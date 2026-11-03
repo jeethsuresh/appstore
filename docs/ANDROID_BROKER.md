@@ -56,7 +56,7 @@ Refresh is serialized, on demand and opportunistically during existing store upd
 
 ## River request
 
-Private Store 0.6.4 also accepts exactly `cool.gravitas.river`, with release
+Private Store 0.6.7 also accepts exactly `cool.gravitas.river`, with release
 certificate `6559956b5cf6b2f796824995b31da7fa2c176ba652e8fcb40741686d850bb6b0`.
 Its token type is `gravitas_code:river:v1:<challenge>:<state>`, using the same
 version, nonce, verifier, result and caller checks as Spacetime. The fixed target
