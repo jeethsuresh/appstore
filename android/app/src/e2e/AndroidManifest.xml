@@ -1,3 +1,4 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <queries><package android:name="dev.jeeth.privatestore.testbed.test" /></queries>
     <application android:networkSecurityConfig="@xml/e2e_network_security" />
 </manifest>

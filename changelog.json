@@ -1,8 +1,10 @@
 {
   "schemaVersion": 1,
-  "version": "0.6.5",
-  "versionCode": 17,
+  "version": "0.6.6",
+  "versionCode": 18,
   "changes": [
-    "Ask separately for username access when enabling the Gravitas sign-in broker. Keep browser sign-in compatible with full-name-only profiles."
+    "Recover the shared notification connection promptly after network changes, interrupted streams, or reopening Private Store.",
+    "Retry alerts when an app cannot receive them yet, while continuing delivery to your other apps.",
+    "Keep queued alerts until the receiving app confirms delivery. Enable Allow screen-off notifications for delivery during Android idle mode."
   ]
 }
