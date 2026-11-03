@@ -1,0 +1,7 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <application>
+        <provider android:name="dev.jeeth.privatestore.RelayFixtureProvider"
+            android:authorities="dev.jeeth.privatestore.testbed.test.notifications"
+            android:exported="true" />
+    </application>
+</manifest>

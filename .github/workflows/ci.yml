@@ -74,7 +74,8 @@ jobs:
       - name: Prepare isolated testbed certificate resource
         run: |
           mkdir -p android/app/build/generated/e2e-res/raw
-          openssl req -x509 -newkey rsa:2048 -nodes -keyout "$RUNNER_TEMP/notification-power-ca.key" -out android/app/build/generated/e2e-res/raw/integration_ca.pem -days 2 -subj '/CN=Notification power test CA'
+          openssl req -x509 -newkey rsa:2048 -nodes -keyout "$RUNNER_TEMP/notification-power-ca.key" -out android/app/build/generated/e2e-res/raw/integration_ca.pem -days 2 -subj '/CN=Notification recovery fixture' -addext 'subjectAltName=IP:127.0.0.1,DNS:localhost'
+          openssl pkcs12 -export -inkey "$RUNNER_TEMP/notification-power-ca.key" -in android/app/build/generated/e2e-res/raw/integration_ca.pem -out android/app/build/generated/e2e-res/raw/notification_test_server.p12 -passout pass:fixture
           rm "$RUNNER_TEMP/notification-power-ca.key"
       - name: Test Android navigation, settings and screen-off delivery
         uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2

@@ -27,6 +27,8 @@ type notificationHub struct {
 	mu        sync.Mutex
 	listeners map[string]chan struct{}
 	work      chan struct{}
+	// Private test seam; production uses one minute for both replay and liveness.
+	streamInterval time.Duration
 }
 
 func (h *notificationHub) wake(device string) {
@@ -68,7 +70,7 @@ func (s *Server) initNotifications() error {
 	if err != nil {
 		return err
 	}
-	s.notifications = &notificationHub{listeners: map[string]chan struct{}{}, work: make(chan struct{}, 1)}
+	s.notifications = &notificationHub{listeners: map[string]chan struct{}{}, work: make(chan struct{}, 1), streamInterval: time.Minute}
 	s.mux.Handle("PUT /v1/notification-apps", s.device(http.HandlerFunc(s.notificationApps)))
 	s.mux.Handle("GET /v1/notifications/stream", s.device(http.HandlerFunc(s.notificationStream)))
 	s.mux.Handle("DELETE /v1/notifications/{id}", s.device(http.HandlerFunc(s.notificationAck)))
@@ -357,13 +359,12 @@ func (s *Server) notificationStream(w http.ResponseWriter, r *http.Request) {
 	_ = control.SetWriteDeadline(time.Time{})
 	w.Header().Set("Content-Type", "application/x-ndjson")
 	w.Header().Set("X-Accel-Buffering", "no")
+	w.Header().Set("Cache-Control", "no-store, no-transform")
 	if control.Flush() != nil {
 		return
 	}
-	check := time.NewTicker(time.Minute)
+	check := time.NewTicker(s.notifications.streamInterval)
 	defer check.Stop()
-	keepalive := time.NewTicker(15 * time.Minute)
-	defer keepalive.Stop()
 	var last int64
 	for {
 		// Revalidate on every message and on the server timer, including central
@@ -414,7 +415,12 @@ func (s *Server) notificationStream(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 		case <-check.C:
-		case <-keepalive.C:
+			// Writing bytes is not delivery. Replay unacknowledged records even
+			// on this connection; an app handoff can fail without a disconnect.
+			last = 0
+			// Always write at the interval. Skipping a tick after recent data
+			// could leave nearly two intervals of silence and hit the phone's
+			// read deadline even though both endpoints are healthy.
 			_ = control.SetWriteDeadline(time.Now().Add(30 * time.Second))
 			if _, e = fmt.Fprintln(w); e != nil || control.Flush() != nil {
 				return

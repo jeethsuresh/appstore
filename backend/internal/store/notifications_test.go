@@ -168,6 +168,85 @@ func TestNotificationQueueAuthenticationIsolationAndReplay(t *testing.T) {
 		t.Fatal("revoked account accepted callback", w.Code)
 	}
 }
+
+func TestNotificationRetriesOnTheSameStreamUntilThePhoneAcknowledges(t *testing.T) {
+	s, credential, device := notificationFixture(t)
+	s.notifications.streamInterval = 20 * time.Millisecond
+	provider := subscribeNotification(t, s, credential, device)
+	if w := deliverNotification(s, provider, "retry-on-live-stream"); w.Code != 204 {
+		t.Fatal(w.Code, w.Body.String())
+	}
+	server := httptest.NewServer(s)
+	defer server.Close()
+	ctx, cancel := context.WithTimeout(t.Context(), 3*time.Second)
+	defer cancel()
+	req, _ := http.NewRequestWithContext(ctx, "GET", server.URL+"/v1/notifications/stream", nil)
+	req.Header.Set("Authorization", "Bearer "+credential)
+	response, err := server.Client().Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer response.Body.Close()
+	if response.Header.Get("Cache-Control") != "no-store, no-transform" {
+		t.Fatal("notification stream can be buffered or cached")
+	}
+	reader := bufio.NewReader(response.Body)
+	next := func() int64 {
+		t.Helper()
+		for {
+			line, err := reader.ReadBytes('\n')
+			if err != nil {
+				t.Fatal("pending alert was not replayed", err)
+			}
+			if strings.TrimSpace(string(line)) == "" {
+				continue
+			}
+			var m struct{ ID int64 }
+			if err := json.Unmarshal(line, &m); err != nil || m.ID == 0 {
+				t.Fatal("invalid replay", err)
+			}
+			return m.ID
+		}
+	}
+	seq := next()
+	if got := next(); got != seq {
+		t.Fatal("pending notification was lost on a live stream", got, seq)
+	}
+	if w := request(s, "DELETE", fmt.Sprintf("/v1/notifications/%d", seq), credential, ""); w.Code != 204 {
+		t.Fatal(w.Code)
+	}
+	// Once acknowledged, only the small liveness frame remains. Acknowledged
+	// payloads must not be exposed again by the periodic replay.
+	for range 3 {
+		line, err := reader.ReadBytes('\n')
+		if err != nil || strings.TrimSpace(string(line)) != "" {
+			t.Fatal("acknowledged alert replayed or connection lost", string(line), err)
+		}
+	}
+}
+
+func TestNotificationIdleStreamHasBoundedLivenessWithoutClientPolling(t *testing.T) {
+	s, credential, device := notificationFixture(t)
+	if s.notifications.streamInterval != time.Minute {
+		t.Fatal("production heartbeat must fit within the Android read deadline")
+	}
+	s.notifications.streamInterval = 20 * time.Millisecond
+	subscribeNotification(t, s, credential, device)
+	server := httptest.NewServer(s)
+	defer server.Close()
+	ctx, cancel := context.WithTimeout(t.Context(), time.Second)
+	defer cancel()
+	req, _ := http.NewRequestWithContext(ctx, "GET", server.URL+"/v1/notifications/stream", nil)
+	req.Header.Set("Authorization", "Bearer "+credential)
+	response, err := server.Client().Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer response.Body.Close()
+	if frame, err := bufio.NewReader(response.Body).ReadBytes('\n'); err != nil || string(frame) != "\n" {
+		t.Fatal("missing idle keepalive", string(frame), err)
+	}
+}
 func TestNotificationAccountChangeAndBoundedQueue(t *testing.T) {
 	s, credential, device := notificationFixture(t)
 	provider := subscribeNotification(t, s, credential, device)
