@@ -24,6 +24,7 @@ class BrokerDeviceTest {
     private fun failure(reason: BrokerError,block:()->Unit) { try { block();fail("Expected ${reason.wire}") } catch(e:BrokerFailure) { assertEquals(reason,e.reason) } }
     private class Fake(val initial: BrokerSession):BrokerTransport {
         var status=200;var malformed=false;var refreshes=0;var codes=0
+        var target=BrokerProtocol.clients.first()
         var refreshEntered:CountDownLatch?=null;var releaseRefresh:CountDownLatch?=null
         override fun request(url:String,bearer:String?,body:String?,form:Boolean):BrokerReply {
             val s=initial
@@ -31,7 +32,7 @@ class BrokerDeviceTest {
                 url.endsWith("iam-configuration")->JSONObject().put("issuer",s.issuer).put("identity_domain","gravitas.cool").put("token_endpoint",s.issuer+"/oauth/token").put("session_check_endpoint",s.issuer+"/oauth/session").put("native_broker_authorization_endpoint",s.issuer+"/oauth/broker/authorize")
                 url.endsWith("/session")-> { if(status!=200) return BrokerReply(status,"{}");JSONObject().put("active",true).put("iss",s.issuer).put("sub",if(malformed) "wrong" else s.subject).put("app_origin",s.appOrigin).put("session_id",s.sessionId).put("exp",s.sessionExpiresAt) }
                 url.endsWith("/token")-> { refreshes++;refreshEntered?.countDown();releaseRefresh?.await(10,TimeUnit.SECONDS);JSONObject().put("token_type","Bearer").put("scope",s.scope).put("session_id",s.sessionId).put("expires_in",1000).put("session_check_expires_in",s.sessionExpiresAt-System.currentTimeMillis()/1000).put("access_token","d".repeat(43)).put("refresh_token","e".repeat(43)).put("session_check_token","f".repeat(43)) }
-                else->{ codes++;val request=JSONObject(body!!);JSONObject().put("issuer",s.issuer).put("app_origin",BrokerProtocol.ORIGIN).put("redirect_uri",BrokerProtocol.REDIRECT).put("state",request.getString("state")).put("session_id",s.sessionId).put("sub",s.subject).put("expires_in",60).put("code","single-use-$codes") }
+                else->{ codes++;val request=JSONObject(body!!);assertEquals(target.origin,request.getString("app_origin"));assertEquals(target.redirect,request.getString("redirect_uri"));assertEquals(target.scope,request.getString("scope"));JSONObject().put("issuer",s.issuer).put("app_origin",target.origin).put("redirect_uri",target.redirect).put("state",request.getString("state")).put("session_id",s.sessionId).put("sub",s.subject).put("expires_in",60).put("code","single-use-$codes") }
             }
             return BrokerReply(200,value.toString())
         }
@@ -42,6 +43,15 @@ class BrokerDeviceTest {
         val stored=context.getSharedPreferences("gravitas-broker",0).all.toString()
         assertFalse(stored.contains(s.refreshToken));assertFalse(stored.contains(s.sessionCheckToken))
         vault.clear();assertFalse(vault.replace(s,s.copy(refreshToken="z".repeat(43))));assertNull(vault.load())
+    }
+    @Test fun riverAuthorizationKeepsFixedScopesAndTheStoreFamily() {
+        val s=sample();val fake=Fake(s);val target=BrokerProtocol.client("cool.gravitas.river")!!
+        fake.target=target
+        BrokerVault(context).save(s)
+        val result=BrokerEngine(context,BrokerIam(fake)).code(s.account,BrokerRequest("g".repeat(43),"h".repeat(43),target))
+        assertEquals(target.origin,result.getString("app_origin"));assertEquals(target.redirect,result.getString("redirect_uri"))
+        assertEquals(s.sessionId,result.getString("session_id"));assertEquals(s.subject,result.getString("sub"))
+        assertFalse(result.toString().contains(s.refreshToken));assertFalse(result.toString().contains(s.sessionCheckToken))
     }
     @Test fun concurrentCodesRotateOnceAndKeepNonceBinding() {
         val s=sample(true);val fake=Fake(s);BrokerVault(context).save(s);val engine=BrokerEngine(context,BrokerIam(fake));val pool=Executors.newFixedThreadPool(2)

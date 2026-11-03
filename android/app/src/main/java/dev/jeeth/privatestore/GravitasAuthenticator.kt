@@ -26,7 +26,7 @@ class GravitasAuthenticator(private val context: Context,private val engine: Bro
         if(!caller(options.getInt(AccountManager.KEY_CALLER_UID,-1),options.getString(AccountManager.KEY_ANDROID_PACKAGE_NAME))) return error(BrokerError.UNAUTHORIZED_CLIENT)
         if(account.type!=BrokerAccounts.type(context)) return error(BrokerError.INVALID_REQUEST)
         return try {
-            val request=BrokerProtocol.request(authTokenType,options.getInt("protocolVersion",0),options.getString("codeChallenge").orEmpty(),options.getString("state").orEmpty())
+            val request=BrokerProtocol.request(authTokenType,options.getInt("protocolVersion",0),options.getString("codeChallenge").orEmpty(),options.getString("state").orEmpty(),options.getString(AccountManager.KEY_ANDROID_PACKAGE_NAME).orEmpty())
             val value=engine.code(account.name,request)
             Bundle().apply {
                 putString(AccountManager.KEY_ACCOUNT_NAME,account.name);putString(AccountManager.KEY_ACCOUNT_TYPE,account.type)
@@ -41,7 +41,7 @@ class GravitasAuthenticator(private val context: Context,private val engine: Bro
     override fun confirmCredentials(response: AccountAuthenticatorResponse,account: Account,options: Bundle?) = error(BrokerError.UNAUTHORIZED_CLIENT)
     override fun updateCredentials(response: AccountAuthenticatorResponse,account: Account,authTokenType: String?,options: Bundle?) = error(BrokerError.UNAUTHORIZED_CLIENT)
     override fun hasFeatures(response: AccountAuthenticatorResponse,account: Account,features: Array<out String>) = Bundle().apply { putBoolean(AccountManager.KEY_BOOLEAN_RESULT,false) }
-    override fun getAuthTokenLabel(authTokenType: String) = "Sign in to Spacetime"
+    override fun getAuthTokenLabel(authTokenType: String) = "Sign in with Gravitas"
     override fun getAccountRemovalAllowed(response: AccountAuthenticatorResponse,account: Account): Bundle {
         BrokerManager.clear(context,true)
         return Bundle().apply { putBoolean(AccountManager.KEY_BOOLEAN_RESULT,true) }

@@ -1,10 +1,9 @@
 {
   "schemaVersion": 1,
-  "version": "0.6.6",
-  "versionCode": 18,
+  "version": "0.6.7",
+  "versionCode": 19,
   "changes": [
-    "Recover the shared notification connection promptly after network changes, interrupted streams, or reopening Private Store.",
-    "Retry alerts when an app cannot receive them yet, while continuing delivery to your other apps.",
-    "Keep queued alerts until the receiving app confirms delivery. Enable Allow screen-off notifications for delivery during Android idle mode."
+    "Allow the signed River Android app to reuse a signed-in Private Store account when its Gravitas permissions are already approved.",
+    "Keep account selection, new consent, and unavailable broker sign-ins in the browser."
   ]
 }

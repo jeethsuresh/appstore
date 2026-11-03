@@ -15,9 +15,11 @@ object BrokerAccounts {
         if(uid<0) return false
         val pm=context.packageManager
         val packages=pm.getPackagesForUid(uid)?.toList()?:return false
+        val target=BrokerProtocol.client(declared)?:return false
+        if(packages!=listOf(target.packageName)) return false
         val signatures=try {
-            if(Build.VERSION.SDK_INT>=28) pm.getPackageInfo(BrokerProtocol.CLIENT_PACKAGE,PackageManager.GET_SIGNING_CERTIFICATES).signingInfo?.apkContentsSigners?.toList().orEmpty()
-            else pm.getPackageInfo(BrokerProtocol.CLIENT_PACKAGE,PackageManager.GET_SIGNATURES).signatures?.toList().orEmpty()
+            if(Build.VERSION.SDK_INT>=28) pm.getPackageInfo(target.packageName,PackageManager.GET_SIGNING_CERTIFICATES).signingInfo?.apkContentsSigners?.toList().orEmpty()
+            else pm.getPackageInfo(target.packageName,PackageManager.GET_SIGNATURES).signatures?.toList().orEmpty()
         } catch (_:PackageManager.NameNotFoundException) { return false }
         return BrokerProtocol.approved(packages,declared,signatures.map { MessageDigest.getInstance("SHA-256").digest(it.toByteArray()).toHex() })
     }
@@ -28,9 +30,11 @@ object BrokerAccounts {
         accounts.filter { saved==null || it.name!=saved.account }.forEach { manager.removeAccountExplicitly(it) }
         if(saved!=null && saved.sessionExpiresAt>System.currentTimeMillis()/1000) {
             val account=Account(saved.account,type(context))
-            val uid=runCatching { context.packageManager.getApplicationInfo(BrokerProtocol.CLIENT_PACKAGE,0).uid }.getOrDefault(-1)
-            val visible=verifiedCaller(context,uid,BrokerProtocol.CLIENT_PACKAGE)
-            val visibility=mapOf(context.packageName to AccountManager.VISIBILITY_VISIBLE,BrokerProtocol.CLIENT_PACKAGE to if(visible) AccountManager.VISIBILITY_VISIBLE else AccountManager.VISIBILITY_NOT_VISIBLE,AccountManager.PACKAGE_NAME_KEY_LEGACY_VISIBLE to AccountManager.VISIBILITY_USER_MANAGED_NOT_VISIBLE,AccountManager.PACKAGE_NAME_KEY_LEGACY_NOT_VISIBLE to AccountManager.VISIBILITY_USER_MANAGED_NOT_VISIBLE)
+            val visibility=mutableMapOf(context.packageName to AccountManager.VISIBILITY_VISIBLE,AccountManager.PACKAGE_NAME_KEY_LEGACY_VISIBLE to AccountManager.VISIBILITY_USER_MANAGED_NOT_VISIBLE,AccountManager.PACKAGE_NAME_KEY_LEGACY_NOT_VISIBLE to AccountManager.VISIBILITY_USER_MANAGED_NOT_VISIBLE)
+            BrokerProtocol.clients.forEach { target ->
+                val uid=runCatching { context.packageManager.getApplicationInfo(target.packageName,0).uid }.getOrDefault(-1)
+                visibility[target.packageName]=if(verifiedCaller(context,uid,target.packageName)) AccountManager.VISIBILITY_VISIBLE else AccountManager.VISIBILITY_NOT_VISIBLE
+            }
             manager.addAccountExplicitly(account,null,null,visibility)
             visibility.forEach { (pkg,value)->manager.setAccountVisibility(account,pkg,value) }
         } else accounts.forEach { manager.removeAccountExplicitly(it) }
