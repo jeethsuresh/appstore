@@ -26,8 +26,8 @@ def configuration():
     catalog = json.loads((ROOT / "config/apps.json").read_text())
     for app in config["apps"]:
         entry = next(item for item in catalog if item["id"] == app["id"])
-        if (entry["packageName"], entry["assetName"], entry["certificateSha256"], entry["repository"]) != (
-                app["package"], app["asset"], config["certificateSha256"], "jeethsuresh/appstore"):
+        if (entry["packageName"], entry["assetName"], entry["certificateSha256"], entry["repository"], entry.get("releaseTagPrefix")) != (
+                app["package"], app["asset"], config["certificateSha256"], "jeethsuresh/appstore", "webview-v"):
             raise ValueError("Store catalog differs from the WebView release identity")
         for required in ('applicationId = "' + app["package"] + '"', app["origin"]):
             if required not in source:

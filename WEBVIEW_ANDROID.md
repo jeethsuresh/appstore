@@ -53,7 +53,9 @@ asset sizes and hashes in a draft, then publishes without changing GitHub's
 latest release (which remains the Store APK). Existing versions are immutable.
 
 Private Store discovers the matching assets through its existing release-list
-fallback, verifies their certificate, package, version and checksums, and ingests
+fallback. Their catalog entries set `releaseTagPrefix` to `webview-v` so
+changelog tags must match the verified APK version in that release channel.
+The Store verifies their certificate, package, version and checksums, and ingests
 their shared machine-readable changelog. Both apps appear as Android entries,
 with web pages at `/apps/work` and `/apps/news`. The existing `office` and `rss`
 entries continue to deliver desktop packages from their original repositories.
