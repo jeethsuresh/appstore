@@ -22,7 +22,7 @@ class EdgeNavigationTest {
     private fun ready(message: String, condition: () -> Boolean) {
         val deadline = System.nanoTime() + 30_000_000_000L
         while (!condition() && System.nanoTime() < deadline) Thread.sleep(100)
-        assertTrue(message, condition())
+        assertTrue(message + "\n" + shell("dumpsys activity service com.android.systemui/.SystemUIService"), condition())
     }
     private fun ime(host: EdgeNavigationFixture): Boolean {
         var visible = false
@@ -78,6 +78,10 @@ class EdgeNavigationTest {
 
     @Test fun actualOsEdgesCancellationBranchingAndKeyboard() {
         org.junit.Assume.assumeTrue(android.os.Build.VERSION.SDK_INT >= 34)
+        shell("dumpsys deviceidle unforce")
+        shell("input keyevent KEYCODE_WAKEUP")
+        shell("wm dismiss-keyguard")
+        shell("input keyevent KEYCODE_HOME")
         val originalMode = shell("settings get secure navigation_mode").trim()
         shell("cmd overlay enable-exclusive --category --user 0 com.android.internal.systemui.navbar.gestural")
         ready("Gesture navigation must be enabled") { shell("settings get secure navigation_mode").trim() == "2" }
