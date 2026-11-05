@@ -37,4 +37,17 @@ class BrokerProtocolTest {
         assertTrue(runCatching { BrokerProtocol.request(river.prefix+challenge+":"+state,1,challenge,state,BrokerProtocol.CLIENT_PACKAGE) }.isFailure)
         assertTrue(runCatching { BrokerProtocol.request(type,1,challenge,state,river.packageName) }.isFailure)
     }
+    @Test fun havenUsesItsPermanentCertificateAndOnlyItsOwnTarget() {
+        val haven=BrokerProtocol.client("cool.gravitas.haven")!!
+        assertEquals("3c01375ebd40c543f9d6d1a6c1aeb18c689188eee35341a3b1ba3b89a397c085",haven.certificate)
+        assertEquals("https://haven.gravitas.cool/auth/gravitas/callback",haven.redirect)
+        assertEquals("profile.name",haven.scope)
+        val tokenType="gravitas_code:haven:v1:$challenge:$state"
+        assertEquals(haven,BrokerProtocol.request(tokenType,1,challenge,state,haven.packageName).client)
+        assertTrue(BrokerProtocol.approved(listOf(haven.packageName),haven.packageName,listOf(haven.certificate)))
+        assertFalse(BrokerProtocol.approved(listOf(haven.packageName),haven.packageName,listOf(BrokerProtocol.CLIENT_CERT)))
+        assertFalse(BrokerProtocol.approved(listOf(haven.packageName,"shared.uid"),haven.packageName,listOf(haven.certificate)))
+        assertTrue(runCatching { BrokerProtocol.request(type,1,challenge,state,haven.packageName) }.isFailure)
+        assertTrue(runCatching { BrokerProtocol.request(tokenType,1,challenge,state) }.isFailure)
+    }
 }
