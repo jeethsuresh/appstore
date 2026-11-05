@@ -31,6 +31,20 @@ type webView struct {
 }
 
 var appStories = map[string]appStory{
+	"morsel": {
+		Category: "Food & reflection", Tagline: "Your daily rhythm.",
+		Summary: "A quiet food journal with a continuous calendar, reusable questions and gentle on-device reminders. No account, analytics, cloud storage or network permission.",
+		Icon:    "morsel.svg", Architecture: "ARM64 Android phones", MinimumAndroid: "Android 8.0+",
+		Features: []appFeature{
+			{"Remember the moments", "Log meals and reflections from reusable templates, browse continuous months, and edit any day’s entries."},
+			{"Ask your own questions", "Combine text, number, slider, checkbox and dropdown fields into independent attributes and templates. Attach them to any timeslot or use them on demand."},
+			{"A gentle nudge", "Default reminders at noon and midnight have conditional 18:00 and 09:00 catch-ups. Midnight and its catch-up log the previous day. Times follow the phone’s timezone."},
+			{"Keep a copy", "Save or share lossless JSON backups and long-form CSV exports including entries, questions, templates, timeslots and reminder logs. Restore personal JSON backups on-device."},
+			{"Show the app, keep your privacy", "Demo View replaces the journal with Alex Morgan’s fictional data. Personal notifications pause and demo edits never touch personal storage."},
+		},
+		LocalData:  "Every journal record stays in an app-private SQLite database. Morsel has no sign-in, backend, analytics or network permission. Android cloud backup and device transfer are disabled; export a JSON backup to keep a copy.",
+		Connection: "Morsel works entirely offline. Only Private Store needs a connection to install signed updates. Android notification permission is required for alerts; optional precise alarm access improves timing. Android force-stop pauses delivery until the app is reopened.",
+	},
 	"haven": {
 		Category: "Media & backup", Tagline: "A home for every memory.",
 		Summary: "Back up permitted phone photos, videos and audio to the desktop devices you own. Browse a shared thumbnail library with your Gravitas account on Android, desktop and the web.",

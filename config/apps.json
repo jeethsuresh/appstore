@@ -94,5 +94,14 @@
     "repository": "jeethsuresh/office",
     "desktop": true,
     "description": "A native desktop workspace for connected documents, canvases, slides and spreadsheets, with a local Go backend and offline storage."
+  },
+  {
+    "id": "morsel",
+    "name": "Morsel",
+    "packageName": "dev.jeeth.morsel",
+    "repository": "jeethsuresh/morsel",
+    "assetName": "morsel-android-arm64.apk",
+    "certificateSha256": "77a673d91cc1dbbcf1d1ec2d19a090266b8c08015ac791e5028af933ac9eda53",
+    "description": "A fully local food journal with reusable questions, gentle reminders, JSON/CSV exports and an isolated Demo View. No account or network access."
   }
 ]
