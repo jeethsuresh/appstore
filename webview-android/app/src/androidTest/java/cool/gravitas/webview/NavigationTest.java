@@ -58,16 +58,18 @@ public class NavigationTest {
         try { device.executeShellCommand("cmd overlay enable-exclusive --category --user 0 com.android.internal.systemui.navbar.gestural"); }
         catch (java.io.IOException error) { throw new AssertionError(error); }
         scenario.onActivity(activity -> activity.getWindow().getInsetsController().hide(android.view.WindowInsets.Type.ime()));
-        boolean ready = false;
+        AtomicBoolean ready = new AtomicBoolean();
         for (int i = 0; i < 100; i++) {
-            try {
-                String systemUI = device.executeShellCommand("dumpsys activity service com.android.systemui/.SystemUIService");
-                ready = systemUI.contains("mIsEnabled=true") && systemUI.contains("mIsGestureHandlingEnabled=true");
-            } catch (java.io.IOException error) { throw new AssertionError(error); }
-            if (ready) break;
+            scenario.onActivity(activity -> ready.set(activity.hasWindowFocus()
+                && !activity.getWindow().getDecorView().getRootWindowInsets().isVisible(android.view.WindowInsets.Type.ime())));
+            if (ready.get()) break;
             android.os.SystemClock.sleep(100);
         }
-        assertTrue("SystemUI edge navigation must be ready", ready);
+        assertTrue("Fixture must be focused with its keyboard hidden", ready.get());
+        try { assertEquals("Gesture navigation must be enabled", "2", device.executeShellCommand("settings get secure navigation_mode").trim()); }
+        catch (java.io.IOException error) { throw new AssertionError(error); }
+        // Validate observable gesture behavior below rather than private SystemUI
+        // dumpsys field names, which differ between Android builds.
         InstrumentationRegistry.getInstrumentation().waitForIdleSync();
         android.os.SystemClock.sleep(500);
     }
@@ -103,7 +105,11 @@ public class NavigationTest {
             if (matches.get()) return;
             android.os.SystemClock.sleep(50);
         }
-        fail("WebView did not reach " + path);
+        final String[] diagnostic = {""};
+        scenario.onActivity(activity -> diagnostic[0] = " url=" + activity.web.getUrl()
+            + " back=" + activity.web.canGoBack() + " forward=" + activity.web.canGoForward()
+            + " focused=" + activity.hasWindowFocus());
+        fail("WebView did not reach " + path + diagnostic[0]);
     }
 
     private void push(ActivityScenario<MainActivity> scenario, String path) {
