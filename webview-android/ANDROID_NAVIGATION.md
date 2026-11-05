@@ -38,3 +38,9 @@ history. `gravitas:navigation-state` supplies a mutable detail object with `back
 and `forward` booleans. The shell queries it after touches and navigation so the
 toolbar also works for hosted state destinations. Dialogs are handled before
 state events. This remains a DOM event protocol without a privileged native bridge.
+
+CI runs `tools/e2e/configure-touch-avd.py` before booting to set `hw.mainKeys=no`.
+An emulator with hardware navigation keys suppresses Android's software navigation
+bar and cannot exercise OS edge gestures even if its navigation-mode setting is 2.
+Keep the actual left/right OS gesture assertions and the software-navigation
+device configuration when updating CI.

@@ -83,6 +83,7 @@ jobs:
           api-level: 35
           arch: x86_64
           disable-animations: true
+          pre-emulator-launch-script: python3 tools/e2e/configure-touch-avd.py
           script: ./tools/e2e/ui-checks.sh
       - name: Preserve notification power test results
         if: always()

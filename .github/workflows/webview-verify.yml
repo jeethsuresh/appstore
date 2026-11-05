@@ -42,7 +42,9 @@ jobs:
           api-level: ${{ matrix.api }}
           arch: x86_64
           disable-animations: true
+          pre-emulator-launch-script: python3 tools/e2e/configure-touch-avd.py
           script: |
+            test "$(adb shell getprop qemu.hw.mainkeys | tr -d '\r')" = 0
             adb shell dumpsys deviceidle unforce
             adb shell input keyevent KEYCODE_WAKEUP
             adb shell wm dismiss-keyguard
