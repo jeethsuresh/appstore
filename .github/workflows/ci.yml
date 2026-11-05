@@ -82,6 +82,7 @@ jobs:
         with:
           api-level: 35
           arch: x86_64
+          profile: pixel_2
           disable-animations: true
           pre-emulator-launch-script: python3 tools/e2e/configure-touch-avd.py
           script: ./tools/e2e/ui-checks.sh

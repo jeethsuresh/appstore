@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "version": "0.6.10",
-  "versionCode": 22,
+  "version": "0.6.11",
+  "versionCode": 23,
   "changes": [
     "Install Work and News from Private Store, with their own app pages, signed updates and Android installation detection."
   ]

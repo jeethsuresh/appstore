@@ -1,6 +1,7 @@
 package dev.jeeth.privatestore
 
 import android.os.Build
+import cool.gravitas.navigation.NavigationHistory
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.selection.toggleable
@@ -63,32 +64,45 @@ fun AppAction(app: StoreApp, installed: Long?, transfer: Downloads.Transfer?, pe
     if (transfer != null && !active && update) Text(if (pending) "Finish installing in Android, or retry using the saved download." else transfer.label, style = MaterialTheme.typography.bodySmall)
 }
 
+private data class CatalogVisit(val page: String, val app: String?)
+
 @Composable
 fun StoreCatalog(
     apps: List<StoreApp>, installed: Map<String, Long?>, transfers: Map<String, Downloads.Transfer>, pending: Set<String>, busy: Boolean,
-    message: String, onRefresh: () -> Unit, onInstall: (List<StoreApp>) -> Unit, settings: @Composable ColumnScope.() -> Unit
+    message: String, onRefresh: () -> Unit, onInstall: (List<StoreApp>) -> Unit, accountKey: String = "", settings: @Composable ColumnScope.() -> Unit
 ) {
-    var page by rememberSaveable { mutableStateOf("apps") }
-    var selectedId by rememberSaveable { mutableStateOf<String?>(null) }
-    var query by rememberSaveable { mutableStateOf("") }
+    var page by rememberSaveable(accountKey) { mutableStateOf("apps") }
+    var selectedId by rememberSaveable(accountKey) { mutableStateOf<String?>(null) }
+    var query by rememberSaveable(accountKey) { mutableStateOf("") }
     val context = LocalContext.current
     val preferences = remember { context.getSharedPreferences("catalog", android.content.Context.MODE_PRIVATE) }
     var list by rememberSaveable { mutableStateOf(preferences.getBoolean("list", false)) }
     var filter by rememberSaveable { mutableStateOf("All apps") }
     val selected = apps.firstOrNull { it.id == selectedId }
     val updates = apps.filter { installed[it.packageName] != null && it.release?.let { r -> Versions.newer(installed[it.packageName], r.versionCode) && r.minSdk <= Build.VERSION.SDK_INT } == true }
-    BackHandler(selectedId != null || page != "apps") { if (selectedId != null) selectedId = null else page = "apps" }
+    val history = remember(accountKey) { NavigationHistory(CatalogVisit(page, selectedId)) }
+    fun restore(visit: CatalogVisit) { page = visit.page; selectedId = visit.app?.takeIf { id -> apps.any { it.id == id } } }
+    fun navigate(next: String, app: String? = null) { history.visit(CatalogVisit(next, app)); restore(history.current) }
+    DisposableEffect(history, apps) {
+        val activity = context as? MainActivity
+        activity?.navigateForward = { history.forward()?.let { restore(it) } }
+        onDispose { activity?.navigateForward = null }
+    }
+    BackHandler(history.canBack || selectedId != null || page != "apps") {
+        val previous = history.back()
+        if (previous != null) restore(previous) else navigate("apps")
+    }
     Scaffold(
         bottomBar = {
             NavigationBar(containerColor = MaterialTheme.colorScheme.surface) {
-                NavigationBarItem(selected = page == "apps", onClick = { page = "apps"; selectedId = null }, icon = { UiSymbol("apps") }, label = { Text("Apps") })
-                NavigationBarItem(selected = page == "settings", onClick = { page = "settings"; selectedId = null }, icon = { UiSymbol("settings") }, label = { Text("Settings") })
+                NavigationBarItem(selected = page == "apps", onClick = { navigate("apps") }, icon = { UiSymbol("apps") }, label = { Text("Apps") })
+                NavigationBarItem(selected = page == "settings", onClick = { navigate("settings") }, icon = { UiSymbol("settings") }, label = { Text("Settings") })
             }
         }
     ) { insets ->
         Column(Modifier.fillMaxSize().padding(insets).consumeWindowInsets(insets)) {
             Row(Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
-                if (selected != null) IconButton(onClick = { selectedId = null }) { UiSymbol("back", "Back to apps") }
+                if (selected != null) IconButton(onClick = { history.back()?.let { restore(it) } ?: navigate("apps") }) { UiSymbol("back", "Back to apps") }
                 Column(Modifier.weight(1f)) {
                     Text("PRIVATE STORE", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, letterSpacing = androidx.compose.ui.unit.TextUnit(2f, androidx.compose.ui.unit.TextUnitType.Sp))
                     Text(if (page == "settings") "Settings" else if (selected != null) "App details" else "Your collection", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.SemiBold)
@@ -140,7 +154,7 @@ fun StoreCatalog(
                             }
                         }
                         items(visible, key = { it.id }) { app ->
-                            OutlinedCard(onClick = { selectedId = app.id }, shape = RoundedCornerShape(20.dp), colors = CardDefaults.outlinedCardColors(containerColor = MaterialTheme.colorScheme.surface)) {
+                            OutlinedCard(onClick = { navigate("apps", app.id) }, shape = RoundedCornerShape(20.dp), colors = CardDefaults.outlinedCardColors(containerColor = MaterialTheme.colorScheme.surface)) {
                                 Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                                         AppIcon(app)

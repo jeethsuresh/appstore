@@ -11,8 +11,8 @@ android {
         applicationId = "dev.jeeth.privatestore"
         minSdk = 26
         targetSdk = 36
-        versionCode = 22
-        versionName = "0.6.10"
+        versionCode = 23
+        versionName = "0.6.11"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
     compileOptions { sourceCompatibility = JavaVersion.VERSION_17; targetCompatibility = JavaVersion.VERSION_17 }

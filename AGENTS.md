@@ -34,3 +34,7 @@ Desktop releases use `desktop/package.json` version/versionCode and a matching `
 ## Work and News Android wrappers
 
 The `webview-android` project ships separate Work and News packages. Preserve left-edge Back/right-edge Forward on Android 14+, cancelled gesture behavior, empty Forward as a no-op, older Android Back behavior, and web History API entries. Do not replace app navigation work in other repositories. Before merging shell changes, increase version/versionCode in `webview-release.json` and `webview-android/app/build.gradle.kts`, and match `webview-android/changelog.json`. Verify both flavors with unit tests, lint and device tests on API 29 and 35. Main automatically signs and publishes the immutable `webview-vX.Y.Z` release using the main-only `android-release` environment after all Store and WebView checks pass. Preserve the package IDs, permanent certificate pins and asset names. See [WEBVIEW_ANDROID.md](WEBVIEW_ANDROID.md).
+
+## Android back and forward navigation
+
+All current and future Gravitas Android touch interfaces must follow [ANDROID_NAVIGATION.md](ANDROID_NAVIGATION.md): left-edge Back and right-edge Forward on Android 14+, bounded destination history, safe restoration without repeating actions, keyboard/modal precedence, and account isolation. New screens must integrate the shared history and include relevant regression coverage. Keep legacy Back behavior on older Android versions.
