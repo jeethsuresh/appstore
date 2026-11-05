@@ -26,6 +26,8 @@ import androidx.compose.ui.unit.dp
 fun AppIcon(app: StoreApp, modifier: Modifier = Modifier) {
     val icon = when (app.id) {
         "atlas" -> R.drawable.app_atlas
+        "work" -> R.drawable.app_work
+        "news" -> R.drawable.app_news
         "daybreak" -> R.drawable.app_daybreak
         "spacetime" -> R.drawable.app_spacetime
         "river" -> R.drawable.app_river

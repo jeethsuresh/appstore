@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "version": "0.1.0",
+  "versionCode": 1,
+  "changes": [
+    "Install Work and News as separate Android apps from Private Store.",
+    "Sign in to the hosted Gravitas apps, upload files through Android's file picker, and keep each app's session between launches.",
+    "Swipe from the left to go back and from the right to go forward on Android 14 and later. Older devices keep standard Back and offer a Forward button.",
+    "Web content requires an internet connection. External links and HTTPS downloads open in your browser."
+  ]
+}
