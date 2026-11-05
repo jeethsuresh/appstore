@@ -31,3 +31,10 @@ or URL hash and validate access when restored. They may cancel the same-origin
 `gravitas:navigate` event (detail.direction is `back` or `forward`) to handle their
 own transient UI before destination history changes. Navigation never submits
 forms or activates action buttons.
+
+News implements these events with its bounded in-memory destination history in
+`jeethsuresh/rss`, covering state-based panes and selections as well as page
+history. `gravitas:navigation-state` supplies a mutable detail object with `back`
+and `forward` booleans. The shell queries it after touches and navigation so the
+toolbar also works for hosted state destinations. Dialogs are handled before
+state events. This remains a DOM event protocol without a privileged native bridge.

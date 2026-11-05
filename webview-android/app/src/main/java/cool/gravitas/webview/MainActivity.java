@@ -10,6 +10,7 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Message;
 import android.view.View;
+import android.view.MotionEvent;
 import android.view.WindowInsets;
 import android.webkit.CookieManager;
 import android.webkit.SslErrorHandler;
@@ -112,6 +113,12 @@ public final class MainActivity extends Activity {
         web.getSettings().setAllowContentAccess(true);
         web.getSettings().setMixedContentMode(android.webkit.WebSettings.MIXED_CONTENT_NEVER_ALLOW);
         web.getSettings().setSupportMultipleWindows(true);
+        // Observe touches without consuming them; hosted state navigation can
+        // update the toolbar after its React render, without a native bridge.
+        web.setOnTouchListener((view, event) -> {
+            if (event.getActionMasked() == MotionEvent.ACTION_UP) web.postDelayed(this::updateNavigation, 250);
+            return false;
+        });
         CookieManager.getInstance().setAcceptCookie(true);
         CookieManager.getInstance().setAcceptThirdPartyCookies(web, false);
         web.setWebViewClient(new WebViewClient() {
@@ -220,14 +227,17 @@ public final class MainActivity extends Activity {
             // must finish before the destination beneath it can change.
             String direction = goForward ? "forward" : "back";
             web.evaluateJavascript("(() => { const forward = " + goForward + ";"
-                + "const event = new CustomEvent('gravitas:navigate', {cancelable:true, detail:{direction:'" + direction + "'}});"
-                + "if (!window.dispatchEvent(event)) return true;"
                 + "const dialog = document.querySelector('dialog[open]');"
                 + "if (dialog) { if (!forward) { const cancel = new Event('cancel', {cancelable:true,bubbles:true});"
                 + "if (dialog.dispatchEvent(cancel)) dialog.close(); } return true; }"
                 + "const overlay = document.querySelector('.modal-backdrop');"
-                + "if (overlay) { if (!forward) overlay.click(); return true; } return false; })()",
-                handled -> { if (!"true".equals(handled)) navigateHistory(goForward); });
+                + "if (overlay) { if (!forward) overlay.click(); return true; }"
+                + "const event = new CustomEvent('gravitas:navigate', {cancelable:true, detail:{direction:'" + direction + "'}});"
+                + "return !window.dispatchEvent(event); })()",
+                handled -> {
+                    if (!"true".equals(handled)) navigateHistory(goForward);
+                    web.postDelayed(this::updateNavigation, 250);
+                });
         } else navigateHistory(goForward);
     }
 
@@ -239,8 +249,20 @@ public final class MainActivity extends Activity {
     }
 
     private void updateNavigation() {
+        if (isDestroyed()) return;
         back.setEnabled(web.canGoBack());
         forward.setEnabled(web.canGoForward());
+        if (NavigationPolicy.sameOrigin(web.getUrl(), BuildConfig.APP_ORIGIN)) {
+            web.evaluateJavascript("(() => { const state={back:" + web.canGoBack() + ",forward:" + web.canGoForward() + "};"
+                + "window.dispatchEvent(new CustomEvent('gravitas:navigation-state',{detail:state}));return state; })()", value -> {
+                if (isDestroyed()) return;
+                try {
+                    org.json.JSONObject state = new org.json.JSONObject(value);
+                    back.setEnabled(state.getBoolean("back"));
+                    forward.setEnabled(state.getBoolean("forward"));
+                } catch (org.json.JSONException ignored) { /* Keep native page-history availability. */ }
+            });
+        }
     }
 
     private void installBackHandler() {

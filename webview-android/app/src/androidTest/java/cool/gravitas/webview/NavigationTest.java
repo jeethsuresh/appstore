@@ -21,6 +21,56 @@ import static org.junit.Assert.*;
 
 @RunWith(AndroidJUnit4.class)
 public class NavigationTest {
+    private void edgeSwipe(boolean right, boolean cancel) {
+        UiDevice device = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation());
+        float start = right ? device.getDisplayWidth() - 2f : 1f;
+        float end = device.getDisplayWidth() * (right ? .55f : .45f);
+        float y = device.getDisplayHeight() * .45f;
+        long down = android.os.SystemClock.uptimeMillis();
+        inject(down, MotionEvent.ACTION_DOWN, start, y);
+        for (int step = 1; step <= 16; step++) {
+            android.os.SystemClock.sleep(16);
+            inject(down, MotionEvent.ACTION_MOVE, start + (end - start) * step / 16f, y);
+        }
+        if (cancel) for (int step = 1; step <= 16; step++) {
+            android.os.SystemClock.sleep(16);
+            inject(down, MotionEvent.ACTION_MOVE, end + (start - end) * step / 16f, y);
+        }
+        inject(down, MotionEvent.ACTION_UP, cancel ? start : end, y);
+    }
+
+    private void inject(long down, int action, float x, float y) {
+        MotionEvent.PointerProperties pointer = new MotionEvent.PointerProperties();
+        pointer.id = 0; pointer.toolType = MotionEvent.TOOL_TYPE_FINGER;
+        MotionEvent.PointerCoords position = new MotionEvent.PointerCoords();
+        position.x = x; position.y = y; position.pressure = action == MotionEvent.ACTION_UP ? 0 : 1; position.size = 1;
+        MotionEvent event = MotionEvent.obtain(down, android.os.SystemClock.uptimeMillis(), action, 1,
+            new MotionEvent.PointerProperties[]{pointer}, new MotionEvent.PointerCoords[]{position},
+            0, 0, 1, 1, 0, 0, InputDevice.SOURCE_TOUCHSCREEN, 0);
+        // Avoid renderer-dependent pauses between touch samples on software emulators.
+        assertTrue(InstrumentationRegistry.getInstrumentation().getUiAutomation().injectInputEvent(event, false));
+        event.recycle();
+    }
+
+    @android.annotation.TargetApi(34)
+    private void prepareGestures(ActivityScenario<MainActivity> scenario) {
+        UiDevice device = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation());
+        try { device.executeShellCommand("cmd overlay enable-exclusive --category --user 0 com.android.internal.systemui.navbar.gestural"); }
+        catch (java.io.IOException error) { throw new AssertionError(error); }
+        scenario.onActivity(activity -> activity.getWindow().getInsetsController().hide(android.view.WindowInsets.Type.ime()));
+        boolean ready = false;
+        for (int i = 0; i < 100; i++) {
+            try {
+                String systemUI = device.executeShellCommand("dumpsys activity service com.android.systemui/.SystemUIService");
+                ready = systemUI.contains("mIsEnabled=true") && systemUI.contains("mIsGestureHandlingEnabled=true");
+            } catch (java.io.IOException error) { throw new AssertionError(error); }
+            if (ready) break;
+            android.os.SystemClock.sleep(100);
+        }
+        assertTrue("SystemUI edge navigation must be ready", ready);
+        InstrumentationRegistry.getInstrumentation().waitForIdleSync();
+        android.os.SystemClock.sleep(500);
+    }
     private ActivityScenario<MainActivity> launch() {
         android.content.Intent intent = new android.content.Intent(InstrumentationRegistry.getInstrumentation().getTargetContext(), MainActivity.class);
         intent.putExtra("skipInitialLoad", true);
@@ -108,16 +158,9 @@ public class NavigationTest {
         try (ActivityScenario<MainActivity> scenario = launch()) {
             fixture(scenario);
             push(scenario, "/fixture/b");
-            UiDevice device = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation());
-            long time = android.os.SystemClock.uptimeMillis();
-            int x = device.getDisplayWidth() - 1, y = device.getDisplayHeight() / 2;
-            for (int action : new int[]{MotionEvent.ACTION_DOWN, MotionEvent.ACTION_MOVE, MotionEvent.ACTION_CANCEL}) {
-                MotionEvent event = MotionEvent.obtain(time, android.os.SystemClock.uptimeMillis(), action,
-                    action == MotionEvent.ACTION_DOWN ? x : x - 30, y, 0);
-                event.setSource(InputDevice.SOURCE_TOUCHSCREEN);
-                InstrumentationRegistry.getInstrumentation().getUiAutomation().injectInputEvent(event, true);
-                event.recycle();
-            }
+            prepareGestures(scenario);
+            edgeSwipe(true, true);
+            android.os.SystemClock.sleep(500);
             awaitPath(scenario, "/fixture/b");
         }
     }
@@ -128,12 +171,12 @@ public class NavigationTest {
         try (ActivityScenario<MainActivity> scenario = launch()) {
             fixture(scenario);
             push(scenario, "/fixture/b");
-            int width = device.getDisplayWidth(), y = device.getDisplayHeight() / 2;
-            device.swipe(1, y, width / 2, y, 30);
+            prepareGestures(scenario);
+            edgeSwipe(false, false);
             awaitPath(scenario, "/fixture/a");
-            device.swipe(width - 1, y, width / 2, y, 30);
+            edgeSwipe(true, false);
             awaitPath(scenario, "/fixture/b");
-            device.swipe(width - 1, y, width / 2, y, 30);
+            edgeSwipe(true, false);
             awaitPath(scenario, "/fixture/b");
             scenario.onActivity(activity -> assertFalse(activity.isFinishing()));
         }
