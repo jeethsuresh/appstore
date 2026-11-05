@@ -30,3 +30,7 @@ Every new version must update the tracked [`changelog.json`](changelog.json) in 
 ## Automatic desktop publishing
 
 Desktop releases use `desktop/package.json` version/versionCode and a matching `desktop/changelog.json`. Keep desktop and Android version codes independent. Main automatically publishes all six desktop packages only after backend, Android, desktop flow and packaging checks pass. Preserve draft upload verification, immutable versions, `desktop-vX.Y.Z` tags, and `make_latest: false` so desktop publication does not displace Android release discovery. See [DESKTOP_RELEASES.md](DESKTOP_RELEASES.md).
+
+## Android back and forward navigation
+
+All current and future Gravitas Android touch interfaces must follow [ANDROID_NAVIGATION.md](ANDROID_NAVIGATION.md): left-edge Back and right-edge Forward on Android 14+, bounded destination history, safe restoration without repeating actions, keyboard/modal precedence, and account isolation. New screens must integrate the shared history and include relevant regression coverage. Keep legacy Back behavior on older Android versions.

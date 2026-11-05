@@ -82,6 +82,7 @@ jobs:
         with:
           api-level: 35
           arch: x86_64
+          profile: pixel_2
           disable-animations: true
           script: ./tools/e2e/ui-checks.sh
       - name: Preserve notification power test results

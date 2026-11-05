@@ -50,6 +50,10 @@ class StoreCatalogTest {
         screenshot("app-details")
         compose.onNodeWithContentDescription("Back to apps").performClick()
         compose.onNodeWithText("Search apps").assertTextContains("Atlas")
+        compose.runOnIdle { compose.activity.navigateForward?.invoke() }
+        compose.onNodeWithText("About this app").assertIsDisplayed()
+        compose.runOnIdle { compose.activity.onBackPressedDispatcher.onBackPressed() }
+        compose.onNodeWithText("Search apps").assertTextContains("Atlas")
         compose.onNodeWithText("Search apps").performTextClearance()
         compose.onNodeWithText("Updates (1)").performClick()
         compose.onNodeWithText("Update all").performClick()
