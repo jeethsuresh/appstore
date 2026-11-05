@@ -16,6 +16,7 @@ class EdgeNavigationFixture : Activity() {
     val destination get() = history.current
     override fun onCreate(state: Bundle?) {
         super.onCreate(state)
+        window.setSoftInputMode(android.view.WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_HIDDEN)
         label = TextView(this).apply { textSize = 28f; text = history.current }
         editor = EditText(this).apply { hint = "Keyboard precedence" }
         setContentView(LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; isFocusableInTouchMode = true; addView(label); addView(editor); requestFocus() })

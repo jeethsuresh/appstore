@@ -19,6 +19,16 @@ class EdgeNavigationTest {
     private val c = instrumentation.targetContext
     private fun shell(command: String) = ParcelFileDescriptor.AutoCloseInputStream(
         instrumentation.uiAutomation.executeShellCommand(command)).bufferedReader().use { it.readText() }
+    private fun ready(message: String, condition: () -> Boolean) {
+        val deadline = System.nanoTime() + 30_000_000_000L
+        while (!condition() && System.nanoTime() < deadline) Thread.sleep(100)
+        assertTrue(message, condition())
+    }
+    private fun ime(host: EdgeNavigationFixture): Boolean {
+        var visible = false
+        instrumentation.runOnMainSync { visible = host.window.decorView.rootWindowInsets?.isVisible(WindowInsets.Type.ime()) == true }
+        return visible
+    }
     private fun await(expected: String, host: EdgeNavigationFixture) {
         val deadline = System.nanoTime() + 15_000_000_000L
         var value = ""
@@ -27,7 +37,7 @@ class EdgeNavigationTest {
             if (value == expected) return
             Thread.sleep(50)
         } while (System.nanoTime() < deadline)
-        assertEquals(expected, value)
+        assertEquals("Focused=${host.hasWindowFocus()}, IME=${ime(host)}", expected, value)
     }
     private fun swipe(right: Boolean, cancel: Boolean = false) {
         val metrics = c.resources.displayMetrics
@@ -70,11 +80,20 @@ class EdgeNavigationTest {
         org.junit.Assume.assumeTrue(android.os.Build.VERSION.SDK_INT >= 34)
         val originalMode = shell("settings get secure navigation_mode").trim()
         shell("cmd overlay enable-exclusive --category --user 0 com.android.internal.systemui.navbar.gestural")
-        shell("settings put global enable_back_animation 1")
-        Thread.sleep(1500)
+        ready("Gesture navigation must be enabled") { shell("settings get secure navigation_mode").trim() == "2" }
+        ready("SystemUI edge-gesture handler must be ready") {
+            shell("dumpsys activity service com.android.systemui/.SystemUIService")
+                .split("EdgeBackGestureHandler:").drop(1).any { section ->
+                    val status = section.lineSequence().take(12).joinToString("\n")
+                    status.contains("mIsEnabled=true") && status.contains("mIsGestureHandlingEnabled=true")
+                }
+        }
         val host = instrumentation.startActivitySync(Intent(c, EdgeNavigationFixture::class.java)
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) as EdgeNavigationFixture
         try {
+            ready("Fixture window must be focused") { host.hasWindowFocus() }
+            instrumentation.runOnMainSync { host.window.insetsController?.hide(WindowInsets.Type.ime()) }
+            ready("Keyboard must be hidden before navigation checks") { !ime(host) }
             instrumentation.runOnMainSync { host.visit("List"); host.visit("Details") }
             instrumentation.waitForIdleSync(); Thread.sleep(500)
             swipe(false); await("List", host)
@@ -90,8 +109,10 @@ class EdgeNavigationTest {
                 (host.getSystemService(android.content.Context.INPUT_METHOD_SERVICE) as InputMethodManager)
                     .showSoftInput(host.editor, InputMethodManager.SHOW_IMPLICIT)
             }
-            Thread.sleep(1000)
-            swipe(false); Thread.sleep(700); await("New branch", host)
+            ready("Keyboard must be visible for keyboard precedence check") { ime(host) }
+            swipe(false)
+            ready("Back must dismiss the keyboard") { !ime(host) }
+            await("New branch", host)
             shell("input keyevent KEYCODE_BACK"); await("List", host)
         } finally {
             instrumentation.runOnMainSync { host.finish() }

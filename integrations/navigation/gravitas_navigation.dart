@@ -37,7 +37,7 @@ class GravitasNavigationObserver extends NavigatorObserver {
   }
 
   void forward() {
-    if (_future.isEmpty || _future.last.anchor != current) return;
+    if (current?.willHandlePopInternally == true || _future.isEmpty || _future.last.anchor != current) return;
     final visit = _future.removeLast();
     _replaying = true;
     try {
@@ -99,16 +99,18 @@ class GravitasNavigation extends StatefulWidget {
 
 class _GravitasNavigationState extends State<GravitasNavigation> {
   static const channel = MethodChannel('cool.gravitas/navigation');
+  static _GravitasNavigationState? owner;
   @override
   void initState() {
     super.initState();
+    owner = this;
     channel.setMethodCallHandler((call) async {
       if (call.method == 'forward') widget.observer.forward();
     });
   }
   @override
   void dispose() {
-    channel.setMethodCallHandler(null);
+    if (owner == this) { owner = null; channel.setMethodCallHandler(null); }
     widget.observer.clear();
     super.dispose();
   }
@@ -167,6 +169,7 @@ class HistoryBoundaryState<T> extends State<HistoryBoundary<T>> {
     _current = widget.value;
     navigation?.branch();
   }
+  bool get hasBack => _past.isNotEmpty;
   bool back() {
     if (_past.isEmpty) return false;
     final next = _past.removeLast(), previous = _current;
@@ -181,11 +184,14 @@ class HistoryBoundaryState<T> extends State<HistoryBoundary<T>> {
     return true;
   }
   @override
-  Widget build(BuildContext context) => PopScope<Object?>(
-    canPop: !widget.interceptBack || _past.isEmpty,
-    onPopInvokedWithResult: (didPop, _) {
-      if (!didPop && widget.interceptBack) back();
-    },
-    child: widget.child,
-  );
+  Widget build(BuildContext context) {
+    final localHistory = ModalRoute.of(context)?.willHandlePopInternally == true;
+    return PopScope<Object?>(
+      canPop: localHistory || !widget.interceptBack || _past.isEmpty,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop && !localHistory && widget.interceptBack) back();
+      },
+      child: widget.child,
+    );
+  }
 }
