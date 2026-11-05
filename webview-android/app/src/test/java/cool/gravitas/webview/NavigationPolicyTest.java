@@ -18,10 +18,11 @@ public class NavigationPolicyTest {
         assertFalse(NavigationPolicy.external("content://private/data"));
         assertFalse(NavigationPolicy.external("javascript:alert(1)"));
     }
-    @Test public void forwardRequiresAnInwardHorizontalSwipe() {
-        assertTrue(NavigationPolicy.forwardGesture(-80, 10, 64));
-        assertFalse(NavigationPolicy.forwardGesture(80, 0, 64));
-        assertFalse(NavigationPolicy.forwardGesture(-20, 0, 64));
-        assertFalse(NavigationPolicy.forwardGesture(-80, 100, 64));
+    @Test public void authenticationAndLogoutAreHistoryBoundaries() {
+        String app = "https://work.gravitas.cool";
+        assertTrue(NavigationPolicy.privateBoundary(app + "/auth/gravitas/start", app));
+        assertTrue(NavigationPolicy.privateBoundary(app + "/login?auto=off", app));
+        assertFalse(NavigationPolicy.privateBoundary(app + "/documents/one", app));
+        assertFalse(NavigationPolicy.privateBoundary("https://evil.org/login", app));
     }
 }

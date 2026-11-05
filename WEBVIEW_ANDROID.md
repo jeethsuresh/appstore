@@ -10,9 +10,7 @@ This does not replace the Office and RSS desktop releases.
 Android 14 and later use the system gesture's starting edge: left is Back,
 right is Forward. Forward with no remaining history is a no-op. Cancelling a
 gesture leaves navigation unchanged. Keyboard dismissal keeps Android's default
-priority. Back at the root closes the activity. On Android 8–13, Forward is
-available through the toolbar and an inward swipe starting within the central
-200 dp of the right edge. Android 10–13 exclude that small zone from system Back.
+priority. Back at the root closes the activity. On Android 8–13, system Back keeps its usual behavior; use the toolbar for Forward.
 Website history, including History API entries, is retained for Forward.
 Completing a sign-in/account transition clears authentication navigation history.
 

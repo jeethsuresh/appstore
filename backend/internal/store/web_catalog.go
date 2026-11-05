@@ -40,7 +40,7 @@ var appStories = map[string]appStory{
 			{"Go back and forward", "On Android 14 and later, swipe from the left to go back and from the right to go forward. Navigation buttons are also available."},
 		},
 		LocalData:  "Sign-in cookies, website storage and cache stay in Work's private Android storage. Android backup is disabled. Your documents remain in the hosted Office service.",
-		Connection: "Requires an internet connection and Android System WebView. Sign in inside the app. External links and HTTPS downloads open in your browser; browser sign-in may be needed there. On older Android versions, swipe inward from the middle of the right edge to go forward.",
+		Connection: "Requires an internet connection and Android System WebView. Sign in inside the app. External links and HTTPS downloads open in your browser; browser sign-in may be needed there. On older Android versions, use the Forward button.",
 	},
 	"news": {
 		Category: "News & feeds", Tagline: "Your feeds, close at hand.",
@@ -51,7 +51,7 @@ var appStories = map[string]appStory{
 			{"Retrace your steps", "On Android 14 and later, swipe from the left to go back and from the right to go forward. An empty forward history leaves you on the current screen."},
 		},
 		LocalData:  "Sign-in cookies, website storage and cache stay in News's private Android storage, separate from Work and your browser. Android backup is disabled. Your feeds remain in the hosted RSS service.",
-		Connection: "Requires an internet connection and Android System WebView. Sign in inside the app. This wrapper uses the hosted reader rather than the desktop app's local database. On older Android versions, use Forward or swipe inward from the middle of the right edge.",
+		Connection: "Requires an internet connection and Android System WebView. Sign in inside the app. This wrapper uses the hosted reader rather than the desktop app's local database. On older Android versions, use the Forward button.",
 	},
 	"morsel": {
 		Category: "Food & reflection", Tagline: "Your daily rhythm.",

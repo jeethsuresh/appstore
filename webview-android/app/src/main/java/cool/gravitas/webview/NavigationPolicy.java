@@ -23,6 +23,11 @@ final class NavigationPolicy {
         return sameOrigin(raw, origin) && URI.create(raw).getPath().startsWith("/auth/");
     }
 
+    static boolean privateBoundary(String raw, String origin) {
+        return authentication(raw, origin)
+            || sameOrigin(raw, origin) && URI.create(raw).getPath().equals("/login");
+    }
+
     static boolean external(String raw) {
         if (https(raw)) return true;
         try {
@@ -31,7 +36,4 @@ final class NavigationPolicy {
         } catch (IllegalArgumentException error) { return false; }
     }
 
-    static boolean forwardGesture(float dx, float dy, float threshold) {
-        return dx < -threshold && Math.abs(dx) > Math.abs(dy) * 1.5f;
-    }
 }

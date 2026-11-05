@@ -1,20 +1,18 @@
 package cool.gravitas.webview;
 
-import android.content.Context;
 import android.net.Uri;
 import android.os.Build;
+import android.view.MotionEvent;
+import android.view.InputDevice;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebResourceResponse;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
-import android.window.BackEvent;
-import android.window.OnBackAnimationCallback;
 import androidx.test.core.app.ActivityScenario;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
 import androidx.test.uiautomator.UiDevice;
 import java.io.ByteArrayInputStream;
-import java.lang.reflect.Field;
 import java.nio.charset.StandardCharsets;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.junit.Test;
@@ -85,15 +83,16 @@ public class NavigationTest {
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             fixture(scenario);
             push(scenario, "/fixture/b");
-            scenario.onActivity(activity -> {
-                try {
-                    Field field = MainActivity.class.getDeclaredField("backCallback");
-                    field.setAccessible(true);
-                    OnBackAnimationCallback callback = (OnBackAnimationCallback) field.get(activity);
-                    callback.onBackStarted(new BackEvent(100, 100, 0.1f, BackEvent.EDGE_RIGHT));
-                    callback.onBackCancelled();
-                } catch (ReflectiveOperationException error) { throw new AssertionError(error); }
-            });
+            UiDevice device = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation());
+            long time = android.os.SystemClock.uptimeMillis();
+            int x = device.getDisplayWidth() - 1, y = device.getDisplayHeight() / 2;
+            for (int action : new int[]{MotionEvent.ACTION_DOWN, MotionEvent.ACTION_MOVE, MotionEvent.ACTION_CANCEL}) {
+                MotionEvent event = MotionEvent.obtain(time, android.os.SystemClock.uptimeMillis(), action,
+                    action == MotionEvent.ACTION_DOWN ? x : x - 30, y, 0);
+                event.setSource(InputDevice.SOURCE_TOUCHSCREEN);
+                InstrumentationRegistry.getInstrumentation().getUiAutomation().injectInputEvent(event, true);
+                event.recycle();
+            }
             awaitPath(scenario, "/fixture/b");
         }
     }
@@ -127,22 +126,31 @@ public class NavigationTest {
         }
     }
 
-    @Test public void olderAndroidRightEdgeZoneNavigatesForward() {
-        if (Build.VERSION.SDK_INT >= 34) return;
+    @Test public void hardwareBackRetainsBackBehavior() {
         UiDevice device = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation());
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             fixture(scenario);
             push(scenario, "/fixture/b");
-            scenario.onActivity(activity -> activity.navigate(false));
+            device.pressBack();
             awaitPath(scenario, "/fixture/a");
-            int[] position = new int[2], size = new int[2];
+        }
+    }
+
+    @Test public void logoutDropsPrivateForwardHistory() {
+        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+            fixture(scenario);
+            push(scenario, "/private/one");
+            push(scenario, "/private/two");
+            scenario.onActivity(activity -> activity.navigate(false));
+            awaitPath(scenario, "/private/one");
+            scenario.onActivity(activity -> activity.web.evaluateJavascript("history.replaceState({}, '', '/login?auto=off')", null));
+            awaitPath(scenario, "/login");
             scenario.onActivity(activity -> {
-                activity.web.getLocationOnScreen(position);
-                size[0] = activity.web.getWidth(); size[1] = activity.web.getHeight();
+                assertFalse(activity.web.canGoBack());
+                assertFalse(activity.web.canGoForward());
+                activity.navigate(true);
+                assertFalse(activity.isFinishing());
             });
-            int edge = position[0] + size[0] - 2, y = position[1] + size[1] / 2;
-            device.swipe(edge, y, position[0] + size[0] / 2, y, 30);
-            awaitPath(scenario, "/fixture/b");
         }
     }
 }

@@ -4,13 +4,11 @@ import android.app.Activity;
 import android.content.ActivityNotFoundException;
 import android.content.Intent;
 import android.graphics.Bitmap;
-import android.graphics.Rect;
 import android.net.Uri;
 import android.net.http.SslError;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Message;
-import android.view.MotionEvent;
 import android.view.View;
 import android.view.WindowInsets;
 import android.webkit.CookieManager;
@@ -27,12 +25,10 @@ import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
-import android.window.BackEvent;
-import android.window.OnBackAnimationCallback;
 import android.window.OnBackInvokedCallback;
 import android.window.OnBackInvokedDispatcher;
 
-import java.util.Collections;
+import cool.gravitas.navigation.GravitasEdgeNavigation;
 
 public final class MainActivity extends Activity {
     static final int FILE_PICKER = 1;
@@ -42,7 +38,6 @@ public final class MainActivity extends Activity {
     private LinearLayout failure;
     private ValueCallback<Uri[]> fileResult;
     private boolean authenticating;
-    private boolean rightEdge;
     private OnBackInvokedCallback backCallback;
 
     @Override public void onCreate(Bundle state) {
@@ -77,7 +72,7 @@ public final class MainActivity extends Activity {
         failure.addView(retry);
         failure.setVisibility(View.GONE);
         root.addView(failure);
-        web = new EdgeWebView();
+        web = new WebView(this);
         web.setId(View.generateViewId());
         root.addView(web, new LinearLayout.LayoutParams(-1, 0, 1));
         LinearLayout toolbar = new LinearLayout(this);
@@ -86,8 +81,9 @@ public final class MainActivity extends Activity {
         button(toolbar, "Reload", () -> web.reload());
         root.addView(toolbar);
         configureWebView();
-        if (state == null || web.restoreState(state) == null) web.loadUrl(BuildConfig.APP_ORIGIN + "/");
-        authenticating = state != null && state.getBoolean("authenticating");
+        if (state != null && state.getBoolean("authenticating")) {
+            web.loadUrl(BuildConfig.APP_ORIGIN + "/login?auto=off");
+        } else if (state == null || web.restoreState(state) == null) web.loadUrl(BuildConfig.APP_ORIGIN + "/");
         updateNavigation();
         installBackHandler();
     }
@@ -111,7 +107,7 @@ public final class MainActivity extends Activity {
         web.getSettings().setJavaScriptEnabled(true);
         web.getSettings().setDomStorageEnabled(true);
         web.getSettings().setAllowFileAccess(false);
-        web.getSettings().setAllowContentAccess(false);
+        web.getSettings().setAllowContentAccess(true);
         web.getSettings().setMixedContentMode(android.webkit.WebSettings.MIXED_CONTENT_NEVER_ALLOW);
         web.getSettings().setSupportMultipleWindows(true);
         CookieManager.getInstance().setAcceptCookie(true);
@@ -144,11 +140,20 @@ public final class MainActivity extends Activity {
                 CookieManager.getInstance().flush();
                 updateNavigation();
             }
-            @Override public void doUpdateVisitedHistory(WebView view, String url, boolean reload) { updateNavigation(); }
+            @Override public void doUpdateVisitedHistory(WebView view, String url, boolean reload) {
+                if (NavigationPolicy.privateBoundary(url, BuildConfig.APP_ORIGIN)
+                    || web.copyBackForwardList().getSize() > 64) web.clearHistory();
+                updateNavigation();
+            }
+            @Override public void onFormResubmission(WebView view, Message dontResend, Message resend) {
+                dontResend.sendToTarget();
+            }
             @Override public void onReceivedError(WebView view, WebResourceRequest request, WebResourceError error) {
                 if (request.isForMainFrame()) failure.setVisibility(View.VISIBLE);
             }
             @Override public void onReceivedHttpError(WebView view, WebResourceRequest request, WebResourceResponse response) {
+                if (NavigationPolicy.sameOrigin(request.getUrl().toString(), BuildConfig.APP_ORIGIN)
+                    && (response.getStatusCode() == 401 || response.getStatusCode() == 403)) web.clearHistory();
                 if (request.isForMainFrame() && response.getStatusCode() >= 500) failure.setVisibility(View.VISIBLE);
             }
             @Override public void onReceivedSslError(WebView view, SslErrorHandler handler, SslError error) {
@@ -200,6 +205,14 @@ public final class MainActivity extends Activity {
     }
 
     void navigate(boolean goForward) {
+        if (authenticating) {
+            if (!goForward) {
+                authenticating = false;
+                web.clearHistory();
+                web.loadUrl(BuildConfig.APP_ORIGIN + "/login?auto=off");
+            }
+            return;
+        }
         if (goForward) {
             if (web.canGoForward()) web.goForward();
         } else if (web.canGoBack()) web.goBack();
@@ -213,12 +226,10 @@ public final class MainActivity extends Activity {
 
     private void installBackHandler() {
         if (Build.VERSION.SDK_INT >= 34) {
-            backCallback = new OnBackAnimationCallback() {
-                @Override public void onBackStarted(BackEvent event) { rightEdge = event.getSwipeEdge() == BackEvent.EDGE_RIGHT; }
-                @Override public void onBackCancelled() { rightEdge = false; }
-                @Override public void onBackInvoked() { boolean goForward = rightEdge; rightEdge = false; navigate(goForward); }
-            };
-        } else if (Build.VERSION.SDK_INT >= 33) backCallback = () -> navigate(false);
+            GravitasEdgeNavigation.install(this, () -> navigate(false), () -> navigate(true));
+            return;
+        }
+        if (Build.VERSION.SDK_INT >= 33) backCallback = () -> navigate(false);
         if (Build.VERSION.SDK_INT >= 33) getOnBackInvokedDispatcher().registerOnBackInvokedCallback(OnBackInvokedDispatcher.PRIORITY_DEFAULT, backCallback);
     }
 
@@ -249,30 +260,4 @@ public final class MainActivity extends Activity {
         super.onDestroy();
     }
 
-    /** Pre-Android 14 cannot identify the system gesture edge; reserve a small right-edge zone. */
-    private final class EdgeWebView extends WebView {
-        private float startX, startY;
-        private boolean tracking;
-        EdgeWebView() { super(MainActivity.this); }
-        @Override protected void onSizeChanged(int width, int height, int oldWidth, int oldHeight) {
-            super.onSizeChanged(width, height, oldWidth, oldHeight);
-            if (Build.VERSION.SDK_INT >= 29 && Build.VERSION.SDK_INT < 34)
-                setSystemGestureExclusionRects(Collections.singletonList(new Rect(Math.max(0, width - dp(24)), Math.max(0, height / 2 - dp(100)), width, height / 2 + dp(100))));
-        }
-        @Override public boolean onTouchEvent(MotionEvent event) {
-            if (Build.VERSION.SDK_INT >= 34) return super.onTouchEvent(event);
-            if (event.getActionMasked() == MotionEvent.ACTION_DOWN) {
-                startX = event.getX(); startY = event.getY();
-                tracking = startX >= getWidth() - dp(24) && Math.abs(startY - getHeight() / 2f) <= dp(100);
-            }
-            if (!tracking) return super.onTouchEvent(event);
-            if (event.getActionMasked() == MotionEvent.ACTION_UP) {
-                tracking = false;
-                if (NavigationPolicy.forwardGesture(event.getX() - startX, event.getY() - startY, dp(64))) navigate(true);
-                performClick();
-            } else if (event.getActionMasked() == MotionEvent.ACTION_CANCEL) tracking = false;
-            return true;
-        }
-        @Override public boolean performClick() { super.performClick(); return true; }
-    }
 }
