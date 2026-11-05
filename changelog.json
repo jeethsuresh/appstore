@@ -1,9 +1,9 @@
 {
   "schemaVersion": 1,
-  "version": "0.6.7",
-  "versionCode": 19,
+  "version": "0.6.8",
+  "versionCode": 20,
   "changes": [
-    "Allow the signed River Android app to reuse a signed-in Private Store account when its Gravitas permissions are already approved.",
-    "Keep account selection, new consent, and unavailable broker sign-ins in the browser."
+    "Add Morsel, a fully local food journal, to the Android collection.",
+    "Recognize installed Morsel copies and verify updates using its permanent release certificate."
   ]
 }
