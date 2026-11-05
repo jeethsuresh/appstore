@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "version": "0.6.11",
-  "versionCode": 23,
+  "version": "0.6.12",
+  "versionCode": 24,
   "changes": [
-    "Install Work and News from Private Store, with their own app pages, signed updates and Android installation detection."
+    "Fix verified Work and News release ingestion so both Android apps and their release notes appear in Private Store."
   ]
 }

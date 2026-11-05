@@ -66,7 +66,11 @@ func (s *Server) releaseNotes(ctx context.Context, a App, rel githubRelease, inf
 		}
 		return notes, nil
 	}
-	if rel.Tag != "v"+info.VersionName {
+	prefix := a.ReleaseTagPrefix
+	if prefix == "" {
+		prefix = "v"
+	}
+	if rel.Tag != prefix+info.VersionName {
 		return "", fmt.Errorf("changelog release tag does not match the verified APK")
 	}
 	data, err := s.verifiedMetadata(ctx, a, assetID, size, digest, maxChangelog)
