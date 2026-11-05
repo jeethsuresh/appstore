@@ -74,3 +74,16 @@ unavailable broker uses River's browser flow. Matrix device approval remains
 separate for a new or unlinked device. The selected caller determines the fixed
 service mapping; no request may substitute another client's token type or supply
 arbitrary URLs, scopes, packages or certificates.
+
+## Haven request
+
+Private Store 0.6.9 supports `cool.gravitas.haven` with permanent certificate
+`3c01375ebd40c543f9d6d1a6c1aeb18c689188eee35341a3b1ba3b89a397c085`.
+Its token type is `gravitas_code:haven:v1:<challenge>:<state>`. The fixed origin
+is `https://haven.gravitas.cool`, callback is `/auth/gravitas/callback`, and scope
+is exactly `profile.name`. Haven uses the same prepare, certificate, nonce,
+account and result checks above, then exchanges the code and private verifier
+at `/api/auth/native/broker`. Only Haven's own session is saved. Existing consent
+is required; missing Store, sign-in or consent permits browser sign-in.
+Cancellation stays cancelled; outages preserve state and offer an explicit retry
+or browser sign-in.

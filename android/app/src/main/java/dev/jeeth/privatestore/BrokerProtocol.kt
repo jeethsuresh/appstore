@@ -16,6 +16,7 @@ object BrokerProtocol {
     const val PREFIX = "gravitas_code:spacetime:v1:"
     val clients = listOf(
         BrokerClient(CLIENT_PACKAGE, CLIENT_CERT, PREFIX, ORIGIN, "profile.name"),
+        BrokerClient("cool.gravitas.haven", "3c01375ebd40c543f9d6d1a6c1aeb18c689188eee35341a3b1ba3b89a397c085", "gravitas_code:haven:v1:", "https://haven.gravitas.cool", "profile.name"),
         BrokerClient("cool.gravitas.river", "6559956b5cf6b2f796824995b31da7fa2c176ba652e8fcb40741686d850bb6b0", "gravitas_code:river:v1:", "https://chat.gravitas.cool", "profile.name matrix.full chats.list chats.read chats.write groups.create groups.manage groups.join spaces.channels contacts.read contacts.manage calls.read calls.join posts.publish")
     )
     fun client(packageName: String?) = clients.singleOrNull { it.packageName == packageName }

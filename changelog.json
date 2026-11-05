@@ -1,9 +1,8 @@
 {
   "schemaVersion": 1,
-  "version": "0.6.8",
-  "versionCode": 20,
+  "version": "0.6.9",
+  "versionCode": 21,
   "changes": [
-    "Add Morsel, a fully local food journal, to the Android collection.",
-    "Recognize installed Morsel copies and verify updates using its permanent release certificate."
+    "Sign in to Haven using your Private Store account without opening a browser when Haven is already connected to Gravitas."
   ]
 }
