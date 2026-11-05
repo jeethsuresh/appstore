@@ -32,7 +32,9 @@ public class NavigationTest {
             WebViewClient original = activity.web.getWebViewClient();
             activity.web.setWebViewClient(new WebViewClient() {
                 @Override public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
-                    String html = "<!doctype html><meta name='viewport' content='width=device-width'><title>Fixture</title><h1>" + request.getUrl().getPath() + "</h1>";
+                    String html = "<!doctype html><meta name='viewport' content='width=device-width'><title>Fixture</title>"
+                        + "<button id='next' style='width:100%;height:80px' onclick=\"history.pushState({},'',this.dataset.path)\">Next destination</button>"
+                        + "<h1>" + request.getUrl().getPath() + "</h1>";
                     return new WebResourceResponse("text/html", "UTF-8", new ByteArrayInputStream(html.getBytes(StandardCharsets.UTF_8)));
                 }
                 @Override public void onPageFinished(WebView view, String url) { original.onPageFinished(view, url); }
@@ -56,9 +58,18 @@ public class NavigationTest {
 
     private void push(ActivityScenario<MainActivity> scenario, String path) {
         AtomicBoolean committed = new AtomicBoolean();
-        scenario.onActivity(activity -> activity.web.evaluateJavascript("history.pushState({}, '', '" + path + "')", value -> committed.set(true)));
+        // Chromium deliberately skips history entries made without user activation.
+        // Set up the destination, then use a real touch just like the hosted SPA.
+        scenario.onActivity(activity -> activity.web.evaluateJavascript("document.getElementById('next').dataset.path='" + path + "'", value -> committed.set(true)));
         for (int i = 0; i < 100 && !committed.get(); i++) android.os.SystemClock.sleep(50);
-        assertTrue("History script completed", committed.get());
+        assertTrue("Destination setup completed", committed.get());
+        int[] position = new int[2], point = new int[2];
+        scenario.onActivity(activity -> {
+            activity.web.getLocationOnScreen(position);
+            point[0] = position[0] + activity.web.getWidth() / 2;
+            point[1] = position[1] + Math.round(40 * activity.getResources().getDisplayMetrics().density);
+        });
+        UiDevice.getInstance(InstrumentationRegistry.getInstrumentation()).click(point[0], point[1]);
         awaitPath(scenario, path);
         AtomicBoolean back = new AtomicBoolean();
         for (int i = 0; i < 100; i++) {
