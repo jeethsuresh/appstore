@@ -23,3 +23,8 @@ dist/
 desktop/node_modules/
 desktop/test-results/
 desktop/playwright-report/
+
+webview-android/.gradle/
+webview-android/local.properties
+webview-android/**/build/
+webview-dist/

@@ -30,3 +30,7 @@ Every new version must update the tracked [`changelog.json`](changelog.json) in 
 ## Automatic desktop publishing
 
 Desktop releases use `desktop/package.json` version/versionCode and a matching `desktop/changelog.json`. Keep desktop and Android version codes independent. Main automatically publishes all six desktop packages only after backend, Android, desktop flow and packaging checks pass. Preserve draft upload verification, immutable versions, `desktop-vX.Y.Z` tags, and `make_latest: false` so desktop publication does not displace Android release discovery. See [DESKTOP_RELEASES.md](DESKTOP_RELEASES.md).
+
+## Work and News Android wrappers
+
+The `webview-android` project ships separate Work and News packages. Preserve left-edge Back/right-edge Forward on Android 14+, cancelled gesture behavior, empty Forward as a no-op, the older-device right-edge fallback, and web History API entries. Do not replace app navigation work in other repositories. Before merging shell changes, increase version/versionCode in `webview-release.json` and `webview-android/app/build.gradle.kts`, and match `webview-android/changelog.json`. Verify both flavors with unit tests, lint and device tests on API 29 and 35. Main automatically signs and publishes the immutable `webview-vX.Y.Z` release using the main-only `android-release` environment after all Store and WebView checks pass. Preserve the package IDs, permanent certificate pins and asset names. See [WEBVIEW_ANDROID.md](WEBVIEW_ANDROID.md).

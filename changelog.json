@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "version": "0.6.9",
-  "versionCode": 21,
+  "version": "0.6.10",
+  "versionCode": 22,
   "changes": [
-    "Sign in to Haven using your Private Store account without opening a browser when Haven is already connected to Gravitas."
+    "Install Work and News from Private Store, with their own app pages, signed updates and Android installation detection."
   ]
 }

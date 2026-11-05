@@ -160,3 +160,7 @@ messaging approval. Store credentials never leave the Store.
 ## Morsel
 
 Morsel is a standalone, fully local food journal: private source and signed releases in `jeethsuresh/morsel`, package `dev.jeeth.morsel`, asset `morsel-android-arm64.apk`. Android 8.0+, ARM64. No account, network permission, server, analytics, IAM or notification relay integration. The permanent certificate is pinned in `config/apps.json`; the Android query lets Store detect existing installs. The store server needs a fine-grained GitHub token restricted to **Contents: read** and **Metadata: read** on `jeethsuresh/morsel`, stored only as runtime `GITHUB_TOKEN`. Public upstream app ingestion continues to work. Never put a GitHub token on a phone or in source.
+
+## Work and News on Android
+
+Install **Work** and **News** from Private Store to use work.gravitas.cool and news.gravitas.cool as separate Android apps. Each keeps its own Gravitas website session, supports file uploads and back/forward navigation, and receives verified signed updates through the Store. Android 8.0+ and an internet connection are required. See [Android behavior, verification and publishing](WEBVIEW_ANDROID.md).

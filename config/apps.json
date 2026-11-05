@@ -103,5 +103,23 @@
     "assetName": "morsel-android-arm64.apk",
     "certificateSha256": "77a673d91cc1dbbcf1d1ec2d19a090266b8c08015ac791e5028af933ac9eda53",
     "description": "A fully local food journal with reusable questions, gentle reminders, JSON/CSV exports and an isolated Demo View. No account or network access."
+  },
+  {
+    "id": "work",
+    "name": "Work",
+    "packageName": "cool.gravitas.work",
+    "repository": "jeethsuresh/appstore",
+    "assetName": "work-android.apk",
+    "certificateSha256": "e70b5b54a0d174f4ad8867889f6481a2b193dc9c130630f321563e12f3293793",
+    "description": "Connected documents, canvases, slides and spreadsheets at work.gravitas.cool, in a native Android WebView with back and forward navigation."
+  },
+  {
+    "id": "news",
+    "name": "News",
+    "packageName": "cool.gravitas.news",
+    "repository": "jeethsuresh/appstore",
+    "assetName": "news-android.apk",
+    "certificateSha256": "e70b5b54a0d174f4ad8867889f6481a2b193dc9c130630f321563e12f3293793",
+    "description": "Read your hosted RSS feeds at news.gravitas.cool in a native Android WebView with back and forward navigation. External articles open in your browser."
   }
 ]

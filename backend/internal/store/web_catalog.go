@@ -31,6 +31,28 @@ type webView struct {
 }
 
 var appStories = map[string]appStory{
+	"work": {
+		Category: "Documents & collaboration", Tagline: "Your workspace, on your phone.",
+		Summary: "Use the hosted Office workspace as a separate Android app: connected documents, canvases, slides and spreadsheets with Gravitas sign-in.",
+		Icon:    "work.svg", Architecture: "All Android architectures", MinimumAndroid: "Android 8.0+", Website: "https://work.gravitas.cool",
+		Features: []appFeature{
+			{"Keep working", "Open the same hosted documents you use on the web. Upload files with Android's file picker."},
+			{"Go back and forward", "On Android 14 and later, swipe from the left to go back and from the right to go forward. Navigation buttons are also available."},
+		},
+		LocalData:  "Sign-in cookies, website storage and cache stay in Work's private Android storage. Android backup is disabled. Your documents remain in the hosted Office service.",
+		Connection: "Requires an internet connection and Android System WebView. Sign in inside the app. External links and HTTPS downloads open in your browser; browser sign-in may be needed there. On older Android versions, swipe inward from the middle of the right edge to go forward.",
+	},
+	"news": {
+		Category: "News & feeds", Tagline: "Your feeds, close at hand.",
+		Summary: "Read and organise your hosted RSS subscriptions in a separate Android app, connected to news.gravitas.cool with Gravitas sign-in.",
+		Icon:    "news.svg", Architecture: "All Android architectures", MinimumAndroid: "Android 8.0+", Website: "https://news.gravitas.cool",
+		Features: []appFeature{
+			{"Read your feeds", "Use the hosted reader's subscriptions, articles and saved items. Open external articles in your browser."},
+			{"Retrace your steps", "On Android 14 and later, swipe from the left to go back and from the right to go forward. An empty forward history leaves you on the current screen."},
+		},
+		LocalData:  "Sign-in cookies, website storage and cache stay in News's private Android storage, separate from Work and your browser. Android backup is disabled. Your feeds remain in the hosted RSS service.",
+		Connection: "Requires an internet connection and Android System WebView. Sign in inside the app. This wrapper uses the hosted reader rather than the desktop app's local database. On older Android versions, use Forward or swipe inward from the middle of the right edge.",
+	},
 	"morsel": {
 		Category: "Food & reflection", Tagline: "Your daily rhythm.",
 		Summary: "A quiet food journal with a continuous calendar, reusable questions and gentle on-device reminders. No account, analytics, cloud storage or network permission.",

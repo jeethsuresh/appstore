@@ -188,7 +188,7 @@ jobs:
           if-no-files-found: error
   desktop-publish:
     if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
-    needs: [backend, android, desktop, desktop-release-check]
+    needs: [backend, android, desktop, desktop-release-check, webview]
     runs-on: ubuntu-24.04
     permissions:
       contents: write
@@ -206,7 +206,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
   deploy:
     if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
-    needs: [backend, android, desktop, desktop-release-check]
+    needs: [backend, android, desktop, desktop-release-check, webview]
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     environment:
@@ -230,3 +230,62 @@ jobs:
           config: .gravitas/deploy.json
           image: ghcr.io/jeethsuresh/appstore@${{ needs.backend.outputs.digest }}
           kubeconfig: ${{ secrets.GRAVITAS_KUBECONFIG }}
+  webview:
+    uses: ./.github/workflows/webview-verify.yml
+  webview-plan:
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    needs: [backend, android, desktop, desktop-release-check, webview]
+    runs-on: ubuntu-24.04
+    outputs:
+      build: ${{ steps.release.outputs.build }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - id: release
+        run: python3 scripts/webview-release.py plan
+        env:
+          GH_TOKEN: ${{ github.token }}
+  webview-publish:
+    if: needs.webview-plan.outputs.build == 'true'
+    needs: webview-plan
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: write
+    environment: android-release
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+      - uses: android-actions/setup-android@9fc6c4e9069bf8d3d10b2204b1fb8f6ef7065407
+        with:
+          packages: platform-tools
+          log-accepted-android-sdk-licenses: false
+      - run: sdkmanager 'platforms;android-36' 'build-tools;35.0.0'
+      - name: Build with the permanent signing identity
+        run: python3 scripts/webview-release.py build
+        env:
+          RELEASE_KEYSTORE_BASE64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
+          RELEASE_STORE_PASSWORD: ${{ secrets.RELEASE_STORE_PASSWORD }}
+          RELEASE_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
+          RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
+      - name: Clean signing material
+        if: always()
+        run: rm -f "$RUNNER_TEMP/android-permanent-release.jks"
+      - name: Verify both packages and stage checksums and changelog
+        run: python3 scripts/webview-release.py stage
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: verified-webview-release
+          path: webview-dist/*
+          if-no-files-found: error
+      - name: Publish only after every uploaded asset verifies
+        run: python3 scripts/webview-release.py publish
+        env:
+          GH_TOKEN: ${{ github.token }}
