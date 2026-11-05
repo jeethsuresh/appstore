@@ -33,6 +33,7 @@ import java.text.DateFormat
 import java.util.Date
 
 class MainActivity : ComponentActivity() {
+    internal var navigateForward: (() -> Unit)? = null
     companion object { @Volatile var visible = false }
     private var loginCallback by mutableStateOf<String?>(null)
     private fun acceptCallback(value: Intent) {
@@ -44,6 +45,7 @@ class MainActivity : ComponentActivity() {
     override fun onStop() { visible = false; super.onStop() }
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        cool.gravitas.navigation.GravitasEdgeNavigation.install(this, { onBackPressedDispatcher.onBackPressed() }, { navigateForward?.invoke() })
         SelfUpdateRecovery.reconcile(this)
         acceptCallback(intent)
         setContent { StoreTheme { Surface(Modifier.fillMaxSize()) { StoreScreen() } } }
@@ -173,7 +175,7 @@ class MainActivity : ComponentActivity() {
         } else {
             val installed = remember(apps, revision) { apps.associate { it.packageName to Installer.installed(this@MainActivity, it.packageName) } }
             val awaiting = remember(apps, revision) { apps.filter { prefs.getLong("pending.${it.packageName}", 0) > 0 }.map { it.packageName }.toSet() }
-            StoreCatalog(apps, installed, transfers, awaiting, busy, message, onRefresh = { refresh() }, onInstall = { requested ->
+            StoreCatalog(apps, installed, transfers, awaiting, busy, message, accountKey = "${session!!.baseUrl}#${session!!.account}", onRefresh = { refresh() }, onInstall = { requested ->
                 if (!packageManager.canRequestPackageInstalls()) permission.launch(Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:$packageName")))
                 else session?.let { current -> Downloads.enqueue(this@MainActivity, current, requested.filter { transfers[it.packageName]?.active != true }) }
             }) {
