@@ -44,6 +44,7 @@ jobs:
           disable-animations: true
           script: |
             adb shell cmd overlay enable com.android.internal.systemui.navbar.gestural
+            adb shell settings put secure navigation_mode 2
             cd webview-android && ./gradlew --no-daemon connectedWorkDebugAndroidTest connectedNewsDebugAndroidTest
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()

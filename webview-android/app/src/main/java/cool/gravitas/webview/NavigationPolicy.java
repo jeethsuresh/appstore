@@ -5,6 +5,7 @@ import java.net.URI;
 /** No JavaScript bridge or arbitrary intent URLs are exposed to hosted pages. */
 final class NavigationPolicy {
     static boolean https(String raw) {
+        if (raw == null) return false;
         try {
             URI uri = URI.create(raw);
             return "https".equalsIgnoreCase(uri.getScheme()) && uri.getHost() != null

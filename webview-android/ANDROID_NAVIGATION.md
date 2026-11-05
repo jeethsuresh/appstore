@@ -11,8 +11,9 @@ History uses the WebView's real page and History API stack. A new destination
 discards the forward branch. At 65 entries, prune to the current destination to
 bound private history at 64. Forward at the end is a no-op. Cancelling a gesture
 does nothing. The shared handler dismisses the keyboard first; Android dialogs
-keep their own window's Back handling. Website controls and unsaved editor
-confirmation keep their existing browser behavior.
+keep their own window's Back handling. HTML dialogs and the hosted apps' modal
+backdrops consume Back as cancellation and block Forward. Their existing cancel
+handlers retain control over unsaved editor confirmation.
 
 Authentication routes and `/login` clear browsing history. Completing a sign-in
 clears authentication history again. While authenticating, Forward does nothing
@@ -26,5 +27,7 @@ Run both flavor unit tests, lint, and device tests listed in [WEBVIEW_ANDROID.md
 Device fixtures cover branching, multiple Back/Forward steps, empty Forward,
 real OS edge gestures, cancellation, hardware Back, restored history, and logout.
 Future hosted screens must expose browsing destinations through the History API
-or URL hash and validate access when restored. The wrapper does not infer website
-state by inspecting text or replaying clicks.
+or URL hash and validate access when restored. They may cancel the same-origin
+`gravitas:navigate` event (detail.direction is `back` or `forward`) to handle their
+own transient UI before destination history changes. Navigation never submits
+forms or activates action buttons.

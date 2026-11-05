@@ -21,6 +21,11 @@ import static org.junit.Assert.*;
 
 @RunWith(AndroidJUnit4.class)
 public class NavigationTest {
+    private ActivityScenario<MainActivity> launch() {
+        android.content.Intent intent = new android.content.Intent(InstrumentationRegistry.getInstrumentation().getTargetContext(), MainActivity.class);
+        intent.putExtra("skipInitialLoad", true);
+        return ActivityScenario.launch(intent);
+    }
     private void fixture(ActivityScenario<MainActivity> scenario) {
         scenario.onActivity(activity -> {
             activity.web.stopLoading();
@@ -36,7 +41,6 @@ public class NavigationTest {
             activity.web.loadUrl(BuildConfig.APP_ORIGIN + "/fixture/a");
         });
         awaitPath(scenario, "/fixture/a");
-        scenario.onActivity(activity -> activity.web.clearHistory());
     }
 
     private void awaitPath(ActivityScenario<MainActivity> scenario, String path) {
@@ -51,12 +55,22 @@ public class NavigationTest {
     }
 
     private void push(ActivityScenario<MainActivity> scenario, String path) {
-        scenario.onActivity(activity -> activity.web.evaluateJavascript("history.pushState({}, '', '" + path + "')", null));
+        AtomicBoolean committed = new AtomicBoolean();
+        scenario.onActivity(activity -> activity.web.evaluateJavascript("history.pushState({}, '', '" + path + "')", value -> committed.set(true)));
+        for (int i = 0; i < 100 && !committed.get(); i++) android.os.SystemClock.sleep(50);
+        assertTrue("History script completed", committed.get());
         awaitPath(scenario, path);
+        AtomicBoolean back = new AtomicBoolean();
+        for (int i = 0; i < 100; i++) {
+            scenario.onActivity(activity -> back.set(activity.web.canGoBack()));
+            if (back.get()) return;
+            android.os.SystemClock.sleep(50);
+        }
+        fail("New destination did not enter WebView history: " + path);
     }
 
     @Test public void historySupportsForwardAndDiscardsBranches() {
-        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+        try (ActivityScenario<MainActivity> scenario = launch()) {
             fixture(scenario);
             scenario.onActivity(activity -> { activity.navigate(true); assertFalse(activity.isFinishing()); });
             awaitPath(scenario, "/fixture/a");
@@ -80,7 +94,7 @@ public class NavigationTest {
 
     @Test public void cancelledPredictiveGestureDoesNotNavigate() {
         if (Build.VERSION.SDK_INT < 34) return;
-        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+        try (ActivityScenario<MainActivity> scenario = launch()) {
             fixture(scenario);
             push(scenario, "/fixture/b");
             UiDevice device = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation());
@@ -100,7 +114,7 @@ public class NavigationTest {
     @Test public void leftAndRightSystemGesturesNavigateRealWebHistory() {
         if (Build.VERSION.SDK_INT < 34) return;
         UiDevice device = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation());
-        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+        try (ActivityScenario<MainActivity> scenario = launch()) {
             fixture(scenario);
             push(scenario, "/fixture/b");
             int width = device.getDisplayWidth(), y = device.getDisplayHeight() / 2;
@@ -115,7 +129,7 @@ public class NavigationTest {
     }
 
     @Test public void packagesKeepIndependentStorageAndHardenedSettings() {
-        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+        try (ActivityScenario<MainActivity> scenario = launch()) {
             scenario.onActivity(activity -> {
                 assertEquals("cool.gravitas." + BuildConfig.FLAVOR, activity.getPackageName());
                 assertTrue(activity.getDataDir().getAbsolutePath().contains(activity.getPackageName()));
@@ -128,7 +142,7 @@ public class NavigationTest {
 
     @Test public void hardwareBackRetainsBackBehavior() {
         UiDevice device = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation());
-        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+        try (ActivityScenario<MainActivity> scenario = launch()) {
             fixture(scenario);
             push(scenario, "/fixture/b");
             device.pressBack();
@@ -137,7 +151,7 @@ public class NavigationTest {
     }
 
     @Test public void logoutDropsPrivateForwardHistory() {
-        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+        try (ActivityScenario<MainActivity> scenario = launch()) {
             fixture(scenario);
             push(scenario, "/private/one");
             push(scenario, "/private/two");
@@ -151,6 +165,50 @@ public class NavigationTest {
                 activity.navigate(true);
                 assertFalse(activity.isFinishing());
             });
+        }
+    }
+
+    @Test public void modalBlocksForwardAndBackCancelsBeforeNavigating() {
+        try (ActivityScenario<MainActivity> scenario = launch()) {
+            fixture(scenario);
+            push(scenario, "/fixture/b");
+            scenario.onActivity(activity -> activity.navigate(false));
+            awaitPath(scenario, "/fixture/a");
+            scenario.onActivity(activity -> activity.web.evaluateJavascript("const d=document.createElement('dialog');d.textContent='Modal';document.body.append(d);d.showModal();", null));
+            InstrumentationRegistry.getInstrumentation().waitForIdleSync();
+            scenario.onActivity(activity -> activity.navigate(true));
+            android.os.SystemClock.sleep(300);
+            awaitPath(scenario, "/fixture/a");
+            scenario.onActivity(activity -> activity.navigate(false));
+            android.os.SystemClock.sleep(300);
+            awaitPath(scenario, "/fixture/a");
+            scenario.onActivity(activity -> activity.navigate(true));
+            awaitPath(scenario, "/fixture/b");
+        }
+    }
+
+    @Test public void keyboardDismissalPrecedesHardwareBack() {
+        if (Build.VERSION.SDK_INT < 30) return;
+        UiDevice device = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation());
+        try (ActivityScenario<MainActivity> scenario = launch()) {
+            fixture(scenario);
+            push(scenario, "/fixture/b");
+            scenario.onActivity(activity -> {
+                android.widget.EditText input = new android.widget.EditText(activity);
+                ((android.widget.LinearLayout) activity.web.getParent()).addView(input, 0);
+                input.requestFocus();
+                activity.getSystemService(android.view.inputmethod.InputMethodManager.class).showSoftInput(input, 0);
+            });
+            AtomicBoolean visible = new AtomicBoolean();
+            for (int i = 0; i < 100; i++) {
+                scenario.onActivity(activity -> visible.set(activity.getWindow().getDecorView().getRootWindowInsets().isVisible(android.view.WindowInsets.Type.ime())));
+                if (visible.get()) break;
+                android.os.SystemClock.sleep(50);
+            }
+            assertTrue("Test keyboard must be visible", visible.get());
+            device.pressBack();
+            android.os.SystemClock.sleep(300);
+            awaitPath(scenario, "/fixture/b");
         }
     }
 }

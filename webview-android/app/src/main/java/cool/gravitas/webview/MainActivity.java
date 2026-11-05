@@ -81,7 +81,9 @@ public final class MainActivity extends Activity {
         button(toolbar, "Reload", () -> web.reload());
         root.addView(toolbar);
         configureWebView();
-        if (state != null && state.getBoolean("authenticating")) {
+        if (BuildConfig.DEBUG && getIntent().getBooleanExtra("skipInitialLoad", false)) {
+            if (state != null) web.restoreState(state);
+        } else if (state != null && state.getBoolean("authenticating")) {
             web.loadUrl(BuildConfig.APP_ORIGIN + "/login?auto=off");
         } else if (state == null || web.restoreState(state) == null) web.loadUrl(BuildConfig.APP_ORIGIN + "/");
         updateNavigation();
@@ -213,6 +215,23 @@ public final class MainActivity extends Activity {
             }
             return;
         }
+        if (NavigationPolicy.sameOrigin(web.getUrl(), BuildConfig.APP_ORIGIN)) {
+            // Give hosted screens a semantic navigation hook; modal cancellation
+            // must finish before the destination beneath it can change.
+            String direction = goForward ? "forward" : "back";
+            web.evaluateJavascript("(() => { const forward = " + goForward + ";"
+                + "const event = new CustomEvent('gravitas:navigate', {cancelable:true, detail:{direction:'" + direction + "'}});"
+                + "if (!window.dispatchEvent(event)) return true;"
+                + "const dialog = document.querySelector('dialog[open]');"
+                + "if (dialog) { if (!forward) { const cancel = new Event('cancel', {cancelable:true,bubbles:true});"
+                + "if (dialog.dispatchEvent(cancel)) dialog.close(); } return true; }"
+                + "const overlay = document.querySelector('.modal-backdrop');"
+                + "if (overlay) { if (!forward) overlay.click(); return true; } return false; })()",
+                handled -> { if (!"true".equals(handled)) navigateHistory(goForward); });
+        } else navigateHistory(goForward);
+    }
+
+    private void navigateHistory(boolean goForward) {
         if (goForward) {
             if (web.canGoForward()) web.goForward();
         } else if (web.canGoBack()) web.goBack();
