@@ -58,10 +58,13 @@
                 "type": "RuntimeDefault"
               }
             },
+            "imagePullSecrets": [
+              {"name": "gravitas-ghcr"}
+            ],
             "containers": [
               {
                 "name": "appstore",
-                "image": "ghcr.io/jeethsuresh/appstore:bootstrap",
+                "image": "ghcr.io/jeethsuresh/appstore-private:bootstrap",
                 "ports": [
                   {
                     "name": "http",
