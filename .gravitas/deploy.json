@@ -4,7 +4,7 @@
   "namespace": "appstore",
   "host": "apps.gravitas.cool",
   "health_path": "/healthz",
-  "image_repository": "ghcr.io/jeethsuresh/appstore",
+  "image_repository": "ghcr.io/jeethsuresh/appstore-private",
   "release": {
     "command": [
       "bash",

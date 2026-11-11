@@ -17,7 +17,7 @@ copy certificate keys, or change DNS and other applications.
 
 The `Verify store` workflow tests the backend, validates Compose and builds the
 production image. Main-branch builds publish an AMD64 image to
-`ghcr.io/jeethsuresh/appstore:<commit>`. Deployments use its immutable digest.
+`ghcr.io/jeethsuresh/appstore-private:<commit>`. Deployments use its immutable digest.
 Successful main-branch builds deploy their immutable image digest to Kubernetes after both CI jobs pass. See [automatic deployment](AUTOMATIC_DEPLOYMENT.md) for scoped credentials and release verification. No cluster administrator credential is stored in GitHub Actions.
 
 ## First deployment
@@ -31,7 +31,7 @@ kubectl --context do-tor1-gravitas-k8s-services apply -f deploy/gravitas/bootstr
 python3 scripts/init-env.py --domain apps.gravitas.cool --output /secure/path/appstore.env
 kubectl --context do-tor1-gravitas-k8s-services -n appstore create secret generic appstore-runtime \
   --from-env-file=/secure/path/appstore.env
-deploy/gravitas/deploy.sh ghcr.io/jeethsuresh/appstore@sha256:IMAGE_DIGEST
+deploy/gravitas/deploy.sh ghcr.io/jeethsuresh/appstore-private@sha256:IMAGE_DIGEST
 ```
 
 Set `KUBECTL=/path/to/kubectl` when selecting a different client binary.

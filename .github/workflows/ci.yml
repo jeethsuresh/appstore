@@ -39,7 +39,7 @@ jobs:
           context: .
           platforms: linux/amd64
           push: ${{ github.ref == 'refs/heads/main' && github.event_name != 'pull_request' }}
-          tags: ghcr.io/jeethsuresh/appstore:${{ github.sha }}
+          tags: ghcr.io/jeethsuresh/appstore-private:${{ github.sha }}
           labels: |
             org.opencontainers.image.source=https://github.com/jeethsuresh/appstore
             org.opencontainers.image.revision=${{ github.sha }}
@@ -230,7 +230,7 @@ jobs:
         uses: ./.gravitas-runtime
         with:
           config: .gravitas/deploy.json
-          image: ghcr.io/jeethsuresh/appstore@${{ needs.backend.outputs.digest }}
+          image: ghcr.io/jeethsuresh/appstore-private@${{ needs.backend.outputs.digest }}
           kubeconfig: ${{ secrets.GRAVITAS_KUBECONFIG }}
   webview:
     uses: ./.github/workflows/webview-verify.yml
