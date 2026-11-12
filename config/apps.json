@@ -7,7 +7,8 @@
     "assetName": "daybreak-android-arm64.apk",
     "certificateSha256": "18cb4dbf5d8b3ed41336acd2c1f6dc12bd7aba2d8f5a6dcaf9339e42b6af683a",
     "description": "Private weather forecasts, saved data, and Android home-screen widgets.",
-    "desktop": true
+    "desktop": true,
+    "macOSNotarizedFrom": 1501
   },
   {
     "id": "spacetime",
@@ -21,7 +22,8 @@
       "origin": "https://spacetime.gravitas.cool",
       "authority": "com.jeethsuresh.spacetime.notifications"
     },
-    "desktop": true
+    "desktop": true,
+    "macOSNotarizedFrom": 7007
   },
   {
     "id": "appstore",
@@ -31,7 +33,8 @@
     "assetName": "appstore-android.apk",
     "certificateSha256": "e70b5b54a0d174f4ad8867889f6481a2b193dc9c130630f321563e12f3293793",
     "description": "Your private app collection, Gravitas sign-in, and verified updates on Android, macOS, Windows and Linux \u2014 including updates to Private Store itself.",
-    "desktop": true
+    "desktop": true,
+    "macOSNotarizedFrom": 6
   },
   {
     "id": "launcher",
@@ -51,6 +54,7 @@
     "certificateSha256": "6559956b5cf6b2f796824995b31da7fa2c176ba652e8fcb40741686d850bb6b0",
     "description": "Private Gravitas spaces, separate channels, friends, conversations, posts and discussions.",
     "desktop": true,
+    "macOSNotarizedFrom": 13002,
     "notifications": {
       "origin": "https://chat.gravitas.cool",
       "authority": "cool.gravitas.river.notifications"
@@ -73,13 +77,15 @@
     "assetName": "Haven-{tag}-android.apk",
     "certificateSha256": "3c01375ebd40c543f9d6d1a6c1aeb18c689188eee35341a3b1ba3b89a397c085",
     "description": "Back up media directly between your Android phones and desktop sinks. Browse and receive originals on macOS, Windows and Linux while Haven is open.",
-    "desktop": true
+    "desktop": true,
+    "macOSNotarizedFrom": 1005
   },
   {
     "id": "rss",
     "name": "RSS Reader",
     "repository": "jeethsuresh/rss",
     "desktop": true,
+    "macOSNotarizedFrom": 1007,
     "description": "Your feeds, saved locally. Read and organise RSS subscriptions on desktop with optional hosted synchronization."
   },
   {
@@ -87,6 +93,7 @@
     "name": "Email",
     "repository": "jeethsuresh/emails",
     "desktop": true,
+    "macOSNotarizedFrom": 1001,
     "description": "An offline desktop inbox with local mail storage and IMAP synchronization."
   },
   {
@@ -94,6 +101,7 @@
     "name": "Office",
     "repository": "jeethsuresh/office",
     "desktop": true,
+    "macOSNotarizedFrom": 1002,
     "description": "A native desktop workspace for connected documents, canvases, slides and spreadsheets, with a local Go backend and offline storage."
   },
   {

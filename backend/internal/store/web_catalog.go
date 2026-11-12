@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"private-store/internal/gravitas"
+	"slices"
 	"strings"
 )
 
@@ -191,6 +192,14 @@ func (s *Server) webApps(ctx context.Context) ([]webApp, error) {
 		desktop, err := s.latestDesktop(ctx, app)
 		if err != nil {
 			return nil, err
+		}
+		if desktop != nil {
+			desktop.Artifacts = slices.DeleteFunc(desktop.Artifacts, func(artifact DesktopArtifact) bool {
+				return !app.allowsDesktopArtifact(artifact.Platform, desktop.VersionCode)
+			})
+			if len(desktop.Artifacts) == 0 {
+				desktop = nil
+			}
 		}
 		if app.Desktop {
 			app.DesktopRelease = desktop
