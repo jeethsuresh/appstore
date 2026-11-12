@@ -67,7 +67,22 @@ func main() {
 		slog.Error("notification configuration", "error", err)
 		os.Exit(1)
 	}
-	s, err := store.New(store.Config{ProtocolRelayKey: os.Getenv("PROTOCOL_RELAY_KEY"), NotificationGateway: os.Getenv("NOTIFICATION_GATEWAY_ADDR"), NotificationURL: os.Getenv("NOTIFICATION_PUBLIC_URL"), NotificationKeys: notificationKeys, DataDir: env("DATA_DIR", "data"), AdminToken: os.Getenv("ADMIN_TOKEN"), WebhookSecret: os.Getenv("WEBHOOK_SECRET"), GitHubToken: os.Getenv("GITHUB_TOKEN"), AAPT: env("AAPT", "aapt"), APKSigner: env("APKSIGNER", "apksigner"), Apps: apps, Federation: federation, ClientAPK: env("CLIENT_APK", "/usr/local/share/store/appstore.apk")})
+	s, err := store.New(store.Config{
+		ProtocolRelayKey:    os.Getenv("PROTOCOL_RELAY_KEY"),
+		NotificationGateway: os.Getenv("NOTIFICATION_GATEWAY_ADDR"),
+		NotificationURL:     os.Getenv("NOTIFICATION_PUBLIC_URL"),
+		NotificationKeys:    notificationKeys,
+		APNSConfig:          os.Getenv("NOTIFICATION_APNS_CONFIG"),
+		DataDir:             env("DATA_DIR", "data"),
+		AdminToken:          os.Getenv("ADMIN_TOKEN"),
+		WebhookSecret:       os.Getenv("WEBHOOK_SECRET"),
+		GitHubToken:         os.Getenv("GITHUB_TOKEN"),
+		AAPT:                env("AAPT", "aapt"),
+		APKSigner:           env("APKSIGNER", "apksigner"),
+		Apps:                apps,
+		Federation:          federation,
+		ClientAPK:           env("CLIENT_APK", "/usr/local/share/store/appstore.apk"),
+	})
 	if err != nil {
 		slog.Error("start", "error", err)
 		os.Exit(1)
@@ -76,6 +91,11 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 	go s.RunNotifications(ctx)
+	apnsDone := make(chan struct{})
+	go func() {
+		defer close(apnsDone)
+		s.RunAPNS(ctx)
+	}()
 	interval, err := time.ParseDuration(env("POLL_INTERVAL", "15m"))
 	if err != nil || interval < 0 {
 		slog.Error("invalid POLL_INTERVAL")
@@ -94,6 +114,7 @@ func main() {
 			_ = srv.Close()
 		}
 		<-syncDone
+		<-apnsDone
 	}()
 	slog.Info("private store listening", "address", srv.Addr)
 	cert, key := os.Getenv("TLS_CERT_FILE"), os.Getenv("TLS_KEY_FILE")

@@ -65,32 +65,50 @@ func (c *Client) proofStatus(ctx context.Context, identity Identity) (int64, err
 	if err != nil {
 		return 0, ErrUnavailable
 	}
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, m.SessionCheck, nil)
+	status, err := c.readFamilyStatus(ctx, http.MethodGet, m.SessionCheck, identity.CheckToken, nil)
 	if err != nil {
-		return 0, ErrUnavailable
+		return 0, err
 	}
-	req.Header.Set("Authorization", "Bearer "+identity.CheckToken)
-	req.Header.Set("Accept", "application/json")
-	response, err := c.HTTP.Do(req)
-	if err != nil {
-		return 0, ErrUnavailable
-	}
-	defer response.Body.Close()
-	if response.StatusCode == 401 {
-		return 0, ErrLoginRequired
-	}
-	if response.StatusCode != 200 {
-		return 0, ErrUnavailable
-	}
-	raw, err := io.ReadAll(io.LimitReader(response.Body, 65537))
-	if err != nil || len(raw) > 65536 {
-		return 0, ErrUnavailable
-	}
-	var status familyStatus
-	if json.Unmarshal(raw, &status) != nil || !status.Active || status.Issuer != c.Issuer || status.Subject != identity.Subject || status.Origin != c.AppURL || status.SessionID != identity.SessionID || status.Expires <= time.Now().Unix() || status.Expires > time.Now().Add(FamilyLifetime+time.Minute).Unix() || (identity.SessionExpires != 0 && status.Expires != identity.SessionExpires) {
+	if status.Subject != identity.Subject || status.Origin != c.AppURL || status.SessionID != identity.SessionID ||
+		(identity.SessionExpires != 0 && status.Expires != identity.SessionExpires) {
 		return 0, ErrUnavailable
 	}
 	return status.Expires, nil
+}
+
+func (c *Client) readFamilyStatus(ctx context.Context, method, endpoint, credential string, body io.Reader) (familyStatus, error) {
+	var status familyStatus
+	req, err := http.NewRequestWithContext(ctx, method, endpoint, body)
+	if err != nil {
+		return status, ErrUnavailable
+	}
+	req.Header.Set("Authorization", "Bearer "+credential)
+	req.Header.Set("Accept", "application/json")
+	if body != nil {
+		req.Header.Set("Content-Type", "application/json")
+	}
+	response, err := c.HTTP.Do(req)
+	if err != nil {
+		return status, ErrUnavailable
+	}
+	defer response.Body.Close()
+	if response.StatusCode == 401 || (method == http.MethodPut && response.StatusCode == 403) {
+		return status, ErrLoginRequired
+	}
+	if response.StatusCode != 200 {
+		return status, ErrUnavailable
+	}
+	raw, err := io.ReadAll(io.LimitReader(response.Body, 65537))
+	if err != nil || len(raw) > 65536 {
+		return status, ErrUnavailable
+	}
+	now := time.Now()
+	if json.Unmarshal(raw, &status) != nil || !status.Active || status.Issuer != c.Issuer ||
+		status.Subject == "" || len(status.Subject) > 256 || status.SessionID == "" || len(status.SessionID) > 128 ||
+		status.Expires <= now.Unix() || status.Expires > now.Add(FamilyLifetime+time.Minute).Unix() {
+		return familyStatus{}, ErrUnavailable
+	}
+	return status, nil
 }
 
 // No positive status decisions are cached: every protected request reaches IAM.
