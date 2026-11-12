@@ -75,9 +75,9 @@ traversal, escaping symlinks, writes through symlinks and oversized expansions.
 Download a compatible build at `https://apps.gravitas.cool/#desktop-store` after
 signing in. Extract ZIPs before launching on macOS/Windows. On Linux, make the
 AppImage executable; a working AppImage/FUSE runtime and Electron-compatible
-user namespaces are required. These builds do not have an Apple Developer ID,
-notarization or Microsoft signing identity; the OS may require first-launch
-approval. macOS application bundles receive the packager's local ad-hoc signing.
+user namespaces are required. Published macOS builds use Apple Developer ID and
+carry a stapled Apple notarization ticket. Windows builds may require
+first-launch approval.
 
 The store signs in through an isolated, sandboxed Gravitas browser window. Its
 device credential is held in the main process and encrypted with the OS secret
@@ -112,7 +112,10 @@ release selection unchanged.
 `.github/workflows/ci.yml` runs backend and Android validation, desktop unit and
 Electron flow tests, and all six native packages on PRs. On main, deployment
 depends on all of those jobs. Desktop publishing also depends on those checks,
-collects all six packages, validates the source changelog, uploads a draft with
+collects all six packages and uses the signed Mac packages from the main-only
+`macos-release` environment. Each Mac job verifies the Developer ID signature
+and stapled ticket after installing the ZIP, then smoke-tests the installed app.
+Publication validates the source changelog, uploads a draft with
 the manifest, changelog and checksums, verifies GitHub's uploaded sizes/digests,
 then publishes the stable release. There is no opt-in release flag. Reusing an
 already published version skips publication; an interrupted draft fails with an

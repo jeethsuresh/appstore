@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "version": "0.1.4",
-  "versionCode": 5,
+  "version": "0.1.5",
+  "versionCode": 6,
   "changes": [
-    "Ask separately for username access when enabling the Gravitas sign-in broker. Keep browser sign-in compatible with full-name-only profiles."
+    "Private Store for macOS is signed with Developer ID and notarized by Apple on Apple Silicon and Intel."
   ]
 }

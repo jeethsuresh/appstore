@@ -3,6 +3,7 @@ const fs = require('node:fs/promises');
 const path = require('node:path');
 const os = require('node:os');
 const { createHash } = require('node:crypto');
+const { execFileSync } = require('node:child_process');
 const { _electron } = require('@playwright/test');
 const { target, downloadVerified } = require('../core.cjs');
 const { installPackage, executable } = require('../installer.cjs');
@@ -13,7 +14,12 @@ async function smoke() {
   const deadline = setTimeout(() => { console.error('Native smoke timed out while ' + stage); process.exit(1); }, 180000);
   deadline.unref();
   const current = target();
-  if (process.argv[2] !== current.arch) { console.log('Cross-architecture package built; launch check requires a matching CPU.'); return; }
+  const requireNotarization = process.argv.includes('--require-notarization');
+  if (process.argv[2] !== current.arch) {
+    if (requireNotarization) throw new Error('The notarized release must be tested on its native architecture.');
+    console.log('Cross-architecture package built; launch check requires a matching CPU.');
+    return;
+  }
   const temporary = await fs.mkdtemp(path.join(os.tmpdir(), 'store-native-'));
   try {
     const prefix = { macos: 'mac', windows: 'win', linux: 'linux' }[current.platform];
@@ -24,6 +30,12 @@ async function smoke() {
     const artifact = { ...current, file: files[0], entry: current.platform === 'macos' ? 'Private Store.app' : current.platform === 'windows' ? 'Private Store.exe' : files[0], sha256: createHash('sha256').update(bytes).digest('hex'), size: bytes.length };
     const release = { id: 'appstore', name: 'Private Store', desktopRelease: { version: packageInfo.version, versionCode: packageInfo.versionCode, artifacts: [artifact] } };
     const installed = await installPackage({ app: release, archive: file, root: path.join(temporary, 'apps'), current });
+    if (requireNotarization) {
+      const requirement = 'anchor apple generic and identifier "cool.gravitas.privatestore" and certificate leaf[subject.OU] = "WV3J3848JR" and certificate leaf[field.1.2.840.113635.100.6.1.13] exists';
+      execFileSync('/usr/bin/codesign', ['--verify', '--deep', '--strict', installed.entry], { stdio: 'inherit' });
+      execFileSync('/usr/bin/codesign', ['--verify', '-R', '=' + requirement, installed.entry], { stdio: 'inherit' });
+      execFileSync('/usr/bin/xcrun', ['stapler', 'validate', installed.entry], { stdio: 'inherit' });
+    }
     const launchEnv = { ...process.env, APPDATA: path.join(temporary, 'roaming'), APPIMAGE_EXTRACT_AND_RUN: '1', XDG_CONFIG_HOME: temporary, XDG_DATA_HOME: path.join(temporary, 'local') };
     stage = 'launching the packaged Store'; console.log(stage);
     const electron = await _electron.launch({ executablePath: await executable(installed), args: ['--no-sandbox'], env: launchEnv, timeout: 60000 });

@@ -78,21 +78,34 @@ def api(path, method="GET", value=None, binary=None):
         return json.load(response)
 
 
-def publish(directory):
-    if os.environ.get("GITHUB_REF") != "refs/heads/main" or os.environ.get("GITHUB_EVENT_NAME") not in ("push", "workflow_dispatch"):
-        raise ValueError("desktop publication is restricted to main")
-    package, manifest = stage(directory)
+def release_needed(package):
     tag = "desktop-v" + package["version"]
     try:
         existing = api(f"/repos/{REPO}/releases/tags/{tag}")
     except urllib.error.HTTPError as error:
-        if error.code != 404:
-            raise
+        if error.code == 404:
+            return True
+        raise
     else:
         if existing.get("draft"):
             raise ValueError("an interrupted draft already exists; inspect it before retrying")
         print(f"{tag} already published; increase desktop version and versionCode for a new release")
+        return False
+
+
+def plan():
+    package, _ = validate()
+    with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
+        print("publish=" + str(release_needed(package)).lower(), file=output)
+
+
+def publish(directory):
+    if os.environ.get("GITHUB_REF") != "refs/heads/main" or os.environ.get("GITHUB_EVENT_NAME") not in ("push", "workflow_dispatch"):
+        raise ValueError("desktop publication is restricted to main")
+    package, manifest = stage(directory)
+    if not release_needed(package):
         return
+    tag = "desktop-v" + package["version"]
     # Reject decreasing versions even when tags have a different creation order.
     for release in api(f"/repos/{REPO}/releases?per_page=100"):
         if release["tag_name"].startswith("desktop-v"):
@@ -119,12 +132,14 @@ def publish(directory):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("command", choices=["validate", "stage", "publish"])
+    parser.add_argument("command", choices=["validate", "stage", "plan", "publish"])
     parser.add_argument("--directory", type=Path, default=ROOT / "desktop/dist")
     args = parser.parse_args()
     if args.command == "validate":
         validate()
     elif args.command == "stage":
         stage(args.directory)
+    elif args.command == "plan":
+        plan()
     else:
         publish(args.directory)
