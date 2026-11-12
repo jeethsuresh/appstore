@@ -100,6 +100,8 @@ binary until reopened from the store or shortcut. Private Store stages its own
 new version and shows **Restart to update**; Electron relaunches directly into
 the verified new executable, retaining the same store data and settings. The
 catalog is cached so installed apps can still be opened during an outage.
+The 0.1.5 Mac bundles keep app resources unpacked so that 0.1.4 can install the
+update. The 0.1.5 installer can extract packages that contain an Electron ASAR.
 
 ## Merge, deploy and publish
 

@@ -1,6 +1,7 @@
 'use strict';
-const fs = require('node:fs/promises');
-const { createWriteStream } = require('node:fs');
+// Electron's virtual filesystem treats .asar paths as archives. A package may
+// contain its own app.asar, which must be written as a regular file.
+const { promises: fs, createWriteStream } = process.versions.electron ? require('original-fs') : require('node:fs');
 const path = require('node:path');
 const { pipeline } = require('node:stream/promises');
 const yauzl = require('yauzl');

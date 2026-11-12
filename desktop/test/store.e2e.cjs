@@ -10,6 +10,16 @@ test('desktop discovers compatible apps, signs in, installs, updates and stages 
   const temporary = await fs.mkdtemp(path.join(os.tmpdir(), 'store-e2e-'));
   const electron = await _electron.launch({ args: ['--no-sandbox', path.resolve(__dirname, '..')], env: { ...process.env, XDG_CONFIG_HOME: temporary, XDG_DATA_HOME: path.join(temporary, 'local'), HOME: temporary } });
   try {
+    const output = path.join(temporary, 'asar-extraction');
+    await fs.mkdir(output);
+    const extractor = path.resolve(__dirname, '../unzip.cjs');
+    const archive = path.join(__dirname, 'fixtures', 'asar-file.zip');
+    await electron.evaluate(async (_electron, { extractor, archive, output }) => {
+      const load = process.getBuiltinModule('node:module').createRequire(extractor);
+      await load(extractor)(archive, { dir: output });
+    }, { extractor, archive, output });
+    expect(await fs.readFile(path.join(output, 'Example.app', 'Contents', 'Resources', 'app.asar'), 'utf8')).toBe('archive bytes');
+
     await electron.evaluate(({ net, app, dialog }, digest) => {
       global.brokerAccount = { issuer: 'https://gravitas.cool', appOrigin: 'https://apps.gravitas.cool', account: '@desktop-user:gravitas.cool', subject: 'desktop-user', sessionId: '11111111-1111-4111-8111-111111111111', accessToken: 'a'.repeat(43), refreshToken: 'r'.repeat(43), sessionCheckToken: 'p'.repeat(43), scope: 'profile.name profile.username native.broker', accessExpiresAt: Math.floor(Date.now()/1000) + 1800, sessionExpiresAt: Math.floor(Date.now()/1000) + 10000 };
       global.brokerDecision = 1;

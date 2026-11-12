@@ -36,6 +36,7 @@
       "output": "dist"
     },
     "mac": {
+      "asar": false,
       "target": [
         "zip"
       ],
