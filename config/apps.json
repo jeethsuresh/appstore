@@ -6,7 +6,8 @@
     "repository": "jeethsuresh/weather",
     "assetName": "daybreak-android-arm64.apk",
     "certificateSha256": "18cb4dbf5d8b3ed41336acd2c1f6dc12bd7aba2d8f5a6dcaf9339e42b6af683a",
-    "description": "Private weather forecasts and home-screen widgets. ARM64 phones."
+    "description": "Private weather forecasts, saved data, and Android home-screen widgets.",
+    "desktop": true
   },
   {
     "id": "spacetime",
