@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/hmac"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"regexp"
 	"time"
@@ -46,8 +47,11 @@ func (s *Server) protocolInvoke(w http.ResponseWriter, r *http.Request) {
 		fail(w, 400, "invalid appstore protocol input")
 		return
 	}
-	a := s.notificationApp(in.Input.App)
-	if a == nil || a.Notifications.Origin != in.Sender || s.cfg.Federation == nil || in.Issuer != s.cfg.Federation.Issuer {
+	appID := in.Input.App
+	android := s.notificationApp(appID)
+	ios, hasIOS := s.apnsApps[appID]
+	if s.cfg.Federation == nil || in.Issuer != s.cfg.Federation.Issuer ||
+		!((android != nil && android.Notifications.Origin == in.Sender) || (hasIOS && ios.origin == in.Sender)) {
 		fail(w, 403, "sender is not authorized for this app")
 		return
 	}
@@ -57,10 +61,11 @@ func (s *Server) protocolInvoke(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer tx.Rollback()
+	now := time.Now().Unix()
 	rows, err := tx.QueryContext(r.Context(), `SELECT p.id,p.device FROM notification_providers p
  JOIN devices d ON d.id=p.device JOIN device_identities i ON i.device_id=d.id
- WHERE p.enabled=1 AND p.app=? AND p.issuer=? AND p.subject=? AND p.issuer=i.issuer AND p.subject=i.subject
- AND d.revoked=0 AND d.expires>? AND (?='' OR p.id=?)`, a.ID, in.Issuer, in.Subject, time.Now().Unix(), in.Input.Device, in.Input.Device)
+ WHERE ? AND p.enabled=1 AND p.app=? AND p.issuer=? AND p.subject=? AND p.issuer=i.issuer AND p.subject=i.subject
+ AND d.revoked=0 AND d.expires>? AND (?='' OR p.id=?)`, android != nil, appID, in.Issuer, in.Subject, now, in.Input.Device, in.Input.Device)
 	if err != nil {
 		s.internal(w, err)
 		return
@@ -101,7 +106,18 @@ func (s *Server) protocolInvoke(w http.ResponseWriter, r *http.Request) {
 			fail(w, 503, "queue temporarily unavailable")
 			return
 		}
-		if _, err = tx.ExecContext(r.Context(), "INSERT INTO notifications(provider,device,app,event,payload,created) VALUES(?,?,?,?,?,?)", target.provider, target.device, a.ID, event, string(in.Input.Payload), time.Now().Unix()); err != nil {
+		if _, err = tx.ExecContext(r.Context(), "INSERT INTO notifications(provider,device,app,event,payload,created) VALUES(?,?,?,?,?,?)", target.provider, target.device, appID, event, string(in.Input.Payload), now); err != nil {
+			s.internal(w, err)
+			return
+		}
+	}
+	if hasIOS {
+		err = enqueueIOSNotifications(r.Context(), tx, appID, in.Issuer, in.Subject, in.Input.Device, event, in.Input.Payload, now)
+		if errors.Is(err, errIOSQueueFull) {
+			fail(w, 503, "queue temporarily unavailable")
+			return
+		}
+		if err != nil {
 			s.internal(w, err)
 			return
 		}
@@ -112,6 +128,9 @@ func (s *Server) protocolInvoke(w http.ResponseWriter, r *http.Request) {
 	}
 	for _, target := range targets {
 		s.notifications.wake(target.device)
+	}
+	if hasIOS {
+		s.wakeAPNS()
 	}
 	w.WriteHeader(204)
 }

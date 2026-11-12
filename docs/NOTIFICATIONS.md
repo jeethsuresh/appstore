@@ -1,12 +1,58 @@
 # App notifications
 
-Private Store distributes application payloads to installed, certificate-pinned Android apps. Spacetime is the first consumer. It displays invitations and updated events through a native handler, without starting Flutter, syncing calendars, fetching data, or running its UI.
+Private Store distributes application payloads to installed, certificate-pinned Android apps and supports direct Apple Push Notification service (APNs) delivery to registered iOS apps. Spacetime is the first Android consumer. It displays invitations and updated events through a native handler, without starting Flutter, syncing calendars, fetching data, or running its UI.
 
 ## Gravitas protocol delivery
 
 Hosted delivery uses the versioned [appstore PCR](../protocols/README.md). Private Store publishes it on sign-in and reconciles existing active devices on the server. Spacetime discovers the recipient's `appstore` version/capabilities, then sends the same native payload to Gravitas. Gravitas privately multicasts to registered providers; appstore checks the sender's app namespace, account and opaque device handle before inserting into this existing durable queue. The sender receives a constant acceptance receipt without store identities or fan-out counts. A missing subscription or discovery outage keeps Spacetime's outbox queued.
 
 The hosted appstore Secret adds `protocol-relay-key`; IAM's `PROTOCOL_SERVICES` keeps the corresponding provider credential and Spacetime's existing sender key with `protocols.read`/`appstore.push` permissions. Spacetime sets `NOTIFICATION_PROTOCOL=appstore/1.0.0`. New native provider registrations carry this protocol marker and no store callback. The native listener, certificate/account checks, Android permission and Doze behavior below apply unchanged.
+
+## iOS sign-in and delivery
+
+Enable the Push Notifications capability in the iOS target. Request alert permission and register for remote notifications. Send the hex-encoded APNs token and the platform to the app's own authenticated backend when both login and APNs registration have finished. Repeat registration when Apple supplies a new token. The app backend derives the Gravitas session proof from the verified server-side login and selects the APNs environment from its build configuration. Development builds use `sandbox`; TestFlight and App Store builds use `production`.
+
+The app backend calls `PUT /v1/notification-installations/{app}/{installation}` at AppStore using its server-only bearer from `NOTIFICATION_APP_KEYS`. The installation identifier is a random 32-byte value encoded as 64 lowercase hex characters, stable across sign-ins for that installation. The backend maintains an increasing positive generation per installation. Reuse the same generation and fields when retrying a request.
+
+Spacetime and River expose an authenticated `/api/notifications/ios` endpoint for their own iOS clients. Spacetime keeps the returned device handle in its existing calendar notification outbox flow. River uses its existing Matrix `push.broadcast` flow. Their iOS bundle topics are `com.jeethsuresh.spacetime` and `cool.gravitas.river`.
+
+```json
+{
+  "platform": "ios",
+  "environment": "sandbox",
+  "token": "APNS_DEVICE_TOKEN_AS_HEX",
+  "session_proof": "GRAVITAS_STATUS_CREDENTIAL",
+  "generation": 1
+}
+```
+
+AppStore checks that the live proof belongs to the configured service origin. Gravitas derives the account and registers the existing `appstore/1.0.0` capability for that app's grant. This lets the service discover push support for someone who has signed in only on iOS. The registration response is `200 {"device":"OPAQUE_64_HEX_DEVICE_HANDLE"}`. Store that handle for the existing `push.send` request. `push.broadcast` includes registered iOS and Android installations of the sending app.
+
+On sign-out or when the user turns off notifications, send `DELETE` to the same registration URL with a newer `{"generation":2}` and the same server credential. AppStore returns 204 after removing the token and queued payloads. AppStore returns 409 for stale generations or reuse of a generation with different fields. Retry transient failures, and ensure the app's logout revokes its Gravitas login session or reliably retries removal. AppStore checks the live session before submitting each queued notification to Apple.
+
+The APNs payload contains a generic alert, an opaque notification `id`, the Gravitas `subject`, and the original `payload` when it fits. The client verifies the subject against its active account before using the payload and can deduplicate with the ID. When the full envelope would exceed 4,096 bytes, it contains `refresh: true` in place of the original payload. The client can refresh from its authenticated service when the user opens the notification. Keep sensitive content in the service and use opaque identifiers in payloads. AppStore retries temporary failures and clears invalid APNs tokens. APNs acceptance completes the server delivery attempt.
+
+### AppStore configuration
+
+Deploy the Gravitas IAM delegated AppStore registry endpoint before enabling iOS registrations. Set `NOTIFICATION_APNS_CONFIG` to a JSON object keyed by the app ID. Each app has a canonical HTTPS backend origin and one or both APNs environments. Use the Apple key authorized for each environment and topic.
+
+```json
+{
+  "example": {
+    "origin": "https://example.gravitas.cool",
+    "environments": {
+      "sandbox": {
+        "topic": "cool.gravitas.example",
+        "team_id": "TEAM_ID",
+        "key_id": "KEY_ID",
+        "private_key": "APPLE_P8_PEM_CONTENTS"
+      }
+    }
+  }
+}
+```
+
+Add the app's distinct backend key to `NOTIFICATION_APP_KEYS` and configure its origin with `protocols.read` and `appstore.push` in IAM's `PROTOCOL_SERVICES`. Apps that broadcast also need `appstore.push.broadcast`. For an app in the Android catalog, the configured origin must match its existing notification origin. For the hosted Store, supply the APNs JSON through the `appstore-runtime` Secret. Keep the Apple private key and service credentials in the runtime secrets. AppStore connects directly to Apple's HTTPS endpoints using HTTP/2 on port 443.
 
 ## Legacy/direct backend configuration (independent stores and migration)
 

@@ -25,6 +25,8 @@ import (
 type Server struct {
 	notifications      *notificationHub
 	notificationClient *http.Client
+	apnsApps           map[string]apnsApp
+	apnsWake           chan struct{}
 	cfg                Config
 	db                 *sql.DB
 	mux                *http.ServeMux
@@ -80,6 +82,10 @@ func New(cfg Config) (*Server, error) {
 	}
 	s := &Server{cfg: cfg, db: db, mux: http.NewServeMux(), client: &http.Client{Timeout: 5 * time.Minute}, api: "https://api.github.com", queue: make(chan string, 32), syncGate: make(chan struct{}, 1), nativeGate: make(chan struct{}, 4)}
 	if err := s.initNotifications(); err != nil {
+		db.Close()
+		return nil, err
+	}
+	if err := s.initAPNS(); err != nil {
 		db.Close()
 		return nil, err
 	}

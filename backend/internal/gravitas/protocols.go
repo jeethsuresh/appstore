@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
+	"time"
 )
 
 // registerAccess runs before a successful browser/native login is returned. The
@@ -53,6 +54,66 @@ func (c *Client) putRegistry(ctx context.Context, endpoint, access string, body 
 	io.Copy(io.Discard, io.LimitReader(response.Body, 4096))
 	if response.StatusCode != 204 {
 		return ErrUnavailable
+	}
+	return nil
+}
+
+// RegisterNotificationSession establishes discovery for an app's own login,
+// and seals its status-only credential for revocation checks before delivery.
+func (c *Client) RegisterNotificationSession(ctx context.Context, origin, proof, serviceKey string) (Identity, string, error) {
+	if !proofPattern.MatchString(proof) {
+		return Identity{}, "", ErrLoginRequired
+	}
+	m, err := c.discovery()
+	if err != nil {
+		return Identity{}, "", ErrUnavailable
+	}
+	status, err := c.readFamilyStatus(ctx, http.MethodGet, m.SessionCheck, proof, nil)
+	if err != nil {
+		return Identity{}, "", err
+	}
+	if status.Origin != origin {
+		return Identity{}, "", ErrLoginRequired
+	}
+	var registry struct {
+		Protocols []json.RawMessage `json:"protocols"`
+	}
+	if json.Unmarshal(c.ProtocolRegistry, &registry) != nil || len(registry.Protocols) != 1 {
+		return Identity{}, "", ErrUnavailable
+	}
+	body, err := json.Marshal(map[string]any{"session_proof": proof, "specification": registry.Protocols[0]})
+	if err != nil {
+		return Identity{}, "", ErrUnavailable
+	}
+	registered, err := c.readFamilyStatus(ctx, http.MethodPut, c.Issuer+"/protocols/v1/registry/appstore", serviceKey, bytes.NewReader(body))
+	if err != nil {
+		return Identity{}, "", err
+	}
+	if registered != status {
+		return Identity{}, "", ErrUnavailable
+	}
+	identity := Identity{Issuer: status.Issuer, Subject: status.Subject, SessionID: status.SessionID, CheckToken: proof, SessionExpires: status.Expires}
+	sealed, err := c.seal("notification-session", identity)
+	return identity, sealed, err
+}
+
+func (c *Client) CheckNotificationSession(ctx context.Context, origin, subject, sealed string) error {
+	var identity Identity
+	if c.open("notification-session", sealed, &identity) != nil || identity.Issuer != c.Issuer ||
+		identity.Subject != subject || identity.SessionExpires <= time.Now().Unix() {
+		return ErrLoginRequired
+	}
+	m, err := c.discovery()
+	if err != nil {
+		return ErrUnavailable
+	}
+	status, err := c.readFamilyStatus(ctx, http.MethodGet, m.SessionCheck, identity.CheckToken, nil)
+	if err != nil {
+		return err
+	}
+	if status.Subject != identity.Subject || status.Origin != origin ||
+		status.SessionID != identity.SessionID || status.Expires != identity.SessionExpires {
+		return ErrLoginRequired
 	}
 	return nil
 }

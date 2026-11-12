@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"net"
 	"net/http"
 	"net/url"
@@ -184,6 +185,9 @@ func (s *Server) RunNotifications(ctx context.Context) {
 	for {
 		s.syncProtocolRegistry(ctx)
 		s.syncNotificationProviders(ctx)
+		if err := s.pruneIOSNotifications(ctx, time.Now()); err != nil && ctx.Err() == nil {
+			slog.Error("prune iOS notifications", "error", err)
+		}
 		select {
 		case <-ctx.Done():
 			return

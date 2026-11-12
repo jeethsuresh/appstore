@@ -45,6 +45,7 @@ type Config struct {
 	NotificationURL                                                  string
 	NotificationGateway                                              string
 	NotificationKeys                                                 map[string]string
+	APNSConfig                                                       string
 }
 
 var hexDigest = regexp.MustCompile(`^[a-f0-9]{64}$`)
