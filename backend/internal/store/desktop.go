@@ -294,6 +294,10 @@ func (s *Server) desktopAsset(ctx context.Context, a App, rel githubRelease, nam
 	}
 	return s.verifiedMetadata(ctx, a, id, size, digest, limit)
 }
+func (a App) allowsDesktopArtifact(platform string, versionCode int64) bool {
+	return platform != "macos" || (a.MacOSNotarizedFrom > 0 && versionCode >= a.MacOSNotarizedFrom)
+}
+
 func (s *Server) desktopCatalog(w http.ResponseWriter, r *http.Request) {
 	platform, arch := r.URL.Query().Get("platform"), r.URL.Query().Get("arch")
 	if !validTarget(platform, arch) {
@@ -308,7 +312,7 @@ func (s *Server) desktopCatalog(w http.ResponseWriter, r *http.Request) {
 				s.internal(w, err)
 				return
 			}
-			if rel == nil {
+			if rel == nil || !a.allowsDesktopArtifact(platform, rel.VersionCode) {
 				continue
 			}
 			selected := *rel
@@ -323,6 +327,7 @@ func (s *Server) desktopCatalog(w http.ResponseWriter, r *http.Request) {
 			}
 			a.Release = nil
 			a.Notifications = nil
+			a.MacOSNotarizedFrom = 0
 			a.DesktopRelease = &selected
 			apps = append(apps, a)
 		}
@@ -337,7 +342,7 @@ func (s *Server) desktopDownload(w http.ResponseWriter, r *http.Request) {
 				break
 			}
 			var rel DesktopRelease
-			if json.Unmarshal(data, &rel) != nil {
+			if json.Unmarshal(data, &rel) != nil || !a.allowsDesktopArtifact(r.PathValue("platform"), rel.VersionCode) {
 				break
 			}
 			for _, artifact := range rel.Artifacts {
@@ -382,7 +387,7 @@ func (s *Server) desktopBootstrap(w http.ResponseWriter, r *http.Request) {
 				s.internal(w, err)
 				return
 			}
-			if rel == nil {
+			if rel == nil || !a.allowsDesktopArtifact(r.PathValue("platform"), rel.VersionCode) {
 				break
 			}
 			for _, artifact := range rel.Artifacts {
