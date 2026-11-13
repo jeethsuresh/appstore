@@ -164,3 +164,9 @@ Morsel is a standalone, fully local food journal: private source and signed rele
 ## Work and News on Android
 
 Install **Work** and **News** from Private Store to use work.gravitas.cool and news.gravitas.cool as separate Android apps. Each keeps its own Gravitas website session, supports file uploads and back/forward navigation, and receives verified signed updates through the Store. Android 8.0+ and an internet connection are required. See [Android behavior, verification and publishing](WEBVIEW_ANDROID.md).
+
+## Add an app to the collection
+
+Add its display name, description and `logoUrl` to `config/apps.json`. The name is shown as the page heading. Write a short description of what the app does and when it needs an account or connection. Add an app-specific SVG or PNG to `backend/internal/store/web/` and reference it as `/assets/<filename>`. The backend validates these fields when it loads the catalog. Add `website` for an app with a web home. Other entries display the URL of their Private Store page.
+
+Every catalog entry gets a public `/apps/<id>` page. Android and desktop distribution still use the app's verified releases. Set `ios` to `testflight` or `app-store` for an iOS release. Set `iosUrl` to the public Apple listing when available. Invitation-only TestFlight entries can omit it. For Apple distribution, set the App Store version description and the TestFlight beta app description in App Store Connect. Use the same product name and the matching icon asset in the Apple build.

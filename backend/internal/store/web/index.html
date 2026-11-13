@@ -62,9 +62,9 @@
         <div class="catalog-heading"><div><p class="eyebrow">MEET THE COLLECTION</p><h2 id="apps-heading">A little more useful. Every day.</h2></div><p>Small, independent apps.<br>Get to know your next favorite.</p></div>
         <div class="catalog-grid">
           {{range .Apps}}<article class="catalog-card">
-            <div class="card-top"><img class="catalog-icon" src="/assets/{{.Icon}}" alt="" width="56" height="56"><span class="category">{{.Category}}</span></div>
-            <h3><a href="/apps/{{.ID}}">{{.Name}}</a></h3><p class="card-tagline">{{.Tagline}}</p><p class="card-summary">{{.Summary}}</p>
-            <div class="card-bottom"><span>{{if .Release}}v{{.Release.VersionName}}{{else}}Android app{{end}}</span><a href="/apps/{{.ID}}">Explore {{.Name}} <span aria-hidden="true">↗</span></a></div>
+            <div class="card-top"><img class="catalog-icon" src="{{.LogoURL}}" alt="" width="56" height="56">{{if .Category}}<span class="category">{{.Category}}</span>{{end}}</div>
+            <h3><a href="/apps/{{.ID}}">{{.Name}}</a></h3><p class="app-url">{{.DisplayURL}}</p><p class="card-summary">{{.Description}}</p>
+            <div class="card-bottom"><span>{{if .Release}}v{{.Release.VersionName}}{{else}}{{.Platforms}}{{end}}</span><a href="/apps/{{.ID}}">Explore {{.Name}} <span aria-hidden="true">↗</span></a></div>
           </article>{{end}}
         </div>
       </section>

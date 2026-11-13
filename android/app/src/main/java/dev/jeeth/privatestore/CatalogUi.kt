@@ -33,6 +33,7 @@ fun AppIcon(app: StoreApp, modifier: Modifier = Modifier) {
         "river" -> R.drawable.app_river
         "launcher" -> R.drawable.app_launcher
         "haven" -> R.drawable.app_haven
+        "morsel" -> R.drawable.app_morsel
         else -> R.drawable.app_icon
     }
     Image(painterResource(icon), contentDescription = null, modifier = modifier.size(56.dp))

@@ -12,16 +12,14 @@ import (
 
 type appFeature struct{ Title, Description string }
 type appStory struct {
-	Category, Tagline, Summary, Icon, Architecture, MinimumAndroid string
-	Website                                                        string
-	Features                                                       []appFeature
-	LocalData, Connection                                          string
+	Category, Tagline, Architecture, MinimumAndroid string
+	Features                                        []appFeature
+	LocalData, Connection                           string
 }
 type webApp struct {
 	App
 	appStory
-	Size      string
-	Platforms string
+	Size, Platforms, DisplayURL string
 }
 type webView struct {
 	SignedIn, Enabled, Error                                            bool
@@ -32,10 +30,36 @@ type webView struct {
 }
 
 var appStories = map[string]appStory{
+	"rss": {
+		Category: "News & feeds", Tagline: "Keep up with the sites you follow.",
+		Features: []appFeature{
+			{"Build your reading list", "Subscribe to RSS feeds, group them and catch up on new articles from one reader."},
+			{"Keep the articles you want", "Save items to revisit and use your local desktop library when your connection drops."},
+		},
+		LocalData:  "The desktop app keeps subscriptions and reading state in a local database.",
+		Connection: "Feed refreshes need a connection. A hosted RSS server is optional on desktop.",
+	},
+	"email": {
+		Category: "Email", Tagline: "An inbox you can take offline.",
+		Features: []appFeature{
+			{"Catch up away from Wi-Fi", "Read previously downloaded mail without connecting to your mail provider."},
+			{"Find a conversation", "Search your local mailbox and sync new messages over IMAP."},
+		},
+		LocalData:  "Downloaded messages are stored locally on your computer.",
+		Connection: "Connect to your mail provider to sync new mail.",
+	},
+	"office": {
+		Category: "Documents & collaboration", Tagline: "Keep related work together.",
+		Features: []appFeature{
+			{"Work in one place", "Keep notes, canvases, slides and spreadsheets in the same workspace."},
+			{"Open a local workspace", "Use the desktop app with its local backend and device storage."},
+		},
+		LocalData:  "The desktop app stores its local workspace on your computer.",
+		Connection: "The hosted Office workspace is available on the web with Gravitas sign-in.",
+	},
 	"work": {
 		Category: "Documents & collaboration", Tagline: "Your workspace, on your phone.",
-		Summary: "Use the hosted Office workspace as a separate Android app: connected documents, canvases, slides and spreadsheets with Gravitas sign-in.",
-		Icon:    "work.svg", Architecture: "All Android architectures", MinimumAndroid: "Android 8.0+", Website: "https://work.gravitas.cool",
+		Architecture: "All Android architectures", MinimumAndroid: "Android 8.0+",
 		Features: []appFeature{
 			{"Keep working", "Open the same hosted documents you use on the web. Upload files with Android's file picker."},
 			{"Go back and forward", "On Android 14 and later, swipe from the left to go back and from the right to go forward. Navigation buttons are also available."},
@@ -45,8 +69,7 @@ var appStories = map[string]appStory{
 	},
 	"news": {
 		Category: "News & feeds", Tagline: "Your feeds, close at hand.",
-		Summary: "Read and organise your hosted RSS subscriptions in a separate Android app, connected to news.gravitas.cool with Gravitas sign-in.",
-		Icon:    "news.svg", Architecture: "All Android architectures", MinimumAndroid: "Android 8.0+", Website: "https://news.gravitas.cool",
+		Architecture: "All Android architectures", MinimumAndroid: "Android 8.0+",
 		Features: []appFeature{
 			{"Read your feeds", "Use the hosted reader's subscriptions, articles and saved items. Open external articles in your browser."},
 			{"Retrace your steps", "On Android 14 and later, swipe from the left to go back and from the right to go forward. An empty forward history leaves you on the current screen."},
@@ -56,8 +79,7 @@ var appStories = map[string]appStory{
 	},
 	"morsel": {
 		Category: "Food & reflection", Tagline: "Your daily rhythm.",
-		Summary: "A quiet food journal with a continuous calendar, reusable questions and gentle on-device reminders. No account, analytics, cloud storage or network permission.",
-		Icon:    "morsel.svg", Architecture: "ARM64 Android phones", MinimumAndroid: "Android 8.0+",
+		Architecture: "ARM64 Android phones", MinimumAndroid: "Android 8.0+",
 		Features: []appFeature{
 			{"Remember the moments", "Log meals and reflections from reusable templates, browse continuous months, and edit any day’s entries."},
 			{"Ask your own questions", "Combine text, number, slider, checkbox and dropdown fields into independent attributes and templates. Attach them to any timeslot or use them on demand."},
@@ -70,8 +92,7 @@ var appStories = map[string]appStory{
 	},
 	"haven": {
 		Category: "Media & backup", Tagline: "A home for every memory.",
-		Summary: "Back up permitted phone photos, videos and audio to the desktop devices you own. Browse a shared thumbnail library with your Gravitas account on Android, desktop and the web.",
-		Icon:    "haven.svg", Architecture: "ARM, ARM64 and x86-64", MinimumAndroid: "Android 8.0+", Website: "https://haven.gravitas.cool",
+		Architecture: "ARM, ARM64 and x86-64", MinimumAndroid: "Android 8.0+",
 		Features: []appFeature{
 			{"Choose your source", "Enable your Android gallery as a source and grant access to the media you want to back up. Your phone keeps its originals."},
 			{"Keep copies at home", "Enable a desktop as a sink and choose its repository folder. Haven transfers directly between devices and verifies each completed copy."},
@@ -82,8 +103,7 @@ var appStories = map[string]appStory{
 	},
 	"atlas": {
 		Category: "Maps & places", Tagline: "Your world, in layers.",
-		Summary: "Bring your places, your paths and your people together on an OpenStreetMap map. Save businesses to lists, highlight streets, plan a drive and choose when to share your location with friends, on Android and the web.",
-		Icon:    "atlas.svg", Architecture: "ARM, ARM64 and x86-64", MinimumAndroid: "Android 8.0+", Website: "https://maps.gravitas.cool",
+		Architecture: "ARM, ARM64 and x86-64", MinimumAndroid: "Android 8.0+",
 		Features: []appFeature{
 			{"Make the map yours", "Switch nearby businesses, saved lists, routes and friends on or off independently over an OpenStreetMap base layer."},
 			{"Keep your good finds", "Search places and addresses, save businesses into multiple lists, rename collections and remove pins. Sign in with Gravitas to sync lists and highlights across web and Android."},
@@ -95,8 +115,7 @@ var appStories = map[string]appStory{
 	},
 	"river": {
 		Category: "Chat & communities", Tagline: "A little closer, wherever you are.",
-		Summary: "Bring your Gravitas spaces, conversations and ideas together in River. Separate channels, friends, private conversations, posts and discussions share the same blue interface on Android and the web.",
-		Icon:    "river.svg", Architecture: "ARM, ARM64 and x86-64", MinimumAndroid: "Android 6.0+",
+		Architecture: "ARM, ARM64 and x86-64", MinimumAndroid: "Android 6.0+",
 		Features: []appFeature{
 			{"Give each topic a home", "Create spaces and separate text channels. Invitations and membership are managed by the space, with saved unread positions and earlier-message history."},
 			{"Keep your people close", "Send and accept friend requests, start private conversations, and remove or block people. Blocking stops new direct messages and friend requests."},
@@ -108,8 +127,7 @@ var appStories = map[string]appStory{
 	},
 	"launcher": {
 		Category: "Home screen", Tagline: "A home that feels like yours.",
-		Summary: "Make room for your apps and widgets with Still Launcher. Organise home screens and the dock into folders, choose a photo wallpaper, and adjust the drawer and dock colours and transparency.",
-		Icon:    "launcher.svg", Architecture: "ARM, ARM64 and x86-64", MinimumAndroid: "Android 8.0+",
+		Architecture: "ARM, ARM64 and x86-64", MinimumAndroid: "Android 8.0+",
 		Features: []appFeature{
 			{"Keep apps together", "Drag an app onto another to create a folder, on a home screen or in the dock. Drop more apps onto it, rename it, or drag apps back out."},
 			{"Make it your own", "Choose an image wallpaper with a preview before applying. Set separate colours and opacity for the app drawer and dock."},
@@ -121,8 +139,7 @@ var appStories = map[string]appStory{
 	},
 	"appstore": {
 		Category: "Apps & updates", Tagline: "A small home for your apps.",
-		Summary: "Install independent apps on Android, macOS, Windows and Linux, keep them current, and sign in with Gravitas. Private Store keeps itself up to date through the same verified release channel.",
-		Icon:    "icon.svg", Architecture: "ARM, ARM64 and x86-64", MinimumAndroid: "Android 8.0+",
+		Architecture: "ARM, ARM64 and x86-64", MinimumAndroid: "Android 8.0+",
 		Features: []appFeature{
 			{"Keep the store current", "New signed versions of Private Store appear alongside your other app updates. Check now or let periodic checks find them; Android may ask you to approve installation."},
 			{"Keep your settings", "Updating the store preserves its sign-in and update preferences. Every APK must match the configured package, version, checksum and permanent release certificate."},
@@ -133,8 +150,7 @@ var appStories = map[string]appStory{
 	},
 	"daybreak": {
 		Category: "Weather", Tagline: "A clearer view of your day.",
-		Summary: "Hourly forecasts, daily outlooks and home-screen widgets. The weather you need, in a quiet little app that keeps your last forecast close.",
-		Icon:    "daybreak.svg", Architecture: "ARM64 Android phones", MinimumAndroid: "Android 7.0+",
+		Architecture: "ARM64 Android phones", MinimumAndroid: "Android 7.0+",
 		Features: []appFeature{
 			{"See the hours ahead", "Explore hourly temperatures and rain chances, a fixed 24-hour forecast graph, and a compact daily outlook with highs and lows."},
 			{"Choose your weather source", "Use Environment Canada in Canada, the US National Weather Service in the United States, or Open-Meteo worldwide. Automatic mode can fall back when a source is unavailable."},
@@ -148,8 +164,7 @@ var appStories = map[string]appStory{
 	},
 	"spacetime": {
 		Category: "Calendar & tasks", Tagline: "Make room for what matters.",
-		Summary: "A calendar that starts with your device. Keep events, todos and occasions together, work offline, and connect a server only when you want sync and invitations.",
-		Icon:    "spacetime.svg", Architecture: "ARM, ARM64 and x86-64", MinimumAndroid: "Android 6.0+",
+		Architecture: "ARM, ARM64 and x86-64", MinimumAndroid: "Android 6.0+",
 		Features: []appFeature{
 			{"See your time, your way", "Move between daily and weekly time grids, a month view and a full year. Overlapping appointments sit side by side, with all-day entries above the grid."},
 			{"Keep more than appointments", "Create events, todos with due dates, birthdays and other occasions. Search your entries and choose which types appear on the calendar."},
@@ -173,7 +188,7 @@ func downloadSize(bytes int64) string {
 	return fmt.Sprintf("%.1f MB", float64(bytes)/1e6)
 }
 
-func (s *Server) webApps(ctx context.Context) ([]webApp, error) {
+func (s *Server) webApps(ctx context.Context, storeURL string) ([]webApp, error) {
 	apps := make([]webApp, 0, len(s.cfg.Apps))
 	for _, configured := range s.cfg.Apps {
 		app := configured
@@ -187,7 +202,7 @@ func (s *Server) webApps(ctx context.Context) ([]webApp, error) {
 		app.Release = release
 		story, ok := appStories[app.ID]
 		if !ok {
-			story = appStory{Category: "Independent app", Tagline: app.Name, Summary: app.Description, Icon: "icon.svg", Architecture: "See the Android store for compatibility", MinimumAndroid: "See the Android store"}
+			story = appStory{Architecture: "See available builds", MinimumAndroid: "See the Android store"}
 		}
 		desktop, err := s.latestDesktop(ctx, app)
 		if err != nil {
@@ -204,7 +219,11 @@ func (s *Server) webApps(ctx context.Context) ([]webApp, error) {
 		if app.Desktop {
 			app.DesktopRelease = desktop
 		}
-		item := webApp{App: app, appStory: story}
+		item := webApp{App: app, appStory: story, DisplayURL: app.Website}
+		if item.DisplayURL == "" {
+			item.DisplayURL = storeURL + "/apps/" + app.ID
+		}
+		item.DisplayURL = strings.TrimPrefix(item.DisplayURL, "https://")
 		platforms := []string{}
 		if app.Package != "" {
 			platforms = append(platforms, "Android")
@@ -225,8 +244,14 @@ func (s *Server) webApps(ctx context.Context) ([]webApp, error) {
 				platforms = append(platforms, "Desktop (release pending)")
 			}
 		}
+		switch app.IOS {
+		case "testflight":
+			platforms = append(platforms, "iOS (TestFlight)")
+		case "app-store":
+			platforms = append(platforms, "iOS")
+		}
 		item.Platforms = strings.Join(platforms, " · ")
-		if app.Package == "" {
+		if app.Package == "" && app.Desktop {
 			item.Architecture = "See available desktop builds"
 			item.MinimumAndroid = "Desktop"
 		}
@@ -266,7 +291,7 @@ func (s *Server) webData(w http.ResponseWriter, r *http.Request) (webView, error
 		}
 	}
 	var err error
-	data.Apps, err = s.webApps(r.Context())
+	data.Apps, err = s.webApps(r.Context(), data.StoreURL)
 	return data, err
 }
 func (s *Server) webAppPage(w http.ResponseWriter, r *http.Request) {
@@ -281,7 +306,7 @@ func (s *Server) webAppPage(w http.ResponseWriter, r *http.Request) {
 		}
 		data.Selected = &data.Apps[i]
 		data.Title = data.Selected.Name + " · Private Store"
-		data.Description = data.Selected.Summary
+		data.Description = data.Selected.Description
 		data.Next = "/apps/" + data.Selected.ID
 		s.renderWeb(w, "app.html", data)
 		return

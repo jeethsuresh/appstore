@@ -22,7 +22,7 @@ import (
 
 func testServer(t *testing.T) *Server {
 	t.Helper()
-	s, err := New(Config{DataDir: t.TempDir(), AdminToken: strings.Repeat("a", 64), WebhookSecret: strings.Repeat("b", 64), Apps: []App{{ID: "daybreak", Name: "Daybreak", Package: "dev.jeeth.local_weather", Repo: "jeethsuresh/weather", Asset: "daybreak-android-arm64.apk", Certificate: strings.Repeat("c", 64)}}})
+	s, err := New(Config{DataDir: t.TempDir(), AdminToken: strings.Repeat("a", 64), WebhookSecret: strings.Repeat("b", 64), Apps: []App{{ID: "daybreak", Name: "Daybreak", Description: "Check your local weather.", LogoURL: "/assets/daybreak.svg", Package: "dev.jeeth.local_weather", Repo: "jeethsuresh/weather", Asset: "daybreak-android-arm64.apk", Certificate: strings.Repeat("c", 64)}}})
 	if err != nil {
 		t.Fatal(err)
 	}

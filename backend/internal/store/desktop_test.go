@@ -121,7 +121,7 @@ func TestDesktopIngestionIsolationImmutabilityAndRepair(t *testing.T) {
 }
 func TestDesktopOnlyAndUniversalConfiguration(t *testing.T) {
 	p := filepath.Join(t.TempDir(), "apps.json")
-	for _, value := range []string{`[{"id":"desktop","name":"Desktop","repository":"owner/desktop","desktop":true}]`, `[{"id":"both","name":"Both","repository":"owner/both","desktop":true,"packageName":"dev.test.app","assetName":"app.apk"}]`} {
+	for _, value := range []string{`[{"id":"desktop","name":"Desktop","description":"A desktop app.","logoUrl":"/assets/office.png","repository":"owner/desktop","desktop":true}]`, `[{"id":"both","name":"Both","description":"A universal app.","logoUrl":"/assets/work.svg","repository":"owner/both","desktop":true,"packageName":"dev.test.app","assetName":"app.apk"}]`} {
 		os.WriteFile(p, []byte(value), 0600)
 		if _, err := LoadApps(p); err != nil {
 			t.Fatal(err)

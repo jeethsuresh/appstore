@@ -104,7 +104,7 @@ func TestAndroidReleaseTagPrefixConfiguration(t *testing.T) {
 	for _, prefix := range []string{"", "v", "webview-v", "../evil", "webview/v", "webview v"} {
 		t.Run(prefix, func(t *testing.T) {
 			path := filepath.Join(t.TempDir(), "apps.json")
-			data, err := json.Marshal([]App{{ID: "work", Name: "Work", Package: "cool.gravitas.work", Repo: "jeethsuresh/appstore", Asset: "work-android.apk", ReleaseTagPrefix: prefix}})
+			data, err := json.Marshal([]App{{ID: "work", Name: "Work", Description: "Your hosted workspace.", LogoURL: "/assets/work.svg", Package: "cool.gravitas.work", Repo: "jeethsuresh/appstore", Asset: "work-android.apk", ReleaseTagPrefix: prefix}})
 			if err != nil {
 				t.Fatal(err)
 			}

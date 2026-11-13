@@ -18,7 +18,7 @@ The Android client checks the exact callback origin/path, unique constant-time m
 
 ## Device endpoints
 
-- `GET /v1/apps`: configured apps and their latest verified release, if available. A release includes `id`, `tag`, `versionCode`, `versionName`, `sha256`, `size`, `minSdk`, `notes` and `createdAt`. Apps include their package and signing-certificate identity. Assets verified under a different configuration are hidden until reverified.
+- `GET /v1/apps`: configured apps and their latest verified release, if available. A release includes `id`, `tag`, `versionCode`, `versionName`, `sha256`, `size`, `minSdk`, `notes` and `createdAt`. Apps include their package and signing-certificate identity, display name, description and a public Store-relative `logoUrl`. An app with its own website includes `website`. Assets verified under a different configuration are hidden until reverified.
 - `GET /v1/releases/ID/apk`: authenticated APK bytes. Supports HTTP ranges. The Android client verifies the expected size/hash, package, version and certificate before handing the APK to Android's installer.
 - `DELETE /v1/device`: immediately revokes the calling device, returning 204.
 
