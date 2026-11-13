@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "version": "0.6.12",
-  "versionCode": 24,
+  "version": "0.6.13",
+  "versionCode": 25,
   "changes": [
-    "Fix verified Work and News release ingestion so both Android apps and their release notes appear in Private Store."
+    "Morsel now has its own logo in Private Store."
   ]
 }

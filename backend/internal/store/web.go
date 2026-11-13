@@ -10,6 +10,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"path"
 	"private-store/internal/gravitas"
 )
 
@@ -49,11 +50,29 @@ func (s *Server) registerWeb() error {
 	s.mux.HandleFunc("GET /{$}", s.webHome)
 	s.mux.HandleFunc("GET /login", s.webHome)
 	s.mux.HandleFunc("GET /apps/{app}", s.webAppPage)
-	for _, name := range []string{"style.css", "app.js", "icon.svg", "daybreak.svg", "spacetime.svg", "launcher.svg", "river.svg", "atlas.svg", "work.svg", "news.svg"} {
-		data, _ := webFiles.ReadFile("web/" + name)
-		mime := map[string]string{"style.css": "text/css; charset=utf-8", "app.js": "text/javascript; charset=utf-8", "icon.svg": "image/svg+xml", "daybreak.svg": "image/svg+xml", "spacetime.svg": "image/svg+xml", "launcher.svg": "image/svg+xml", "river.svg": "image/svg+xml", "atlas.svg": "image/svg+xml", "work.svg": "image/svg+xml", "news.svg": "image/svg+xml"}[name]
+	assets, err := webFiles.ReadDir("web")
+	if err != nil {
+		return err
+	}
+	contentTypes := map[string]string{
+		".css": "text/css; charset=utf-8",
+		".js":  "text/javascript; charset=utf-8",
+		".png": "image/png",
+		".svg": "image/svg+xml",
+	}
+	for _, asset := range assets {
+		name := asset.Name()
+		contentType, ok := contentTypes[path.Ext(name)]
+		if !ok || asset.IsDir() {
+			continue
+		}
+		data, err := webFiles.ReadFile("web/" + name)
+		if err != nil {
+			return err
+		}
 		s.mux.HandleFunc("GET /assets/"+name, func(w http.ResponseWriter, r *http.Request) {
-			w.Header().Set("Content-Type", mime)
+			w.Header().Set("Content-Type", contentType)
+			w.Header().Set("X-Content-Type-Options", "nosniff")
 			_, _ = w.Write(data)
 		})
 	}

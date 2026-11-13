@@ -1,9 +1,8 @@
 {
   "schemaVersion": 1,
-  "version": "0.1.5",
-  "versionCode": 6,
+  "version": "0.1.6",
+  "versionCode": 7,
   "changes": [
-    "Private Store for macOS is signed with Developer ID and notarized by Apple on Apple Silicon and Intel.",
-    "Fixed installation of Electron apps so Private Store can update itself."
+    "See each app’s logo on its Private Store card and details page."
   ]
 }

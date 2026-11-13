@@ -6,8 +6,9 @@
     "repository": "jeethsuresh/weather",
     "assetName": "daybreak-android-arm64.apk",
     "certificateSha256": "18cb4dbf5d8b3ed41336acd2c1f6dc12bd7aba2d8f5a6dcaf9339e42b6af683a",
-    "description": "Private weather forecasts, saved data, and Android home-screen widgets.",
-    "desktop": true
+    "description": "See hourly temperatures, rain chances and the daily outlook. Choose a city or your current location, add home-screen widgets on supported phones, and read your last saved forecast when you lose your connection. Daybreak requires no account.",
+    "desktop": true,
+    "logoUrl": "/assets/daybreak.svg"
   },
   {
     "id": "spacetime",
@@ -16,12 +17,14 @@
     "repository": "jeethsuresh/spacetime",
     "assetName": "spacetime-{tag}-android.apk",
     "certificateSha256": "f5714ad3d2b3d82b283efd61b2d99f5eaad5ec9efe67b644a62efc79fec94582",
-    "description": "Calendar, events, tasks, and occasions.",
+    "description": "See appointments, tasks and birthdays together in one calendar. Plan your day or week, set repeating entries and reminders, and work offline. Connect to a Spacetime server when you want sync and invitations.",
     "notifications": {
       "origin": "https://spacetime.gravitas.cool",
       "authority": "com.jeethsuresh.spacetime.notifications"
     },
-    "desktop": true
+    "desktop": true,
+    "logoUrl": "/assets/spacetime.svg",
+    "website": "https://spacetime.gravitas.cool"
   },
   {
     "id": "appstore",
@@ -30,8 +33,9 @@
     "repository": "jeethsuresh/appstore",
     "assetName": "appstore-android.apk",
     "certificateSha256": "e70b5b54a0d174f4ad8867889f6481a2b193dc9c130630f321563e12f3293793",
-    "description": "Your private app collection, Gravitas sign-in, and verified updates on Android, macOS, Windows and Linux \u2014 including updates to Private Store itself.",
-    "desktop": true
+    "description": "Find and install Gravitas apps on Android, macOS, Windows and Linux. Sign in with Gravitas to browse your collection, read release notes and get verified updates, including updates to Private Store itself.",
+    "desktop": true,
+    "logoUrl": "/assets/icon.svg"
   },
   {
     "id": "launcher",
@@ -40,7 +44,8 @@
     "repository": "jeethsuresh/launcher",
     "assetName": "StillLauncher-{tag}-android.apk",
     "certificateSha256": "508184332d54eadbf5ad558c0b00c8350769cb386130c68eeec4aa8bf47c8b09",
-    "description": "A private Android home screen with folders, widgets, photo wallpapers, and a customisable drawer and dock."
+    "description": "Make your Android home screen your own. Group apps into folders, resize widgets, use a photo wallpaper and customize the grid, app drawer and dock. Your layout stays on your device, with no account required.",
+    "logoUrl": "/assets/launcher.svg"
   },
   {
     "id": "river",
@@ -49,12 +54,14 @@
     "repository": "jeethsuresh/river",
     "assetName": "River-{tag}-android.apk",
     "certificateSha256": "6559956b5cf6b2f796824995b31da7fa2c176ba652e8fcb40741686d850bb6b0",
-    "description": "Private Gravitas spaces, separate channels, friends, conversations, posts and discussions.",
+    "description": "Give each group a space and each topic its own channel. Chat privately with friends, publish posts and follow threaded discussions with your Gravitas account. Pick up where you left off on another device.",
     "desktop": true,
     "notifications": {
       "origin": "https://chat.gravitas.cool",
       "authority": "cool.gravitas.river.notifications"
-    }
+    },
+    "logoUrl": "/assets/river.svg",
+    "website": "https://chat.gravitas.cool"
   },
   {
     "id": "atlas",
@@ -63,7 +70,9 @@
     "repository": "jeethsuresh/atlas",
     "assetName": "Atlas-{tag}-android.apk",
     "certificateSha256": "ee7ce4ba953a4f64cb1b857c6cf0f124a68dc6cd90840b1a46259c9b759e7f4a",
-    "description": "Your world, in layers: OpenStreetMap places, business lists, driving routes, street highlights and opt-in friend locations. Web and Android."
+    "description": "Build an OpenStreetMap view around your favorite places. Save businesses to lists, highlight streets and plan driving routes. Choose when to share your location with friends while Atlas is open.",
+    "logoUrl": "/assets/atlas.svg",
+    "website": "https://maps.gravitas.cool"
   },
   {
     "id": "haven",
@@ -72,29 +81,37 @@
     "repository": "jeethsuresh/haven",
     "assetName": "Haven-{tag}-android.apk",
     "certificateSha256": "3c01375ebd40c543f9d6d1a6c1aeb18c689188eee35341a3b1ba3b89a397c085",
-    "description": "Back up media directly between your Android phones and desktop sinks. Browse and receive originals on macOS, Windows and Linux while Haven is open.",
-    "desktop": true
+    "description": "Back up photos, videos and audio from your Android phone to a desktop you own. Choose what to copy and where to keep it, then browse your library and check which devices have copies. Transfers run while Haven is open.",
+    "desktop": true,
+    "logoUrl": "/assets/haven.svg",
+    "website": "https://haven.gravitas.cool"
   },
   {
     "id": "rss",
     "name": "RSS Reader",
     "repository": "jeethsuresh/rss",
     "desktop": true,
-    "description": "Your feeds, saved locally. Read and organise RSS subscriptions on desktop with optional hosted synchronization."
+    "description": "Follow the sites you care about in one reader. Organize RSS subscriptions, read articles and keep saved items close. The desktop app stores feeds locally and can sync with an optional hosted reader.",
+    "logoUrl": "/assets/rss.png",
+    "website": "https://news.gravitas.cool"
   },
   {
     "id": "email",
     "name": "Email",
     "repository": "jeethsuresh/emails",
     "desktop": true,
-    "description": "An offline desktop inbox with local mail storage and IMAP synchronization."
+    "description": "Read, search and organize your email from a desktop inbox that keeps mail on your device. Connect an IMAP account to sync messages, then browse downloaded mail when you are offline.",
+    "logoUrl": "/assets/email.svg",
+    "website": "https://jeethsuresh.github.io/emails/"
   },
   {
     "id": "office",
     "name": "Office",
     "repository": "jeethsuresh/office",
     "desktop": true,
-    "description": "A native desktop workspace for connected documents, canvases, slides and spreadsheets, with a local Go backend and offline storage."
+    "description": "Keep documents, canvases, slides and spreadsheets together in one workspace. Connect related work inside a document and use the desktop app with a local workspace, even while offline.",
+    "logoUrl": "/assets/office.png",
+    "website": "https://work.gravitas.cool"
   },
   {
     "id": "morsel",
@@ -103,7 +120,8 @@
     "repository": "jeethsuresh/morsel",
     "assetName": "morsel-android-arm64.apk",
     "certificateSha256": "77a673d91cc1dbbcf1d1ec2d19a090266b8c08015ac791e5028af933ac9eda53",
-    "description": "A fully local food journal with reusable questions, gentle reminders, JSON/CSV exports and an isolated Demo View. No account or network access."
+    "description": "Keep a food journal with reusable questions and gentle reminders. Browse your entries on a continuous calendar, then export a JSON backup or CSV. Your journal stays on your Android device and needs no account.",
+    "logoUrl": "/assets/morsel.svg"
   },
   {
     "id": "work",
@@ -112,8 +130,10 @@
     "repository": "jeethsuresh/appstore",
     "assetName": "work-android.apk",
     "certificateSha256": "e70b5b54a0d174f4ad8867889f6481a2b193dc9c130630f321563e12f3293793",
-    "description": "Connected documents, canvases, slides and spreadsheets at work.gravitas.cool, in a native Android WebView with back and forward navigation.",
-    "releaseTagPrefix": "webview-v"
+    "description": "Open your hosted Gravitas workspace on Android. Pick up the same documents, canvases, slides and spreadsheets you use in the browser, and upload files from your phone. Requires a connection and Gravitas sign-in.",
+    "releaseTagPrefix": "webview-v",
+    "logoUrl": "/assets/work.svg",
+    "website": "https://work.gravitas.cool"
   },
   {
     "id": "news",
@@ -122,7 +142,9 @@
     "repository": "jeethsuresh/appstore",
     "assetName": "news-android.apk",
     "certificateSha256": "e70b5b54a0d174f4ad8867889f6481a2b193dc9c130630f321563e12f3293793",
-    "description": "Read your hosted RSS feeds at news.gravitas.cool in a native Android WebView with back and forward navigation. External articles open in your browser.",
-    "releaseTagPrefix": "webview-v"
+    "description": "Read your hosted RSS subscriptions on Android. Browse feeds, catch up on unread articles and return to saved items with your Gravitas account. Full articles from external sites open in your browser.",
+    "releaseTagPrefix": "webview-v",
+    "logoUrl": "/assets/news.svg",
+    "website": "https://news.gravitas.cool"
   }
 ]

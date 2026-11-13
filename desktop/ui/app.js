@@ -6,7 +6,17 @@ function button(label, action, className) { const node = text('button', label, c
 async function act(name, value) { try { await window.store.action(name, value); } catch (e) { $('#error').hidden = false; $('#error').textContent = e.message.replace(/^Error invoking remote method '[^']+': Error: /, ''); } }
 const size = bytes => bytes >= 1e6 ? `${(bytes / 1e6).toFixed(1)} MB` : `${Math.ceil(bytes / 1000)} kB`;
 const updates = () => state.apps.filter(app => state.installed[app.id] && app.desktopRelease.versionCode > state.installed[app.id].versionCode);
-function icon(app) { return text('span', app.id === 'appstore' ? 'p↗' : app.name.charAt(0), `icon ${app.id}`); }
+function icon(app) {
+  const fallback = text('span', app.id === 'appstore' ? 'p↗' : app.name.charAt(0), `icon ${app.id}`);
+  if (typeof app.logoUrl !== 'string' || !/^\/assets\/[a-z0-9-]+\.(png|svg)$/.test(app.logoUrl)) return fallback;
+  const image = document.createElement('img');
+  image.className = 'icon app-logo';
+  image.alt = '';
+  image.referrerPolicy = 'no-referrer';
+  image.onerror = () => image.replaceWith(fallback);
+  image.src = 'https://apps.gravitas.cool' + app.logoUrl;
+  return image;
+}
 function installButton(app) {
   const local = state.installed[app.id], needsUpdate = local && app.desktopRelease.versionCode > local.versionCode;
   let node;
