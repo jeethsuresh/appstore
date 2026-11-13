@@ -8,7 +8,8 @@
     "certificateSha256": "18cb4dbf5d8b3ed41336acd2c1f6dc12bd7aba2d8f5a6dcaf9339e42b6af683a",
     "description": "See hourly temperatures, rain chances and the daily outlook. Choose a city or your current location, add home-screen widgets on supported phones, and read your last saved forecast when you lose your connection. Daybreak requires no account.",
     "desktop": true,
-    "logoUrl": "/assets/daybreak.svg"
+    "logoUrl": "/assets/daybreak.svg",
+    "ios": "testflight"
   },
   {
     "id": "spacetime",
@@ -24,7 +25,8 @@
     },
     "desktop": true,
     "logoUrl": "/assets/spacetime.svg",
-    "website": "https://spacetime.gravitas.cool"
+    "website": "https://spacetime.gravitas.cool",
+    "ios": "testflight"
   },
   {
     "id": "appstore",
@@ -61,7 +63,8 @@
       "authority": "cool.gravitas.river.notifications"
     },
     "logoUrl": "/assets/river.svg",
-    "website": "https://chat.gravitas.cool"
+    "website": "https://chat.gravitas.cool",
+    "ios": "testflight"
   },
   {
     "id": "atlas",

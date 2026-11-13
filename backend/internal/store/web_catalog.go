@@ -235,8 +235,14 @@ func (s *Server) webApps(ctx context.Context, storeURL string) ([]webApp, error)
 				platforms = append(platforms, "Desktop (release pending)")
 			}
 		}
+		switch app.IOS {
+		case "testflight":
+			platforms = append(platforms, "iOS (TestFlight)")
+		case "app-store":
+			platforms = append(platforms, "iOS")
+		}
 		item.Platforms = strings.Join(platforms, " · ")
-		if app.Package == "" {
+		if app.Package == "" && app.Desktop {
 			item.Architecture = "See available desktop builds"
 			item.MinimumAndroid = "Desktop"
 		}

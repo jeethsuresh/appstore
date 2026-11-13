@@ -87,3 +87,30 @@ func TestEveryCatalogAppHasBrandedPublicPage(t *testing.T) {
 		})
 	}
 }
+
+func TestIOSOnlyAppUsesAppleListing(t *testing.T) {
+	app := App{ID: "sample", Name: "Sample App", Description: "A small app for iPhone.", LogoURL: "/assets/work.svg", Repo: "owner/sample", IOS: "app-store", IOSURL: "https://apps.apple.com/ca/app/sample-app/id123456789"}
+	data, err := json.Marshal([]App{app})
+	if err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(t.TempDir(), "apps.json")
+	if err := os.WriteFile(path, data, 0600); err != nil {
+		t.Fatal(err)
+	}
+	apps, err := LoadApps(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := testServer(t)
+	s.cfg.Apps = apps
+	page := request(s, http.MethodGet, "/apps/sample", "", "")
+	if page.Code != http.StatusOK || !strings.Contains(page.Body.String(), app.IOSURL) ||
+		strings.Contains(page.Body.String(), "Install Sample App inside Private Store") {
+		t.Fatalf("unexpected iOS-only listing: %d %s", page.Code, page.Body)
+	}
+	app.IOSURL = "https://apps.apple.com.evil.example/app/id123456789"
+	if err := validateIOS(app); err == nil {
+		t.Fatal("accepted an iOS listing outside Apple")
+	}
+}

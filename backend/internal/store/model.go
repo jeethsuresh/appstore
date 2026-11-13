@@ -23,6 +23,8 @@ type App struct {
 	Description      string           `json:"description"`
 	LogoURL          string           `json:"logoUrl"`
 	Website          string           `json:"website,omitempty"`
+	IOS              string           `json:"ios,omitempty"`
+	IOSURL           string           `json:"iosUrl,omitempty"`
 	Desktop          bool             `json:"desktop,omitempty"`
 	DesktopRelease   *DesktopRelease  `json:"desktopRelease,omitempty"`
 	Release          *Release         `json:"release,omitempty"`
@@ -81,6 +83,29 @@ func validateBranding(app App) error {
 	return nil
 }
 
+func validateIOS(app App) error {
+	switch app.IOS {
+	case "":
+		if app.IOSURL == "" {
+			return nil
+		}
+	case "testflight", "app-store":
+		if app.IOSURL == "" && app.IOS == "testflight" {
+			return nil
+		}
+		u, err := url.Parse(app.IOSURL)
+		if err == nil && u.Scheme == "https" && u.User == nil && u.RawQuery == "" && u.Fragment == "" &&
+			((app.IOS == "testflight" && u.Host == "testflight.apple.com" && testFlightPath.MatchString(u.Path)) ||
+				(app.IOS == "app-store" && u.Host == "apps.apple.com" && appStorePath.MatchString(u.Path))) {
+			return nil
+		}
+	}
+	return fmt.Errorf("%s: ios must specify testflight or app-store with a matching Apple listing URL when supplied; app-store requires a URL", app.ID)
+}
+
+var testFlightPath = regexp.MustCompile(`^/join/[A-Za-z0-9]+$`)
+var appStorePath = regexp.MustCompile(`^/(?:[a-z]{2}/)?app/(?:[A-Za-z0-9-]+/)?id[0-9]+$`)
+
 var hexDigest = regexp.MustCompile(`^[a-f0-9]{64}$`)
 
 func LoadApps(path string) ([]App, error) {
@@ -97,10 +122,13 @@ func LoadApps(path string) ([]App, error) {
 	for i := range apps {
 		a := &apps[i]
 		a.Certificate = strings.ToLower(strings.ReplaceAll(a.Certificate, ":", ""))
-		if !regexp.MustCompile(`^[a-z][a-z0-9-]{0,63}$`).MatchString(a.ID) || !regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9-]{0,38}/[A-Za-z0-9_][A-Za-z0-9_.-]*$`).MatchString(a.Repo) || (a.Package == "" && !a.Desktop) || (a.Package != "" && !regexp.MustCompile(`^[A-Za-z][A-Za-z0-9_]*(\.[A-Za-z][A-Za-z0-9_]*)+$`).MatchString(a.Package)) || (a.ReleaseTagPrefix != "" && (a.Package == "" || !regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$`).MatchString(a.ReleaseTagPrefix))) || strings.ContainsAny(a.Asset, "/\\") || (a.Package != "" && !strings.HasSuffix(a.Asset, ".apk")) || (a.Package == "" && (a.Asset != "" || a.Certificate != "" || a.Notifications != nil)) || (a.Certificate != "" && !hexDigest.MatchString(a.Certificate)) || seen[a.ID] || (a.Package != "" && packages[a.Package]) {
+		if !regexp.MustCompile(`^[a-z][a-z0-9-]{0,63}$`).MatchString(a.ID) || !regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9-]{0,38}/[A-Za-z0-9_][A-Za-z0-9_.-]*$`).MatchString(a.Repo) || (a.Package == "" && !a.Desktop && a.IOS == "") || (a.Package != "" && !regexp.MustCompile(`^[A-Za-z][A-Za-z0-9_]*(\.[A-Za-z][A-Za-z0-9_]*)+$`).MatchString(a.Package)) || (a.ReleaseTagPrefix != "" && (a.Package == "" || !regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$`).MatchString(a.ReleaseTagPrefix))) || strings.ContainsAny(a.Asset, "/\\") || (a.Package != "" && !strings.HasSuffix(a.Asset, ".apk")) || (a.Package == "" && (a.Asset != "" || a.Certificate != "" || a.Notifications != nil)) || (a.Certificate != "" && !hexDigest.MatchString(a.Certificate)) || seen[a.ID] || (a.Package != "" && packages[a.Package]) {
 			return nil, fmt.Errorf("invalid or duplicate app configuration: %s", a.ID)
 		}
 		if err := validateBranding(*a); err != nil {
+			return nil, err
+		}
+		if err := validateIOS(*a); err != nil {
 			return nil, err
 		}
 		seen[a.ID] = true
