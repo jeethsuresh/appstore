@@ -104,6 +104,8 @@ def publish(config):
         asset = dest / app["asset"]
         if staged["size"] != asset.stat().st_size or staged["sha256"] != hashlib.sha256(asset.read_bytes()).hexdigest():
             raise ValueError("Staged APK changed")
+    for app in config["apps"]:
+        android.require_registered(app["package"], config["certificateSha256"])
     files = sorted(dest.iterdir())
     repo = os.environ["GITHUB_REPOSITORY"]
     subprocess.run(["gh", "release", "create", tag, "--repo", repo, "--target", os.environ["GITHUB_SHA"], "--draft",

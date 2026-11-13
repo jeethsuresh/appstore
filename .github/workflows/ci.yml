@@ -355,4 +355,5 @@ jobs:
       - name: Publish only after every uploaded asset verifies
         run: python3 scripts/webview-release.py publish
         env:
+          ANDROID_DEVELOPER_ID_STATUS_API_KEY: ${{ secrets.ANDROID_DEVELOPER_ID_STATUS_API_KEY }}
           GH_TOKEN: ${{ github.token }}
