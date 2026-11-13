@@ -365,6 +365,7 @@ func (s *Server) catalog(w http.ResponseWriter, r *http.Request) {
 			v = nil
 		}
 		apps[i].Release = v
+		apps[i].MacOSNotarizedFrom = 0
 		if s.notificationApp(apps[i].ID) == nil {
 			apps[i].Notifications = nil
 		}

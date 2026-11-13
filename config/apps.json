@@ -9,7 +9,8 @@
     "description": "See hourly temperatures, rain chances and the daily outlook. Choose a city or your current location, add home-screen widgets on supported phones, and read your last saved forecast when you lose your connection. Daybreak requires no account.",
     "desktop": true,
     "logoUrl": "/assets/daybreak.svg",
-    "ios": "testflight"
+    "ios": "testflight",
+    "macOSNotarizedFrom": 1501
   },
   {
     "id": "spacetime",
@@ -26,7 +27,8 @@
     "desktop": true,
     "logoUrl": "/assets/spacetime.svg",
     "website": "https://spacetime.gravitas.cool",
-    "ios": "testflight"
+    "ios": "testflight",
+    "macOSNotarizedFrom": 7007
   },
   {
     "id": "appstore",
@@ -37,7 +39,8 @@
     "certificateSha256": "e70b5b54a0d174f4ad8867889f6481a2b193dc9c130630f321563e12f3293793",
     "description": "Find and install Gravitas apps on Android, macOS, Windows and Linux. Sign in with Gravitas to browse your collection, read release notes and get verified updates, including updates to Private Store itself.",
     "desktop": true,
-    "logoUrl": "/assets/icon.svg"
+    "logoUrl": "/assets/icon.svg",
+    "macOSNotarizedFrom": 6
   },
   {
     "id": "launcher",
@@ -64,7 +67,8 @@
     },
     "logoUrl": "/assets/river.svg",
     "website": "https://chat.gravitas.cool",
-    "ios": "testflight"
+    "ios": "testflight",
+    "macOSNotarizedFrom": 13002
   },
   {
     "id": "atlas",
@@ -87,7 +91,8 @@
     "description": "Back up photos, videos and audio from your Android phone to a desktop you own. Choose what to copy and where to keep it, then browse your library and check which devices have copies. Transfers run while Haven is open.",
     "desktop": true,
     "logoUrl": "/assets/haven.svg",
-    "website": "https://haven.gravitas.cool"
+    "website": "https://haven.gravitas.cool",
+    "macOSNotarizedFrom": 1005
   },
   {
     "id": "rss",
@@ -96,7 +101,8 @@
     "desktop": true,
     "description": "Follow the sites you care about in one reader. Organize RSS subscriptions, read articles and keep saved items close. The desktop app stores feeds locally and can sync with an optional hosted reader.",
     "logoUrl": "/assets/rss.png",
-    "website": "https://news.gravitas.cool"
+    "website": "https://news.gravitas.cool",
+    "macOSNotarizedFrom": 1007
   },
   {
     "id": "email",
@@ -105,7 +111,8 @@
     "desktop": true,
     "description": "Read, search and organize your email from a desktop inbox that keeps mail on your device. Connect an IMAP account to sync messages, then browse downloaded mail when you are offline.",
     "logoUrl": "/assets/email.svg",
-    "website": "https://jeethsuresh.github.io/emails/"
+    "website": "https://jeethsuresh.github.io/emails/",
+    "macOSNotarizedFrom": 1001
   },
   {
     "id": "office",
@@ -114,7 +121,8 @@
     "desktop": true,
     "description": "Keep documents, canvases, slides and spreadsheets together in one workspace. Connect related work inside a document and use the desktop app with a local workspace, even while offline.",
     "logoUrl": "/assets/office.png",
-    "website": "https://work.gravitas.cool"
+    "website": "https://work.gravitas.cool",
+    "macOSNotarizedFrom": 1002
   },
   {
     "id": "morsel",

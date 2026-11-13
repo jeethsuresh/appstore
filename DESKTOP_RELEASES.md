@@ -22,6 +22,11 @@ No separate mobile/desktop app lists or platform arrays are required. Only
 verified release artifacts determine supported desktop operating systems and
 processors. `/v1/apps` without platform parameters remains the Android catalog;
 desktop requests require `platform=macos|windows|linux&arch=x64|arm64`.
+For Mac distribution, set `macOSNotarizedFrom` to the desktop version code of
+the first release verified for Developer ID and Apple notarization. Wait until
+that release is ingested before enabling the cutoff. Earlier Mac releases stay
+in the cache but cannot be downloaded, and future releases must pass the
+publishing repository's notarization checks.
 The public `/v1/desktop/apps` endpoint exposes the same desktop descriptions
 and release metadata. Artifact downloads still require a device credential;
 the website's desktop bootstrap downloads require a checked Gravitas session.

@@ -132,6 +132,53 @@ func TestDesktopOnlyAndUniversalConfiguration(t *testing.T) {
 		t.Fatal("app with no platforms accepted")
 	}
 }
+
+func TestMacOSCatalogAndDownloadsRequireNotarizedReleaseCutoff(t *testing.T) {
+	s := testServer(t)
+	app := App{ID: "desktop", Name: "Desktop", Repo: "owner/desktop", Desktop: true, MacOSNotarizedFrom: 2}
+	s.cfg.Apps = append(s.cfg.Apps, app)
+	release := desktopFixture()
+	mac := release.Artifacts[0]
+	mac.Platform, mac.Arch, mac.File, mac.Entry = "macos", "arm64", "Store-mac-arm64.zip", "Store.app"
+	release.Artifacts = append(release.Artifacts, mac)
+	if err := os.WriteFile(filepath.Join(s.cfg.DataDir, "desktop", mac.SHA256), []byte("appimage"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	cacheRelease := func() {
+		data, err := json.Marshal(release)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := s.db.Exec("INSERT INTO desktop_releases(app_id,version_code,manifest,config_hash) VALUES(?,?,?,?)",
+			app.ID, release.VersionCode, data, desktopTrust(app)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	cacheRelease()
+	token, _ := enrollDevice(t, s)
+	catalog := "/v1/desktop/apps?platform=macos&arch=arm64"
+	if w := request(s, "GET", catalog, "", ""); w.Code != 200 || strings.Contains(w.Body.String(), `"id":"desktop"`) {
+		t.Fatalf("older Mac release was advertised: %d %s", w.Code, w.Body.String())
+	}
+	oldMac := "/v1/desktop/releases/desktop/1/macos/arm64"
+	if w := request(s, "GET", oldMac, token, ""); w.Code != 404 {
+		t.Fatalf("older Mac release was downloadable: %d", w.Code)
+	}
+	release.VersionCode, release.Version = 2, "1.0.1"
+	cacheRelease()
+	if w := request(s, "GET", catalog, "", ""); w.Code != 200 || !strings.Contains(w.Body.String(), `"version":"1.0.1"`) {
+		t.Fatalf("current Mac release is missing: %d %s", w.Code, w.Body.String())
+	}
+	for _, path := range []string{"/v1/desktop/releases/desktop/2/macos/arm64", "/v1/desktop/releases/desktop/1/linux/x64"} {
+		if w := request(s, "GET", path, token, ""); w.Code != 200 || w.Body.String() != "appimage" {
+			t.Fatalf("eligible download %s failed: %d", path, w.Code)
+		}
+	}
+	if w := request(s, "GET", oldMac, token, ""); w.Code != 404 {
+		t.Fatalf("old Mac URL was usable after the catalog updated: %d", w.Code)
+	}
+}
+
 func TestLegacyDesktopAssetsNeedOnlyOneCatalogFlag(t *testing.T) {
 	var rel githubRelease
 	json.Unmarshal([]byte(`{"tag_name":"v0.1.4","body":"A desktop update.\nAnother change.","assets":[{"id":1,"name":"Reader-0.1.4-linux-x86_64.AppImage","size":8,"digest":"sha256:`+strings.Repeat("a", 64)+`"},{"id":2,"name":"Reader-0.1.4-mac-arm64.dmg","size":8,"digest":"sha256:`+strings.Repeat("b", 64)+`"},{"id":3,"name":"Reader-0.1.4-win-x64.exe","size":8,"digest":"sha256:`+strings.Repeat("c", 64)+`"}]}`), &rel)
