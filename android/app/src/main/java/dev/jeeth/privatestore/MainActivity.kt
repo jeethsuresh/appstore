@@ -87,7 +87,7 @@ class MainActivity : ComponentActivity() {
                 val request = withContext(Dispatchers.IO) { StoreApi(current).startLogin(GravitasLogin.create(current.baseUrl, name, broker = identity.second == "https://gravitas.cool", username = identity.first, issuer = identity.second), register) }
                 vault.savePending(request); pending = request
                 openLogin(request.authorizationUrl)
-                message = "Finish signing in in your browser, then return to Private Store."
+                message = "Finish signing in in your browser, then return to Bazaar."
             } catch (e: Exception) { vault.clearPending(); pending = null; message = e.message ?: "Could not open sign-in" } finally { busy = false } }
         }
         LaunchedEffect(Unit) {
@@ -140,9 +140,9 @@ class MainActivity : ComponentActivity() {
         LaunchedEffect(session) { if (session != null) { UpdateWorker.schedule(this@MainActivity); refresh() } }
         if (session == null) {
             Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).statusBarsPadding().navigationBarsPadding().padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                Text("Private Store", style = MaterialTheme.typography.headlineLarge)
+                Text("Bazaar", style = MaterialTheme.typography.headlineLarge)
                 Text("Your apps, delivered privately.", style = MaterialTheme.typography.bodyLarge)
-                Text("Sign in with your Gravitas account to browse, install and update your apps. Your browser handles sign-in; Private Store never asks for your password.")
+                Text("Sign in with your Gravitas account to browse, install and update your apps. Your browser handles sign-in; Bazaar never asks for your password.")
                 OutlinedTextField(name, { name = it }, label = { Text("Device name") }, singleLine = true, modifier = Modifier.fillMaxWidth())
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                     OutlinedTextField(username, { username = it }, label = { Text("Username") }, placeholder = { Text("username@$defaultDomain") }, singleLine = true, modifier = Modifier.weight(1f), keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(capitalization = androidx.compose.ui.text.input.KeyboardCapitalization.None, autoCorrectEnabled = false, imeAction = androidx.compose.ui.text.input.ImeAction.Go), keyboardActions = androidx.compose.foundation.text.KeyboardActions(onGo = { if (!busy && defaultDomain.isNotEmpty() && username.isNotBlank() && name.isNotBlank()) signIn() }))
@@ -165,7 +165,7 @@ class MainActivity : ComponentActivity() {
                 }
             if (pending != null) Card(Modifier.fillMaxWidth()) { Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text("Sign-in is open in your browser", style = MaterialTheme.typography.titleMedium)
-                Text("Complete the Gravitas page, then choose Open Private Store if Android does not return here automatically.")
+                Text("Complete the Gravitas page, then choose Open Bazaar if Android does not return here automatically.")
                 TextButton(enabled = !busy, onClick = { runCatching { openLogin(pending!!.authorizationUrl) }.onFailure { message = "No browser is available. Install or enable a browser, then try again." } }) { Text("Open sign-in again") }
                 TextButton(enabled = !busy, onClick = { vault.clearPending(); pending = null; message = "Sign-in cancelled" }) { Text("Cancel sign-in") }
             } }
@@ -181,7 +181,7 @@ class MainActivity : ComponentActivity() {
             }) {
             if (pending != null) Card(Modifier.fillMaxWidth()) { Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text("Sign-in is open in your browser", style = MaterialTheme.typography.titleMedium)
-                Text("Complete the Gravitas page, then choose Open Private Store if Android does not return here automatically.")
+                Text("Complete the Gravitas page, then choose Open Bazaar if Android does not return here automatically.")
                 TextButton(enabled = !busy, onClick = { runCatching { openLogin(pending!!.authorizationUrl) }.onFailure { message = "No browser is available. Install or enable a browser, then try again." } }) { Text("Open sign-in again") }
                 TextButton(enabled = !busy, onClick = { vault.clearPending(); pending = null; message = "Sign-in cancelled" }) { Text("Cancel sign-in") }
             } }
@@ -203,22 +203,22 @@ class MainActivity : ComponentActivity() {
                 if (!installAllowed) OutlinedButton(onClick = { permission.launch(Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:$packageName"))) }) { Text("Allow app installation") }
                 HorizontalDivider()
                 Text("Updates & notifications", style = MaterialTheme.typography.titleLarge)
-                SettingsToggle("Automatic updates", "Keep installed apps and Private Store current.", auto) { auto = it; prefs.edit().putBoolean("auto", it).apply() }
+                SettingsToggle("Automatic updates", "Keep installed apps and Bazaar current.", auto) { auto = it; prefs.edit().putBoolean("auto", it).apply() }
                 SettingsToggle("App notifications", "Use one shared connection for installed apps.", appNotifications) { appNotifications = it; prefs.edit().putBoolean("appNotifications", it).apply(); NotificationRelay.configure(this@MainActivity, session!!, apps, it) }
                 Text("One shared connection receives notifications for installed apps. Each app controls its own notification permission.", style = MaterialTheme.typography.bodySmall)
                 if (appNotifications && session!!.account.isNotBlank()) {
-                    Text(if (batteryExempt) "Screen-off delivery is allowed. Your phone still needs an internet connection." else "Android can delay notifications while your phone is idle. Allow Private Store to run without battery optimization for screen-off delivery. This may use more battery.", style = MaterialTheme.typography.bodySmall)
+                    Text(if (batteryExempt) "Screen-off delivery is allowed. Your phone still needs an internet connection." else "Android can delay notifications while your phone is idle. Allow Bazaar to run without battery optimization for screen-off delivery. This may use more battery.", style = MaterialTheme.typography.bodySmall)
                     TextButton(enabled = !busy, onClick = {
                         val settings = if (batteryExempt) Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)
                             else Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, Uri.parse("package:$packageName"))
                         try { startActivity(settings) }
                         catch (_: ActivityNotFoundException) {
                             try { startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName"))) }
-                            catch (_: ActivityNotFoundException) { message = "Open Android settings and allow unrestricted battery use for Private Store." }
+                            catch (_: ActivityNotFoundException) { message = "Open Android settings and allow unrestricted battery use for Bazaar." }
                         }
                     }) { Text(if (batteryExempt) "Battery settings" else "Allow screen-off notifications") }
                 }
-                Text("Checks include Private Store itself and run about every 6 hours when connected and the battery is not low. Android may ask you to approve an update. Notifications must be enabled for background installation.", style = MaterialTheme.typography.bodySmall)
+                Text("Checks include Bazaar itself and run about every 6 hours when connected and the battery is not low. Android may ask you to approve an update. Notifications must be enabled for background installation.", style = MaterialTheme.typography.bodySmall)
                 val checked = prefs.getLong("lastCheck", 0)
                 if (checked > 0) Text("Last background check: ${DateFormat.getDateTimeInstance().format(Date(checked))}", style = MaterialTheme.typography.bodySmall)
                 TextButton(enabled = !busy, onClick = { busy = true; scope.launch { try {
@@ -227,7 +227,7 @@ class MainActivity : ComponentActivity() {
                 } catch (e: Exception) { message = "Could not revoke access: ${e.message}" } finally { busy = false } } }) { Text("Sign out and revoke this device") }
                 TextButton(enabled = !busy, onClick = { BrokerManager.clear(this@MainActivity,true); UpdateWorker.cancel(this@MainActivity); session = null; apps = emptyList(); message = "Signed out locally. Ask the administrator to revoke old device access." }) { Text("Forget local enrollment") }
                 HorizontalDivider()
-                Text("Private Store ${BuildConfig.VERSION_NAME}", style = MaterialTheme.typography.bodySmall)
+                Text("Bazaar ${BuildConfig.VERSION_NAME}", style = MaterialTheme.typography.bodySmall)
                 Text("Verified downloads are saved privately until Android finishes installing. Failed or cancelled installs can reuse the saved file.", style = MaterialTheme.typography.bodySmall)
             }
         }

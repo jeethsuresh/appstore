@@ -25,10 +25,10 @@ existing=subprocess.run(['gh','release','view',tag,'--repo','jeethsuresh/appstor
 if existing.returncode==0:raise SystemExit(tag+' already exists. Bump versionName and versionCode; published releases are immutable.')
 sha=run('git','rev-parse','HEAD',capture=True).strip()
 try:tagged=run('git','rev-parse',tag+'^{commit}',capture=True).strip()
-except subprocess.CalledProcessError:run('git','tag','-a',tag,'-m','Private Store '+version);tagged=sha
+except subprocess.CalledProcessError:run('git','tag','-a',tag,'-m','Bazaar '+version);tagged=sha
 if tagged!=sha:raise SystemExit('Existing tag points to another commit.')
 run('git','push','--atomic','origin','main',tag)
-command=['gh','release','create',tag,str(asset),str(dist/'SHA256SUMS'),'--repo','jeethsuresh/appstore','--verify-tag','--title','Private Store '+version,'--notes-file',str(ROOT/'docs/RELEASE_NOTES.md')]
+command=['gh','release','create',tag,str(asset),str(dist/'SHA256SUMS'),'--repo','jeethsuresh/appstore','--verify-tag','--title','Bazaar '+version,'--notes-file',str(ROOT/'docs/RELEASE_NOTES.md')]
 if not args.publish:command.append('--draft')
 run(*command,env=env)
 print('Published release.' if args.publish else 'Created draft release.')

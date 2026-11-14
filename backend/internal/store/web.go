@@ -148,7 +148,7 @@ func (s *Server) webDownload(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		s.cfg.Federation.ClearSession(w)
-		fail(w, 401, "Sign in with Gravitas to download Private Store")
+		fail(w, 401, "Sign in with Gravitas to download Bazaar")
 		return
 	}
 	f, err := os.Open(s.cfg.ClientAPK)

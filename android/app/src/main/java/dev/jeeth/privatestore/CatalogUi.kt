@@ -105,7 +105,7 @@ fun StoreCatalog(
             Row(Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
                 if (selected != null) IconButton(onClick = { history.back()?.let { restore(it) } ?: navigate("apps") }) { UiSymbol("back", "Back to apps") }
                 Column(Modifier.weight(1f)) {
-                    Text("PRIVATE STORE", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, letterSpacing = androidx.compose.ui.unit.TextUnit(2f, androidx.compose.ui.unit.TextUnitType.Sp))
+                    Text("BAZAAR", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, letterSpacing = androidx.compose.ui.unit.TextUnit(2f, androidx.compose.ui.unit.TextUnitType.Sp))
                     Text(if (page == "settings") "Settings" else if (selected != null) "App details" else "Your collection", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.SemiBold)
                 }
                 if (page == "apps" && selected == null) IconButton(onClick = { list = !list; preferences.edit().putBoolean("list", list).apply() }) { UiSymbol(if (list) "apps" else "list", if (list) "Show two columns" else "Show list") }

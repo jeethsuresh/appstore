@@ -30,5 +30,5 @@ func TestProductionCatalogIncludesStoreWithPermanentReleaseIdentity(t *testing.T
 		}
 		return
 	}
-	t.Fatal("The production catalog is missing Private Store")
+	t.Fatal("The production catalog is missing Bazaar")
 }

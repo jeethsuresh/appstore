@@ -33,7 +33,7 @@ class SelfUpdateTest {
         val cert=MessageDigest.getInstance("SHA-256").digest(signatures.single().toByteArray()).toHex()
         val code=if(Build.VERSION.SDK_INT>=28) archive.longVersionCode else archive.versionCode.toLong()
         val sha=file.inputStream().use { input->val digest=MessageDigest.getInstance("SHA-256");val buffer=ByteArray(65536);while(true) { val n=input.read(buffer);if(n<0) break;digest.update(buffer,0,n) };digest.digest().toHex() }
-        val app=StoreApp("appstore","Private Store",context.packageName,cert,"Self-update fixture",StoreRelease(1,code,archive.versionName!!,sha,file.length(),26,"Self-update preservation"))
+        val app=StoreApp("appstore","Bazaar",context.packageName,cert,"Self-update fixture",StoreRelease(1,code,archive.versionName!!,sha,file.length(),26,"Self-update preservation"))
         assertTrue(Versions.newer(Installer.installed(context,context.packageName),code))
         BrokerManager.engine(context).accept(broker(),Session("https://self-update.invalid","self-update-device","@selfupdate:gravitas.cool"))
         context.getSharedPreferences("self-update-fixture",0).edit().putLong("expectedVersion",code).putString("broker",BrokerVault(context).load()!!.json().toString()).commit()

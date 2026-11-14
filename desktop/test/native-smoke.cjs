@@ -27,8 +27,8 @@ async function smoke() {
     const files = (await fs.readdir('dist')).filter(name => pattern.test(name));
     if (files.length !== 1) throw new Error('Missing native package');
     const file = path.resolve('dist', files[0]), bytes = await fs.readFile(file);
-    const artifact = { ...current, file: files[0], entry: current.platform === 'macos' ? 'Private Store.app' : current.platform === 'windows' ? 'Private Store.exe' : files[0], sha256: createHash('sha256').update(bytes).digest('hex'), size: bytes.length };
-    const release = { id: 'appstore', name: 'Private Store', desktopRelease: { version: packageInfo.version, versionCode: packageInfo.versionCode, artifacts: [artifact] } };
+    const artifact = { ...current, file: files[0], entry: current.platform === 'macos' ? packageInfo.productName + '.app' : current.platform === 'windows' ? packageInfo.productName + '.exe' : files[0], sha256: createHash('sha256').update(bytes).digest('hex'), size: bytes.length };
+    const release = { id: 'appstore', name: 'Bazaar', desktopRelease: { version: packageInfo.version, versionCode: packageInfo.versionCode, artifacts: [artifact] } };
     const installed = await installPackage({ app: release, archive: file, root: path.join(temporary, 'apps'), current });
     if (requireNotarization) {
       const requirement = 'anchor apple generic and identifier "cool.gravitas.privatestore" and certificate leaf[subject.OU] = "WV3J3848JR" and certificate leaf[field.1.2.840.113635.100.6.1.13] exists';
@@ -42,7 +42,7 @@ async function smoke() {
     try {
       stage = 'waiting for the native window'; console.log(stage);
       const page = await electron.firstWindow({ timeout: 30000 }); await page.waitForSelector('#content', { timeout: 30000 });
-      if (await page.title() !== 'Private Store') throw new Error('Packaged UI failed to load');
+      if (await page.title() !== 'Bazaar') throw new Error('Packaged UI failed to load');
       stage = 'verifying packaged sign-in discovery'; console.log(stage);
       const discovery = require('../broker.cjs').discoveryPath(process.platform, launchEnv, os.homedir());
       let descriptor;

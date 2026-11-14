@@ -1,6 +1,6 @@
-# Private Store
+# Bazaar
 
-A personal Android and desktop app distribution platform with Gravitas account sign-in, optional invitation-based device enrollment, GitHub release ingestion, and a native Kotlin/Jetpack Compose client. Daybreak and Spacetime are the first two supported apps.
+A self-hostable app store for Android and desktop with Gravitas account sign-in, optional invitation-based device enrollment, GitHub release ingestion, and a native Kotlin/Jetpack Compose client. Daybreak and Spacetime are the first two supported apps.
 
 The signed [0.4.1 release](https://github.com/jeethsuresh/appstore/releases/tag/v0.4.1) updates existing installations in place, recognises installed Atlas copies, and shows small downloads in kB.
 
@@ -22,13 +22,13 @@ Background updates request installation without interaction when Android permits
 
 ## App notifications
 
-Private Store can share a minimal native notification connection across installed supporting apps. Spacetime sends event invitations and updates through its backend, the store backend and this listener, then posts its own native notification without starting Flutter. The listener runs in a separate process and uses no polling or wake locks. For delivery while the screen is off, select **Allow screen-off notifications** in Private Store and approve Android's battery exemption. Without that exemption, the listener waits during Doze and replays queued notifications when networking resumes. Each receiving app still needs notification permission. See [notification setup, protocol and battery validation](docs/NOTIFICATIONS.md).
+Bazaar can share a minimal native notification connection across installed supporting apps. Spacetime sends event invitations and updates through its backend, the store backend and this listener, then posts its own native notification without starting Flutter. The listener runs in a separate process and uses no polling or wake locks. For delivery while the screen is off, select **Allow screen-off notifications** in Bazaar and approve Android's battery exemption. Without that exemption, the listener waits during Doze and replays queued notifications when networking resumes. Each receiving app still needs notification permission. See [notification setup, protocol and battery validation](docs/NOTIFICATIONS.md).
 
 ## Supported apps
 
 - **Daybreak:** [jeethsuresh/weather](https://github.com/jeethsuresh/weather), `dev.jeeth.local_weather`, `daybreak-android-arm64.apk`. ARM64 phones; existing release certificate retained.
 - **Spacetime:** [jeethsuresh/spacetime](https://github.com/jeethsuresh/spacetime), `com.jeethsuresh.spacetime`, `spacetime-{tag}-android.apk`. Existing release certificate retained; universal APK.
-- **Private Store:** [jeethsuresh/appstore](https://github.com/jeethsuresh/appstore), `dev.jeeth.privatestore`, `appstore-android.apk`. The store updates itself through this catalog, using its permanent release certificate.
+- **Bazaar:** [jeethsuresh/appstore](https://github.com/jeethsuresh/appstore), `dev.jeeth.privatestore`, `appstore-android.apk`. The store updates itself through this catalog, using its permanent release certificate.
 
 Their application source is Flutter; this store's client is native Kotlin. Repository visibility is independent of store authentication: the platform restricts its API/cached downloads and can ingest private repositories, but it does not make an upstream public GitHub release private.
 
@@ -145,11 +145,11 @@ See [the versioned protocol contract and integration](protocols/README.md) for G
 
 ## Desktop
 
-Private Store also runs on macOS, Windows and Linux, with x64 and ARM64 packages, Gravitas sign-in, verified installations, app pages, changelogs, automatic app updates and self-update. See [desktop installation, catalog targeting and release publishing](DESKTOP_RELEASES.md). Existing Android entries remain mobile-only; `"desktop": true` adds compatible desktop releases, and desktop-only entries omit the Android package fields.
+Bazaar also runs on macOS, Windows and Linux, with x64 and ARM64 packages, Gravitas sign-in, verified installations, app pages, changelogs, automatic app updates and self-update. See [desktop installation, catalog targeting and release publishing](DESKTOP_RELEASES.md). Existing Android entries remain mobile-only; `"desktop": true` adds compatible desktop releases, and desktop-only entries omit the Android package fields.
 
 ### River account sign-in
 
-Private Store 0.6.7 adds River (`cool.gravitas.river`) to the native broker,
+Private Store 0.6.7 added River (`cool.gravitas.river`) to the native broker,
 with River's permanent release certificate pinned separately from Spacetime.
 River requests its fixed app origin, callback, and existing messaging/contact
 permissions. Gravitas must already have full River consent; the broker cannot
@@ -163,16 +163,16 @@ Morsel is a standalone, fully local food journal: private source and signed rele
 
 ## Work and News on Android
 
-Install **Work** and **News** from Private Store to use work.gravitas.cool and news.gravitas.cool as separate Android apps. Each keeps its own Gravitas website session, supports file uploads and back/forward navigation, and receives verified signed updates through the Store. Android 8.0+ and an internet connection are required. See [Android behavior, verification and publishing](WEBVIEW_ANDROID.md).
+Install **Work** and **News** from Bazaar to use work.gravitas.cool and news.gravitas.cool as separate Android apps. Each keeps its own Gravitas website session, supports file uploads and back/forward navigation, and receives verified signed updates through the Store. Android 8.0+ and an internet connection are required. See [Android behavior, verification and publishing](WEBVIEW_ANDROID.md).
 
 ## Add an app to the collection
 
 App backends can [publish their catalog](docs/CATALOG_PUBLISHING.md) with a
-publisher-specific credential. Private Store combines published catalogs with
+publisher-specific credential. Bazaar combines published catalogs with
 bundled listings and verifies releases from their configured repositories.
 
 For apps without a publishing backend, keep the listing in the bundled catalog.
 
-Add its display name, description and `logoUrl` to `config/apps.json`. The name is shown as the page heading. Write a short description of what the app does and when it needs an account or connection. Add an app-specific SVG or PNG to `backend/internal/store/web/` and reference it as `/assets/<filename>`. The backend validates these fields when it loads the catalog. Add `website` for an app with a web home. Other entries display the URL of their Private Store page.
+Add its display name, description and `logoUrl` to `config/apps.json`. The name is shown as the page heading. Write a short description of what the app does and when it needs an account or connection. Add an app-specific SVG or PNG to `backend/internal/store/web/` and reference it as `/assets/<filename>`. The backend validates these fields when it loads the catalog. Add `website` for an app with a web home. Other entries display the URL of their Bazaar page.
 
 Every catalog entry gets a public `/apps/<id>` page. Android and desktop distribution still use the app's verified releases. Set `ios` to `testflight` or `app-store` for an iOS release. Set `iosUrl` to the public Apple listing when available. Invitation-only TestFlight entries can omit it. For Apple distribution, set the App Store version description and the TestFlight beta app description in App Store Connect. Use the same product name and the matching icon asset in the Apple build.

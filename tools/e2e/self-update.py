@@ -83,11 +83,11 @@ while time.monotonic() < deadline:
     xml = adb('exec-out', 'cat', '/sdcard/self-update-window.xml').stdout
     try:
         nodes = list(ET.fromstring(xml).iter('node'))
-        if not scan_notice and any(n.get('package')=='com.android.vending' and n.get('text')=='Private Store' for n in nodes):
+        if not scan_notice and any(n.get('package')=='com.android.vending' and n.get('text') in {'Bazaar', 'Private Store'} for n in nodes):
             print('Approve the Play Protect prompt for this locally built test APK on the disposable emulator.',flush=True)
             scan_notice=True
         installer = [n for n in nodes if n.get('package') in ('com.android.packageinstaller', 'com.google.android.packageinstaller')]
-        if installer and any('Private Store' in n.get('text','') for n in installer):
+        if installer and any(any(name in n.get('text', '') for name in ('Bazaar', 'Private Store')) for n in installer):
             buttons = [n for n in installer if n.get('text','').lower() in ('update', 'install') and n.get('enabled')=='true']
             if len(buttons)==1:
                 x1,y1,x2,y2=map(int,re.findall(r'\d+',buttons[0].get('bounds','')))

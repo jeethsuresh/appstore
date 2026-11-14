@@ -1,6 +1,6 @@
-# Gravitas sign-in through desktop Private Store
+# Gravitas sign-in through Bazaar for desktop
 
-Private Store is an optional Gravitas account broker on macOS, Windows and Linux.
+Bazaar is an optional Gravitas account broker on macOS, Windows and Linux.
 Sign in to Store once, then approve each service that asks to use that account.
 Broker accounts currently use `gravitas.cool`; other identity domains retain
 Store-only sign-in and apps use their browser for those accounts.

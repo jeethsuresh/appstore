@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "version": "0.1.6",
-  "versionCode": 7,
+  "version": "0.1.7",
+  "versionCode": 8,
   "changes": [
-    "See each app’s logo on its Private Store card and details page."
+    "Private Store is now Bazaar on desktop. Your installed apps, sign-in and update settings carry over."
   ]
 }
