@@ -86,6 +86,10 @@ func New(cfg Config) (*Server, error) {
 		db.Close()
 		return nil, err
 	}
+	if err := s.initCatalogAccess(); err != nil {
+		db.Close()
+		return nil, err
+	}
 	if err := s.initNotifications(); err != nil {
 		db.Close()
 		return nil, err
@@ -199,12 +203,13 @@ func (s *Server) device(next http.Handler) http.Handler {
 		}
 		// Local device logout remains available during IAM outages. Invite-only
 		// enrollments have no central account and keep their existing behavior.
+		var identity gravitas.Identity
 		if linked != "" && !(r.Method == http.MethodDelete && r.URL.Path == "/v1/device") {
 			if s.cfg.Federation == nil {
 				fail(w, 503, "Gravitas is temporarily unavailable")
 				return
 			}
-			identity, err := s.cfg.Federation.OpenDevice(proof)
+			identity, err = s.cfg.Federation.OpenDevice(proof)
 			checked := err == nil
 			if err == nil {
 				err = s.cfg.Federation.CheckIdentity(r.Context(), identity)
@@ -224,7 +229,8 @@ func (s *Server) device(next http.Handler) http.Handler {
 				return
 			}
 		}
-		next.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), deviceKey{}, id)))
+		ctx := context.WithValue(r.Context(), deviceKey{}, id)
+		next.ServeHTTP(w, r.WithContext(context.WithValue(ctx, catalogIdentityKey{}, identity)))
 	})
 }
 func (s *Server) invite(w http.ResponseWriter, r *http.Request) {
@@ -354,8 +360,13 @@ func (s *Server) catalog(w http.ResponseWriter, r *http.Request) {
 		fail(w, 400, "arch requires a desktop platform")
 		return
 	}
+	source, err := s.visibleAndroidApps(r.Context())
+	if err != nil {
+		s.internal(w, err)
+		return
+	}
 	apps := []App{}
-	for _, a := range s.catalogApps() {
+	for _, a := range source {
 		if a.Package != "" {
 			apps = append(apps, a)
 		}
@@ -388,8 +399,13 @@ func (s *Server) download(w http.ResponseWriter, r *http.Request) {
 		s.internal(w, err)
 		return
 	}
+	source, err := s.visibleAndroidApps(r.Context())
+	if err != nil {
+		s.internal(w, err)
+		return
+	}
 	allowed := false
-	for _, a := range s.catalogApps() {
+	for _, a := range source {
 		if a.ID == appID && configHash == appTrust(a) {
 			allowed = true
 		}

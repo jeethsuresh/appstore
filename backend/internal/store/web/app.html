@@ -24,6 +24,7 @@
         <div class="app-intro">
           <div class="app-identity"><img src="{{.Selected.LogoURL}}" width="76" height="76" alt=""><div>{{if .Selected.Category}}<p class="eyebrow">{{.Selected.Category}}</p>{{end}}<h1 id="app-name">{{.Selected.Name}}</h1><p class="app-url">{{.Selected.DisplayURL}}</p></div></div>
           {{if .Selected.Tagline}}<h2>{{.Selected.Tagline}}</h2>{{end}}<p class="app-summary">{{.Selected.Description}}</p>
+          {{if .CatalogAdmin}}<p><button class="button" id="catalog-global" data-app="{{.Selected.ID}}" data-global="{{.SelectedGlobal}}">{{if .SelectedGlobal}}Remove global visibility{{else}}Show to all Store users{{end}}</button> <span id="catalog-global-status" role="status"></span></p>{{end}}
           {{if .Selected.Website}}<p><a class="button" href="{{.Selected.Website}}" target="_blank" rel="noopener noreferrer">Open {{.Selected.Name}} on the web <span aria-hidden="true">↗</span></a></p>{{end}}
           {{if .Selected.IOSURL}}<p><a class="button" href="{{.Selected.IOSURL}}" rel="noreferrer">{{if eq .Selected.IOS "testflight"}}Open in TestFlight{{else}}View on the App Store{{end}} <span aria-hidden="true">↗</span></a></p>{{end}}
           {{if or .Selected.Package .Selected.Desktop}}

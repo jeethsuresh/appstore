@@ -82,3 +82,26 @@ GitHub webhooks and the Store's regular polling pick up later releases.
 Publish on backend startup and retry if the Store is temporarily unavailable.
 To verify an onboarding, check the public `/apps/<id>` page and its logo, then
 check the expected verified release through the Store client.
+
+## Account visibility in the Android Store
+
+A hosted app's backend is the source of its catalog. Store-owned listings are
+for Bazaar itself and standalone apps without a service backend.
+Configure each hosted publisher's canonical HTTPS service `origin` in
+`CATALOG_PUBLISHERS`, alongside its key, repositories and adopted app IDs.
+
+After a verified Gravitas service sign-in, the backend sends
+`PUT /v1/catalog/{publisher}/accounts` with its publisher bearer and JSON
+containing `issuer`, a live Gravitas `sessionProof` for its configured origin,
+and an `apps` array of IDs from its published catalog. The Store reads the
+stable subject from Gravitas and records membership against that issuer,
+subject, publisher and app ID. It does not store the session proof. Existing
+service accounts register the next time they sign in.
+
+With `PERSONAL_ANDROID_CATALOG=true`, the Android catalog and APK download
+endpoints check membership, administrator global visibility, or a match between
+the user's verified identity domain and the app's configured host or its parent
+domain. A publisher can set `hideFromUnregisteredUsersOnDomain: true` to require
+membership even for users on its domain. The global setting overrides that
+flag. A Gravitas administrator can change the setting on the Store's web page
+for the app. Standalone listings can use `manualGlobal` in the Store config.

@@ -22,6 +22,7 @@ const maxCatalogLogo = 64 << 10
 
 // CatalogPublisher is an operator-approved backend and its release sources.
 type CatalogPublisher struct {
+	Origin       string   `json:"origin,omitempty"`
 	Key          string   `json:"key"`
 	Repositories []string `json:"repositories"`
 	Adopt        []string `json:"adopt,omitempty"`
@@ -74,6 +75,9 @@ func (s *Server) initCatalog() error {
 			return fmt.Errorf("invalid catalog publisher %q", id)
 		}
 		keys[p.Key] = true
+		if p.Origin != "" && !validNotificationOrigin(p.Origin) {
+			return fmt.Errorf("invalid HTTPS origin for catalog publisher %s", id)
+		}
 		for _, repo := range p.Repositories {
 			if !repositoryPattern.MatchString(repo) {
 				return fmt.Errorf("invalid repository for catalog publisher %s", id)
@@ -186,6 +190,7 @@ func (s *Server) rebuildCatalog() {
 				}
 				a.Notifications = original.Notifications
 			}
+			a.catalogPublisher, a.catalogHost = publisher, catalogOriginHost(p.Origin)
 			a.LogoURL = "/assets/catalog-" + a.ID + ".png"
 			entry.App = a
 			active[a.ID] = entry
@@ -304,7 +309,7 @@ func (s *Server) publishCatalog(w http.ResponseWriter, r *http.Request) {
 }
 
 func validatePublishedEntry(entry *catalogEntry) error {
-	if entry.LogoURL != "" || entry.Release != nil || entry.DesktopRelease != nil || entry.Notifications != nil {
+	if entry.ManualGlobal || entry.LogoURL != "" || entry.Release != nil || entry.DesktopRelease != nil || entry.Notifications != nil {
 		return errors.New("catalog entries cannot set Store-managed fields")
 	}
 	if err := validateApp(&entry.App); err != nil {

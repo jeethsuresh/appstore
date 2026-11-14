@@ -347,10 +347,11 @@ func (c *Client) exchangeGrant(code, verifier, redirect string) (Identity, issue
 	if tokens.CheckExpiresIn < 1 || tokens.CheckExpiresIn > int64(FamilyLifetime.Seconds()) {
 		return Identity{}, tokens, ErrLoginRequired
 	}
-	identity.SessionExpires, err = c.proofStatus(context.Background(), identity)
+	status, err := c.identityStatus(context.Background(), identity)
 	if err != nil {
 		return Identity{}, tokens, err
 	}
+	identity.SessionExpires = status.Expires
 	if err = c.registerAccess(context.Background(), m.Registry, tokens.AccessToken); err != nil {
 		return Identity{}, tokens, err
 	}
@@ -372,7 +373,7 @@ func (c *Client) Session(r *http.Request) (Identity, error) {
 	identity, _, err := c.SessionInfo(r)
 	return identity, err
 }
-func (c *Client) SessionInfo(r *http.Request) (Identity, time.Time, error) {
+func (c *Client) cookieSession(r *http.Request) (Identity, time.Time, error) {
 	got, err := r.Cookie(SessionCookie)
 	if err != nil {
 		return Identity{}, time.Time{}, ErrLoginRequired
@@ -384,10 +385,21 @@ func (c *Client) SessionInfo(r *http.Request) (Identity, time.Time, error) {
 	if s.Expires <= time.Now().Unix() || s.Expires > time.Now().Add(SessionLifetime+time.Minute).Unix() || !c.acceptsIssuer(s.Identity.Issuer) || s.Identity.Subject == "" {
 		return Identity{}, time.Time{}, ErrLoginRequired
 	}
-	if err := c.CheckIdentity(r.Context(), s.Identity); err != nil {
+	return s.Identity, time.Unix(s.Expires, 0), nil
+}
+func (c *Client) CookieIdentity(r *http.Request) (Identity, error) {
+	identity, _, err := c.cookieSession(r)
+	return identity, err
+}
+func (c *Client) SessionInfo(r *http.Request) (Identity, time.Time, error) {
+	identity, expires, err := c.cookieSession(r)
+	if err != nil {
 		return Identity{}, time.Time{}, err
 	}
-	return s.Identity, time.Unix(s.Expires, 0), nil
+	if err := c.CheckIdentity(r.Context(), identity); err != nil {
+		return Identity{}, time.Time{}, err
+	}
+	return identity, expires, nil
 }
 func (c *Client) ClearSession(w http.ResponseWriter) { cookie(w, SessionCookie, "", -1) }
 func (c *Client) ValidMutation(r *http.Request) bool {

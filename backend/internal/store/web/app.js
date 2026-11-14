@@ -46,3 +46,25 @@ if (document.querySelector('#logout')) {
   window.setInterval(checkSession, 15000);
   checkSession();
 }
+
+document.querySelector('#catalog-global')?.addEventListener('click', async (event) => {
+  const button = event.currentTarget;
+  const status = document.querySelector('#catalog-global-status');
+  const global = button.dataset.global !== 'true';
+  button.disabled = true;
+  try {
+    const response = await fetch('/admin/catalog/' + encodeURIComponent(button.dataset.app) + '/visibility', {
+      method: 'POST',
+      headers: { 'X-Gravitas-CSRF': '1', 'Content-Type': 'application/json' },
+      body: JSON.stringify({ global }),
+    });
+    if (!response.ok) throw new Error();
+    button.dataset.global = String(global);
+    button.textContent = global ? 'Remove global visibility' : 'Show to all Store users';
+    status.textContent = global ? 'Global visibility enabled.' : 'Global visibility removed.';
+  } catch {
+    status.textContent = 'Couldn’t change visibility. Please try again.';
+  } finally {
+    button.disabled = false;
+  }
+});
