@@ -107,6 +107,7 @@ func New(cfg Config) (*Server, error) {
 		db.Close()
 		return nil, err
 	}
+	s.pruneReleaseCache()
 	s.mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) {
 		if err := s.db.PingContext(r.Context()); err != nil {
 			fail(w, 503, "database unavailable")
@@ -390,7 +391,8 @@ func (s *Server) catalog(w http.ResponseWriter, r *http.Request) {
 }
 func (s *Server) download(w http.ResponseWriter, r *http.Request) {
 	var digest, appID, configHash string
-	err := s.db.QueryRowContext(r.Context(), "SELECT sha256,app_id,config_hash FROM releases WHERE id=?", r.PathValue("id")).Scan(&digest, &appID, &configHash)
+	err := s.db.QueryRowContext(r.Context(), `SELECT sha256,app_id,config_hash FROM releases AS release
+		WHERE id=? AND version_code=(SELECT MAX(version_code) FROM releases WHERE app_id=release.app_id)`, r.PathValue("id")).Scan(&digest, &appID, &configHash)
 	if err == sql.ErrNoRows {
 		fail(w, 404, "release not found")
 		return

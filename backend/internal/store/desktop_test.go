@@ -169,13 +169,16 @@ func TestMacOSCatalogAndDownloadsRequireNotarizedReleaseCutoff(t *testing.T) {
 	if w := request(s, "GET", catalog, "", ""); w.Code != 200 || !strings.Contains(w.Body.String(), `"version":"1.0.1"`) {
 		t.Fatalf("current Mac release is missing: %d %s", w.Code, w.Body.String())
 	}
-	for _, path := range []string{"/v1/desktop/releases/desktop/2/macos/arm64", "/v1/desktop/releases/desktop/1/linux/x64"} {
+	for _, path := range []string{"/v1/desktop/releases/desktop/2/macos/arm64", "/v1/desktop/releases/desktop/2/linux/x64"} {
 		if w := request(s, "GET", path, token, ""); w.Code != 200 || w.Body.String() != "appimage" {
 			t.Fatalf("eligible download %s failed: %d", path, w.Code)
 		}
 	}
 	if w := request(s, "GET", oldMac, token, ""); w.Code != 404 {
 		t.Fatalf("old Mac URL was usable after the catalog updated: %d", w.Code)
+	}
+	if w := request(s, "GET", "/v1/desktop/releases/desktop/1/linux/x64", token, ""); w.Code != 404 {
+		t.Fatalf("old Linux URL was usable after the catalog updated: %d", w.Code)
 	}
 }
 
