@@ -76,6 +76,7 @@ func (s *Server) Sync(ctx context.Context, a App, tag string) error {
 	case <-ctx.Done():
 		return ctx.Err()
 	}
+	defer s.pruneReleaseCache()
 	var err error
 	for attempt := 0; attempt < 3; attempt++ {
 		if ctx.Err() != nil {

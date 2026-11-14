@@ -10,7 +10,7 @@ When federation is configured:
 - `POST /v1/auth/gravitas/exchange`: `{"code":"one-use IAM code","codeVerifier":"43-character verifier","deviceName":"My phone"}` returns `deviceId`, `token`, Unix `expiresAt`, and `account`. The server validates the code, PKCE proof and issuer profile, then issues a one-year revocable device credential. It never returns IAM tokens. An optional valid existing device bearer credential links and rotates that enrollment in place; otherwise a new device is created. Invalid/replayed codes return 401, malformed input 400, unavailable federation 503, and saturated exchanges 429.
 - `GET /.well-known/assetlinks.json`: public association for the permanent signed Android package. `GET /auth/android/callback` provides a browser fallback to the app; it never contains a device token.
 
-The Android client checks the exact callback origin/path, unique constant-time matching state and a ten-minute expiry before exchanging. Its encrypted pending verifier survives activity/process recreation. Cancellation clears that proof. Every Gravitas-authorized device sees the same catalog; no manual device invitation is needed.
+The Android client checks the exact callback origin/path, unique constant-time matching state and a ten-minute expiry before exchanging. Its encrypted pending verifier survives activity/process recreation. Cancellation clears that proof. Gravitas sign-in enrolls the device automatically.
 
 ## Invitation enrollment
 
@@ -18,11 +18,11 @@ The Android client checks the exact callback origin/path, unique constant-time m
 
 ## Device endpoints
 
-- `GET /v1/apps`: configured apps and their latest verified release, if available. A release includes `id`, `tag`, `versionCode`, `versionName`, `sha256`, `size`, `minSdk`, `notes` and `createdAt`. Apps include their package and signing-certificate identity, display name, description and a public Store-relative `logoUrl`. An app with its own website includes `website`. Assets verified under a different configuration are hidden until reverified.
-- `GET /v1/releases/ID/apk`: authenticated APK bytes. Supports HTTP ranges. The Android client verifies the expected size/hash, package, version and certificate before handing the APK to Android's installer.
+- `GET /v1/apps`: visible apps and their latest verified release, if available. A release includes `id`, `tag`, `versionCode`, `versionName`, `sha256`, `size`, `minSdk`, `notes` and `createdAt`. Apps include their package and signing-certificate identity, display name, description and a public Store-relative `logoUrl`. An app with its own website includes `website`. Assets verified under a different configuration are hidden until reverified.
+- `GET /v1/releases/ID/apk`: authenticated APK bytes for the app's current release. Supports HTTP ranges. Refresh the catalog if a superseded release URL returns 404. The Android client verifies the expected size/hash, package, version and certificate before handing the APK to Android's installer.
 - `DELETE /v1/device`: immediately revokes the calling device, returning 204.
 
-Missing, expired, or revoked device credentials return 401; temporary authentication database failures return 503. Every enrolled device sees the same initial catalog.
+Missing, expired, or revoked device credentials return 401. Temporary authentication database failures return 503. With the [personal Android catalog](CATALOG_PUBLISHING.md#account-visibility-in-the-android-store) enabled, catalog and APK access depend on the linked Gravitas account.
 
 ## Administration
 

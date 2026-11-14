@@ -47,7 +47,7 @@ docker compose logs -f store
 
 Caddy obtains HTTPS certificates. The backend has no public host port. `.env` is created with mode 0600; never commit it. A fine-grained GitHub token only needs read access to repository contents. Public repositories also work anonymously, subject to GitHub rate limits.
 
-The `store_data` volume holds the SQLite database and APKs. Back it up while the service is stopped, or use SQLite's online backup API plus an APK snapshot. Preserve Caddy's certificate volume. Restore with the same app configuration and signing pins. Old APKs are retained so clients with an earlier catalog can finish downloading; storage pruning is not included.
+The `store_data` volume holds the SQLite database and cached installers. Back it up while the service is stopped, or use SQLite's online backup API plus an installer snapshot. Preserve Caddy's certificate volume. Restore with the same app configuration and signing pins. The server keeps the newest verified Android and desktop releases for each catalog app, including all targets of the current desktop release. It removes superseded installers at startup and after release sync. A download already in progress can finish. Clients with an older release URL can refresh the catalog for the current URL.
 
 ## Connect a phone
 
@@ -67,7 +67,7 @@ python3 scripts/storectl.py revoke DEVICE_ID
 
 For an independent store, choose **Use an invitation or another store**, enter its HTTPS address/invitation/device name, and enroll. Enable app installation and notifications, then install the apps you want. Background checks update installed apps only. Certificates must match existing installations; a development-signed copy may need to be removed once after backing up any app data.
 
-Admin tokens never belong on phones. Device sessions expire after one year; sign in again with Gravitas, or use a fresh invitation for an independent store. All authorized devices share the same catalog. Gravitas manages user accounts; the store requests only `profile.name`.
+Admin tokens never belong on phones. Device sessions expire after one year. Sign in again with Gravitas, or use a fresh invitation for an independent store. With personal Android catalogs enabled, sign in with Gravitas to see apps registered to your account and apps available on your domain or globally. Independent stores can use invitation enrollment with a shared catalog. See [catalog publishing](docs/CATALOG_PUBLISHING.md) for configuration.
 
 ## GitHub webhooks
 
@@ -114,7 +114,7 @@ Native defaults: `LISTEN_ADDR=127.0.0.1:8080`, `DATA_DIR=data`, `APPS_CONFIG=con
 
 See [API](docs/API.md), [validation](docs/VALIDATION.md), [app integrations](docs/INTEGRATIONS.md), and [release notes](docs/RELEASE_NOTES.md).
 
-To add an Android app, configure its repository, asset pattern, package and certificate pin. Declaring the package in Android's `<queries>` helps the client recognize existing installations. This initial single-instance platform does not implement per-user catalogs, APK pruning, split-APK installation, signing-key rotation, or device-owner installation.
+Publish Android apps through their service backend. For apps without a backend, configure the repository, asset pattern, package and certificate pin in Bazaar. Declaring the package in Android's `<queries>` helps the client recognize existing installations.
 
 ### Username sign-in
 

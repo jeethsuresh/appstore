@@ -265,7 +265,11 @@ func (s *Server) syncDesktop(ctx context.Context, a App, tag string) error {
 		n, copyErr := io.Copy(io.MultiWriter(f, h), io.LimitReader(res.Body, artifact.Size+1))
 		res.Body.Close()
 		closeErr := f.Close()
-		if copyErr != nil || closeErr != nil || n != artifact.Size || hex.EncodeToString(h.Sum(nil)) != artifact.SHA256 {
+		if err := errors.Join(copyErr, closeErr); err != nil {
+			os.Remove(f.Name())
+			return fmt.Errorf("writing desktop artifact %s: %w", artifact.File, err)
+		}
+		if n != artifact.Size || hex.EncodeToString(h.Sum(nil)) != artifact.SHA256 {
 			os.Remove(f.Name())
 			return errors.New("desktop download failed size/checksum verification")
 		}
@@ -337,12 +341,12 @@ func (s *Server) desktopCatalog(w http.ResponseWriter, r *http.Request) {
 func (s *Server) desktopDownload(w http.ResponseWriter, r *http.Request) {
 	for _, a := range s.catalogApps() {
 		if a.ID == r.PathValue("app") && a.Desktop {
-			var data []byte
-			if s.db.QueryRowContext(r.Context(), "SELECT manifest FROM desktop_releases WHERE app_id=? AND version_code=? AND config_hash=?", a.ID, r.PathValue("version"), desktopTrust(a)).Scan(&data) != nil {
-				break
+			rel, err := s.latestDesktop(r.Context(), a)
+			if err != nil {
+				s.internal(w, err)
+				return
 			}
-			var rel DesktopRelease
-			if json.Unmarshal(data, &rel) != nil || !a.allowsDesktopArtifact(r.PathValue("platform"), rel.VersionCode) {
+			if rel == nil || strconv.FormatInt(rel.VersionCode, 10) != r.PathValue("version") || !a.allowsDesktopArtifact(r.PathValue("platform"), rel.VersionCode) {
 				break
 			}
 			for _, artifact := range rel.Artifacts {

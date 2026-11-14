@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -249,6 +250,39 @@ func TestIngestionAndPrivateDownload(t *testing.T) {
 	a.Certificate = ""
 	if err := s.Sync(context.Background(), a, ""); err == nil {
 		t.Fatal("missing pin accepted")
+	}
+	if w := request(s, "GET", path, tok, ""); w.Code != 200 || !bytes.Equal(w.Body.Bytes(), data) {
+		t.Fatal("failed update evicted the current APK", w.Code)
+	}
+	cached := filepath.Join(s.cfg.DataDir, "apks", digest+".apk")
+	openDownload, err := os.Open(cached)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer openDownload.Close()
+
+	a.Certificate, assetName = cert, a.Asset
+	data = []byte("New APK content fixture")
+	ghDigest = "sha256:" + hash(string(data))
+	assetID++
+	if err := s.Sync(context.Background(), a, ""); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(cached); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("old APK remained cached: %v", err)
+	}
+	if body, err := io.ReadAll(openDownload); err != nil || hash(string(body)) != digest {
+		t.Fatalf("pruning interrupted the open download: %v", err)
+	}
+	if w := request(s, "GET", path, tok, ""); w.Code != 404 {
+		t.Fatal("superseded APK URL returned", w.Code)
+	}
+	latest, err = s.latest(context.Background(), a.ID)
+	if err != nil || latest == nil || latest.VersionCode != version {
+		t.Fatalf("expected latest release version %d, got %+v (%v)", version, latest, err)
+	}
+	if w := request(s, "GET", fmt.Sprintf("/v1/releases/%d/apk", latest.ID), tok, ""); w.Code != 200 || !bytes.Equal(w.Body.Bytes(), data) {
+		t.Fatal("replacement APK download failed", w.Code)
 	}
 }
 func TestConfigValidation(t *testing.T) {
