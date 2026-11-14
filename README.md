@@ -114,7 +114,7 @@ Native defaults: `LISTEN_ADDR=127.0.0.1:8080`, `DATA_DIR=data`, `APPS_CONFIG=con
 
 See [API](docs/API.md), [validation](docs/VALIDATION.md), [app integrations](docs/INTEGRATIONS.md), and [release notes](docs/RELEASE_NOTES.md).
 
-To add another app, configure its repository, asset pattern, package and certificate pin, declare the package in Android's `<queries>`, and rebuild the client. This initial single-instance platform does not implement per-user catalogs, APK pruning, split-APK installation, signing-key rotation, or device-owner installation.
+To add an Android app, configure its repository, asset pattern, package and certificate pin. Declaring the package in Android's `<queries>` helps the client recognize existing installations. This initial single-instance platform does not implement per-user catalogs, APK pruning, split-APK installation, signing-key rotation, or device-owner installation.
 
 ### Username sign-in
 
@@ -166,6 +166,12 @@ Morsel is a standalone, fully local food journal: private source and signed rele
 Install **Work** and **News** from Private Store to use work.gravitas.cool and news.gravitas.cool as separate Android apps. Each keeps its own Gravitas website session, supports file uploads and back/forward navigation, and receives verified signed updates through the Store. Android 8.0+ and an internet connection are required. See [Android behavior, verification and publishing](WEBVIEW_ANDROID.md).
 
 ## Add an app to the collection
+
+App backends can [publish their catalog](docs/CATALOG_PUBLISHING.md) with a
+publisher-specific credential. Private Store combines published catalogs with
+bundled listings and verifies releases from their configured repositories.
+
+For apps without a publishing backend, keep the listing in the bundled catalog.
 
 Add its display name, description and `logoUrl` to `config/apps.json`. The name is shown as the page heading. Write a short description of what the app does and when it needs an account or connection. Add an app-specific SVG or PNG to `backend/internal/store/web/` and reference it as `/assets/<filename>`. The backend validates these fields when it loads the catalog. Add `website` for an app with a web home. Other entries display the URL of their Private Store page.
 

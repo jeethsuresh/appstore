@@ -23,6 +23,7 @@ import (
 )
 
 type Server struct {
+	published          publishedCatalog
 	notifications      *notificationHub
 	notificationClient *http.Client
 	apnsApps           map[string]apnsApp
@@ -81,6 +82,10 @@ func New(cfg Config) (*Server, error) {
 		return nil, err
 	}
 	s := &Server{cfg: cfg, db: db, mux: http.NewServeMux(), client: &http.Client{Timeout: 5 * time.Minute}, api: "https://api.github.com", queue: make(chan string, 32), syncGate: make(chan struct{}, 1), nativeGate: make(chan struct{}, 4)}
+	if err := s.initCatalog(); err != nil {
+		db.Close()
+		return nil, err
+	}
 	if err := s.initNotifications(); err != nil {
 		db.Close()
 		return nil, err
@@ -350,7 +355,7 @@ func (s *Server) catalog(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	apps := []App{}
-	for _, a := range s.cfg.Apps {
+	for _, a := range s.catalogApps() {
 		if a.Package != "" {
 			apps = append(apps, a)
 		}
@@ -384,7 +389,7 @@ func (s *Server) download(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	allowed := false
-	for _, a := range s.cfg.Apps {
+	for _, a := range s.catalogApps() {
 		if a.ID == appID && configHash == appTrust(a) {
 			allowed = true
 		}
@@ -410,9 +415,9 @@ func (s *Server) download(w http.ResponseWriter, r *http.Request) {
 }
 func (s *Server) syncApp(w http.ResponseWriter, r *http.Request) {
 	var a *App
-	for i := range s.cfg.Apps {
-		if s.cfg.Apps[i].ID == r.PathValue("app") {
-			a = &s.cfg.Apps[i]
+	for _, app := range s.catalogApps() {
+		if app.ID == r.PathValue("app") {
+			a = &app
 			break
 		}
 	}

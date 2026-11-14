@@ -189,8 +189,9 @@ func downloadSize(bytes int64) string {
 }
 
 func (s *Server) webApps(ctx context.Context, storeURL string) ([]webApp, error) {
-	apps := make([]webApp, 0, len(s.cfg.Apps))
-	for _, configured := range s.cfg.Apps {
+	catalog := s.catalogApps()
+	apps := make([]webApp, 0, len(catalog))
+	for _, configured := range catalog {
 		app := configured
 		release, err := s.latest(ctx, app.ID)
 		if err != nil {

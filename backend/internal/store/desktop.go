@@ -305,7 +305,7 @@ func (s *Server) desktopCatalog(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	apps := []App{}
-	for _, a := range s.cfg.Apps {
+	for _, a := range s.catalogApps() {
 		if a.Desktop {
 			rel, err := s.latestDesktop(r.Context(), a)
 			if err != nil {
@@ -335,7 +335,7 @@ func (s *Server) desktopCatalog(w http.ResponseWriter, r *http.Request) {
 	reply(w, 200, map[string]any{"apps": apps})
 }
 func (s *Server) desktopDownload(w http.ResponseWriter, r *http.Request) {
-	for _, a := range s.cfg.Apps {
+	for _, a := range s.catalogApps() {
 		if a.ID == r.PathValue("app") && a.Desktop {
 			var data []byte
 			if s.db.QueryRowContext(r.Context(), "SELECT manifest FROM desktop_releases WHERE app_id=? AND version_code=? AND config_hash=?", a.ID, r.PathValue("version"), desktopTrust(a)).Scan(&data) != nil {
