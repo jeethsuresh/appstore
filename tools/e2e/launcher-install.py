@@ -50,7 +50,7 @@ def approve_install_prompt():
         return
 
 package = 'dev.jeeth.privatestore.testbed'
-launcher = 'app.still.launcher'
+launcher = 'cool.gravitas.glyph'
 if adb('shell', 'pm', 'list', 'packages', launcher).strip():
     if not args.reset_test_launcher:
         raise SystemExit('Launcher already exists; use a clean emulator or explicitly --reset-test-launcher')

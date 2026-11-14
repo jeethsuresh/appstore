@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "version": "0.6.14",
-  "versionCode": 26,
+  "version": "0.6.15",
+  "versionCode": 27,
   "changes": [
-    "Private Store is now Bazaar. Your installed apps, sign-in and update settings carry over."
+    "Bazaar recognizes the new Glyph package after installation and can check it for future updates. Glyph installs separately from Still Launcher, with its own layout and settings."
   ]
 }

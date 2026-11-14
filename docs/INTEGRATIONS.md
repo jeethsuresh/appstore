@@ -10,4 +10,4 @@ Every repository uses a main-only `android-release` environment containing `RELE
 
 For a verification-only build of an already published version, run the workflow manually on `main` with `publish_release` disabled. It saves a verified signed artifact for 14 days. Existing releases, tags and assets are never overwritten.
 
-Glyph retains its original preview signing identity (`app.still.launcher`, certificate SHA-256 `508184332d54eadbf5ad558c0b00c8350769cb386130c68eeec4aa8bf47c8b09`) so updates retain layout and settings. Published APKs use `StillLauncher-{tag}-android.apk`.
+Glyph uses the Android package `cool.gravitas.glyph` starting with 0.6.2 and keeps its original signing certificate, SHA-256 `508184332d54eadbf5ad558c0b00c8350769cb386130c68eeec4aa8bf47c8b09`. Users install Glyph alongside the previous `app.still.launcher` package and set up their home screen and keyboard again. Published APKs use `StillLauncher-{tag}-android.apk`. Publish and verify the new Glyph APK before deploying the Store catalog change so the listing can immediately ingest the new package.
