@@ -50,30 +50,64 @@ type familyStatus struct {
 	Origin    string `json:"app_origin"`
 	SessionID string `json:"session_id"`
 	Expires   int64  `json:"exp"`
+	Admin     bool   `json:"gravitas_admin,omitempty"`
 }
 
-func (c *Client) proofStatus(ctx context.Context, identity Identity) (int64, error) {
+func (c *Client) identityStatus(ctx context.Context, identity Identity) (familyStatus, error) {
 	selected, selectErr := c.ForIssuer(identity.Issuer)
 	if selectErr != nil {
-		return 0, ErrLoginRequired
+		return familyStatus{}, ErrLoginRequired
 	}
 	c = selected
 	if !c.acceptsIssuer(identity.Issuer) || identity.Subject == "" || identity.SessionID == "" || len(identity.SessionID) > 128 || !proofPattern.MatchString(identity.CheckToken) {
-		return 0, ErrLoginRequired
+		return familyStatus{}, ErrLoginRequired
 	}
 	m, err := c.discovery()
 	if err != nil {
-		return 0, ErrUnavailable
+		return familyStatus{}, ErrUnavailable
 	}
 	status, err := c.readFamilyStatus(ctx, http.MethodGet, m.SessionCheck, identity.CheckToken, nil)
 	if err != nil {
-		return 0, err
+		return familyStatus{}, err
 	}
 	if status.Subject != identity.Subject || status.Origin != c.AppURL || status.SessionID != identity.SessionID ||
 		(identity.SessionExpires != 0 && status.Expires != identity.SessionExpires) {
-		return 0, ErrUnavailable
+		return familyStatus{}, ErrUnavailable
 	}
-	return status.Expires, nil
+	return status, nil
+}
+
+func (c *Client) CheckStoreAdmin(ctx context.Context, identity Identity) (bool, error) {
+	if identity.Issuer != c.Issuer {
+		return false, nil
+	}
+	if identity.SessionExpires <= time.Now().Unix() {
+		return false, ErrLoginRequired
+	}
+	status, err := c.identityStatus(ctx, identity)
+	return status.Admin, err
+}
+
+func (c *Client) CatalogAccount(ctx context.Context, issuer, origin, proof string) (string, error) {
+	if issuer == "" || !proofPattern.MatchString(proof) {
+		return "", ErrLoginRequired
+	}
+	selected, err := c.ForIssuer(issuer)
+	if err != nil {
+		return "", ErrLoginRequired
+	}
+	m, err := selected.discovery()
+	if err != nil {
+		return "", ErrUnavailable
+	}
+	status, err := selected.readFamilyStatus(ctx, http.MethodGet, m.SessionCheck, proof, nil)
+	if err != nil {
+		return "", err
+	}
+	if status.Origin != origin {
+		return "", ErrLoginRequired
+	}
+	return status.Subject, nil
 }
 
 func (c *Client) readFamilyStatus(ctx context.Context, method, endpoint, credential string, body io.Reader) (familyStatus, error) {
@@ -116,7 +150,7 @@ func (c *Client) CheckIdentity(ctx context.Context, identity Identity) error {
 	if identity.SessionExpires <= time.Now().Unix() {
 		return ErrLoginRequired
 	}
-	_, err := c.proofStatus(ctx, identity)
+	_, err := c.identityStatus(ctx, identity)
 	return err
 }
 func (c *Client) SealDevice(identity Identity) (string, error) {

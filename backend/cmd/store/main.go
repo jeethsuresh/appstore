@@ -86,6 +86,7 @@ func main() {
 		APKSigner:           env("APKSIGNER", "apksigner"),
 		Apps:                apps,
 		CatalogPublishers:   publishers,
+		PersonalCatalog:     os.Getenv("PERSONAL_ANDROID_CATALOG") == "true",
 		Federation:          federation,
 		ClientAPK:           env("CLIENT_APK", "/usr/local/share/store/appstore.apk"),
 	})

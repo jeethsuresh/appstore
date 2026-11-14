@@ -22,7 +22,7 @@ type webApp struct {
 	Size, Platforms, DisplayURL string
 }
 type webView struct {
-	SignedIn, Enabled, Error                                            bool
+	SignedIn, Enabled, Error, CatalogAdmin, SelectedGlobal              bool
 	Username, Digest, Title, Description, Next, StoreURL, DefaultDomain string
 	ClientVersion, ClientSize                                           string
 	Apps                                                                []webApp
@@ -306,6 +306,20 @@ func (s *Server) webAppPage(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 		data.Selected = &data.Apps[i]
+		if data.SignedIn && s.cfg.PersonalCatalog {
+			data.CatalogAdmin, err = s.catalogAdmin(r)
+			if err != nil {
+				s.webError(w, err)
+				return
+			}
+			if data.CatalogAdmin {
+				err = s.db.QueryRowContext(r.Context(), "SELECT EXISTS (SELECT 1 FROM catalog_global_apps WHERE app=?)", data.Selected.ID).Scan(&data.SelectedGlobal)
+				if err != nil {
+					s.webError(w, err)
+					return
+				}
+			}
+		}
 		data.Title = data.Selected.Name + " · Private Store"
 		data.Description = data.Selected.Description
 		data.Next = "/apps/" + data.Selected.ID

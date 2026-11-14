@@ -13,23 +13,27 @@ import (
 )
 
 type App struct {
-	ID                 string           `json:"id"`
-	Name               string           `json:"name"`
-	Package            string           `json:"packageName"`
-	Repo               string           `json:"repository"`
-	Asset              string           `json:"assetName"`
-	ReleaseTagPrefix   string           `json:"releaseTagPrefix,omitempty"`
-	Certificate        string           `json:"certificateSha256"`
-	Description        string           `json:"description"`
-	LogoURL            string           `json:"logoUrl"`
-	Website            string           `json:"website,omitempty"`
-	IOS                string           `json:"ios,omitempty"`
-	IOSURL             string           `json:"iosUrl,omitempty"`
-	Desktop            bool             `json:"desktop,omitempty"`
-	MacOSNotarizedFrom int64            `json:"macOSNotarizedFrom,omitempty"`
-	DesktopRelease     *DesktopRelease  `json:"desktopRelease,omitempty"`
-	Release            *Release         `json:"release,omitempty"`
-	Notifications      *NotificationApp `json:"notifications,omitempty"`
+	catalogPublisher                  string
+	catalogHost                       string
+	ManualGlobal                      bool             `json:"manualGlobal,omitempty"`
+	HideFromUnregisteredUsersOnDomain bool             `json:"hideFromUnregisteredUsersOnDomain,omitempty"`
+	ID                                string           `json:"id"`
+	Name                              string           `json:"name"`
+	Package                           string           `json:"packageName"`
+	Repo                              string           `json:"repository"`
+	Asset                             string           `json:"assetName"`
+	ReleaseTagPrefix                  string           `json:"releaseTagPrefix,omitempty"`
+	Certificate                       string           `json:"certificateSha256"`
+	Description                       string           `json:"description"`
+	LogoURL                           string           `json:"logoUrl"`
+	Website                           string           `json:"website,omitempty"`
+	IOS                               string           `json:"ios,omitempty"`
+	IOSURL                            string           `json:"iosUrl,omitempty"`
+	Desktop                           bool             `json:"desktop,omitempty"`
+	MacOSNotarizedFrom                int64            `json:"macOSNotarizedFrom,omitempty"`
+	DesktopRelease                    *DesktopRelease  `json:"desktopRelease,omitempty"`
+	Release                           *Release         `json:"release,omitempty"`
+	Notifications                     *NotificationApp `json:"notifications,omitempty"`
 }
 type Release struct {
 	ConfigHash  string `json:"-"`
@@ -49,6 +53,7 @@ type Config struct {
 	DataDir, AdminToken, WebhookSecret, GitHubToken, AAPT, APKSigner string
 	Apps                                                             []App
 	CatalogPublishers                                                map[string]CatalogPublisher
+	PersonalCatalog                                                  bool
 	Federation                                                       *gravitas.Client
 	ClientAPK                                                        string
 	NotificationURL                                                  string
@@ -163,6 +168,7 @@ func LoadApps(path string) ([]App, error) {
 		if err := validateBranding(*a); err != nil {
 			return nil, err
 		}
+		a.catalogHost = catalogOriginHost(a.Website)
 		seen[a.ID] = true
 		packages[a.Package] = true
 	}

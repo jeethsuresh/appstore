@@ -10,7 +10,8 @@
     "desktop": true,
     "logoUrl": "/assets/daybreak.svg",
     "ios": "testflight",
-    "macOSNotarizedFrom": 1501
+    "macOSNotarizedFrom": 1501,
+    "manualGlobal": true
   },
   {
     "id": "spacetime",
@@ -50,7 +51,8 @@
     "assetName": "StillLauncher-{tag}-android.apk",
     "certificateSha256": "508184332d54eadbf5ad558c0b00c8350769cb386130c68eeec4aa8bf47c8b09",
     "description": "Make your Android home screen your own. Group apps into folders, resize widgets, use a photo wallpaper and customize the grid, app drawer and dock. Your layout stays on your device, with no account required.",
-    "logoUrl": "/assets/launcher.svg"
+    "logoUrl": "/assets/launcher.svg",
+    "manualGlobal": true
   },
   {
     "id": "river",
@@ -112,7 +114,8 @@
     "description": "Read, search and organize your email from a desktop inbox that keeps mail on your device. Connect an IMAP account to sync messages, then browse downloaded mail when you are offline.",
     "logoUrl": "/assets/email.svg",
     "website": "https://jeethsuresh.github.io/emails/",
-    "macOSNotarizedFrom": 1001
+    "macOSNotarizedFrom": 1001,
+    "manualGlobal": true
   },
   {
     "id": "office",
@@ -132,7 +135,8 @@
     "assetName": "morsel-android-arm64.apk",
     "certificateSha256": "77a673d91cc1dbbcf1d1ec2d19a090266b8c08015ac791e5028af933ac9eda53",
     "description": "Keep a food journal with reusable questions and gentle reminders. Browse your entries on a continuous calendar, then export a JSON backup or CSV. Your journal stays on your Android device and needs no account.",
-    "logoUrl": "/assets/morsel.svg"
+    "logoUrl": "/assets/morsel.svg",
+    "manualGlobal": true
   },
   {
     "id": "work",
