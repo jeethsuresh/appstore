@@ -67,7 +67,7 @@ test('desktop discovers compatible apps, signs in, installs, updates and stages 
     expect(createHash('sha256').update(signIn.exchange.codeVerifier).digest('base64url')).toBe(signIn.start.codeChallenge);
     expect(await page.evaluate(() => typeof process)).toBe('undefined');
     const { authorizeDesktopStore, StoreSignInCancelled } = require('../sdk/desktop-store-broker.cjs');
-    const file = path.join(temporary, 'local', 'Gravitas', 'Bazaar', 'broker-v1.json');
+    const file = path.join(temporary, 'local', 'Gravitas', 'Private Store', 'broker-v1.json');
     const request = { appOrigin: 'https://spacetime.gravitas.cool', challenge: 'q'.repeat(43), state: 's'.repeat(43), file };
     const code = await authorizeDesktopStore(request);
     expect(code.status).toBe('authorized'); expect(code.code).toHaveLength(43);
