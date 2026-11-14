@@ -39,6 +39,11 @@ func main() {
 		slog.Error("load apps", "error", err)
 		os.Exit(1)
 	}
+	publishers, err := store.ParseCatalogPublishers(os.Getenv("CATALOG_PUBLISHERS"))
+	if err != nil {
+		slog.Error("configure catalog publishers", "error", err)
+		os.Exit(1)
+	}
 	var federation *gravitas.Client
 	if issuer := os.Getenv("GRAVITAS_ISSUER"); issuer != "" {
 		federation, err = gravitas.New(issuer, os.Getenv("GRAVITAS_APP_URL"), os.Getenv("GRAVITAS_SESSION_KEY"))
@@ -80,6 +85,7 @@ func main() {
 		AAPT:                env("AAPT", "aapt"),
 		APKSigner:           env("APKSIGNER", "apksigner"),
 		Apps:                apps,
+		CatalogPublishers:   publishers,
 		Federation:          federation,
 		ClientAPK:           env("CLIENT_APK", "/usr/local/share/store/appstore.apk"),
 	})

@@ -244,18 +244,23 @@ func (s *Server) webhook(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(204)
 		return
 	}
-	for _, a := range s.cfg.Apps {
+	found := false
+	for _, a := range s.catalogApps() {
 		if strings.EqualFold(a.Repo, payload.Repository.FullName) {
+			found = true
 			select {
 			case s.queue <- a.ID:
-				reply(w, 202, map[string]string{"status": "queued"})
 			default:
 				fail(w, 503, "sync queue full; retry delivery")
+				return
 			}
-			return
 		}
 	}
-	fail(w, 404, "repository is not configured")
+	if !found {
+		fail(w, 404, "repository is not configured")
+		return
+	}
+	reply(w, 202, map[string]string{"status": "queued"})
 }
 
 // Polling provides recovery after restarts, missed webhooks, and transient failures.
@@ -267,14 +272,19 @@ func (s *Server) RunSync(ctx context.Context, interval time.Duration) {
 			slog.Warn("release ingestion", "app", a.ID, "error", err)
 		}
 	}
-	var ticks <-chan time.Time
-	if interval > 0 {
-		for _, a := range s.cfg.Apps {
+	syncAll := func() {
+		for _, a := range s.catalogApps() {
 			if ctx.Err() != nil {
 				return
 			}
-			syncOne(a)
+			if a.Package != "" || a.Desktop {
+				syncOne(a)
+			}
 		}
+	}
+	var ticks <-chan time.Time
+	if interval > 0 {
+		syncAll()
 		tick := time.NewTicker(interval)
 		defer tick.Stop()
 		ticks = tick.C
@@ -284,18 +294,17 @@ func (s *Server) RunSync(ctx context.Context, interval time.Duration) {
 		case <-ctx.Done():
 			return
 		case id := <-s.queue:
-			for _, a := range s.cfg.Apps {
+			for _, a := range s.catalogApps() {
 				if a.ID == id {
 					syncOne(a)
 				}
 			}
-		case <-ticks:
-			for _, a := range s.cfg.Apps {
-				if ctx.Err() != nil {
-					return
-				}
+		case <-s.published.wake:
+			for _, a := range s.catalogSyncApps() {
 				syncOne(a)
 			}
+		case <-ticks:
+			syncAll()
 		}
 	}
 }
