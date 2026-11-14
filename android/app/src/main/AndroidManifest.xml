@@ -11,7 +11,7 @@
     <queries>
         <package android:name="dev.jeeth.local_weather" />
         <package android:name="com.jeethsuresh.spacetime" />
-        <package android:name="app.still.launcher" />
+        <package android:name="cool.gravitas.glyph" />
         <package android:name="cool.gravitas.river" />
         <package android:name="cool.gravitas.atlas" />
         <package android:name="cool.gravitas.haven" />

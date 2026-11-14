@@ -46,7 +46,7 @@
   {
     "id": "launcher",
     "name": "Glyph",
-    "packageName": "app.still.launcher",
+    "packageName": "cool.gravitas.glyph",
     "repository": "jeethsuresh/launcher",
     "assetName": "StillLauncher-{tag}-android.apk",
     "certificateSha256": "508184332d54eadbf5ad558c0b00c8350769cb386130c68eeec4aa8bf47c8b09",

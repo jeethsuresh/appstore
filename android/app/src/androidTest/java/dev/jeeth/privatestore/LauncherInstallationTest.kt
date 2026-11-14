@@ -43,7 +43,7 @@ class LauncherInstallationTest {
             compose.waitUntil(30_000) { vault.load() != null }
             api = StoreApi(requireNotNull(vault.load()))
             val app = api.apps().single()
-            assertEquals("app.still.launcher", app.packageName)
+            assertEquals("cool.gravitas.glyph", app.packageName)
             val release = requireNotNull(app.release)
             assertNull(Installer.installed(context, app.packageName))
             compose.onNodeWithText("Install").performScrollTo().performClick()
