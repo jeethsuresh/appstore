@@ -40,12 +40,12 @@ function detail(app) {
   const identity = text('div', '', 'identity'); identity.append(icon(app), text('h2', app.name)); node.append(identity, text('p', app.description), installButton(app));
   const facts = text('div', '', 'facts'); facts.append(text('span', `${state.platform.platform} · ${state.platform.arch}`), text('span', `v${app.desktopRelease.version}`), text('span', size(app.desktopRelease.artifacts[0].size))); node.append(facts, text('h3', 'What’s new'));
   const changes = document.createElement('ul'); app.desktopRelease.changes.forEach(change => changes.append(text('li', change))); node.append(changes);
-  node.append(text('p', `From ${app.repository}. Downloads are verified against the release checksum before installation. Apps install for your user; updating an open app takes effect the next time you launch it from Private Store or its shortcut.`));
+  node.append(text('p', `From ${app.repository}. Downloads are verified against the release checksum before installation. Apps install for your user; updating an open app takes effect the next time you launch it from Bazaar or its shortcut.`));
   return node;
 }
 function render() {
   $('#platform').textContent = `${({ macos: 'macOS', windows: 'Windows', linux: 'Linux' })[state.platform.platform] || 'Desktop'} · ${state.platform.arch || ''}`;
-  $('#version').textContent = `Private Store ${state.version || ''}`;
+  $('#version').textContent = `Bazaar ${state.version || ''}`;
   $('#error').hidden = !state.error; $('#error').textContent = state.error || '';
   $('#restart').hidden = !state.pendingSelf;
   $('#update-count').textContent = updates().length || '';
@@ -68,14 +68,14 @@ function render() {
   if (settings) {
     content.append(text('p', 'YOUR STORE, YOUR WAY', 'eyebrow'), text('h1', 'Settings.'));
     const row = text('div', '', 'setting'), copy = text('div', '');
-    copy.append(text('h3', 'Keep installed apps current'), text('p', 'Check at launch and every six hours while Private Store is open. Download updates for installed apps, including the store. Restart the store when its update is ready.'));
+    copy.append(text('h3', 'Keep installed apps current'), text('p', 'Check at launch and every six hours while Bazaar is open. Download updates for installed apps, including the store. Restart the store when its update is ready.'));
     const toggle = document.createElement('input'); toggle.type = 'checkbox'; toggle.checked = !!state.settings.autoUpdate; toggle.setAttribute('aria-label', 'Automatic app updates'); toggle.onchange = () => act('settings', toggle.checked); row.append(copy, toggle); content.append(row);
     const session = text('div', '', 'setting'); session.append(text('p', state.secureStorage ? 'Your sign-in is encrypted using your operating system’s credential storage.' : 'Secure credential storage is unavailable. Sign-in lasts for this session; no credential is saved to disk.'));
     if (state.account) {
       if (!state.brokerReady && (!state.account.includes(':') || state.account.endsWith(':gravitas.cool'))) session.append(button('Enable app sign-in ↗', () => act('login', state.account.replace(/^@/, '').replace(':', '@'))));
       session.append(button('Sign out ↗', () => act('logout')));
     }
-    content.append(text('p', state.brokerReady ? 'Private Store can sign you in to desktop apps. Each service asks for your approval; your Store credentials stay private.' : 'Sign in again with your gravitas.cool account to enable app sign-in. Other identity domains use browser sign-in.')); content.append(session);
+    content.append(text('p', state.brokerReady ? 'Bazaar can sign you in to desktop apps. Each service asks for your approval; your Store credentials stay private.' : 'Sign in again with your gravitas.cool account to enable app sign-in. Other identity domains use browser sign-in.')); content.append(session);
     content.append(text('p', 'Apps use separate versions on Android and desktop. This store shows only published builds compatible with this computer. Desktop notifications are not required.', 'lede')); return;
   }
   if (selectedID) { const selected = state.apps.find(app => app.id === selectedID); if (selected) { content.append(detail(selected)); return; } selectedID = null; }

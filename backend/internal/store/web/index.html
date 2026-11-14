@@ -14,7 +14,7 @@
   <a class="skip" href="#main">Skip to content</a>
   <div class="page">
     <header>
-      <a class="brand" href="/" aria-label="Private Store home"><img src="/assets/icon.svg" width="36" height="36" alt=""><span>private store<span class="brand-sub">BY GRAVITAS</span></span></a>
+      <a class="brand" href="/" aria-label="Bazaar home"><img src="/assets/icon.svg" width="36" height="36" alt=""><span>bazaar<span class="brand-sub">BY GRAVITAS</span></span></a>
       <nav class="site-nav" aria-label="Main"><a href="/#apps">The apps</a><a href="/#get-store">Get the store</a>{{if .SignedIn}}<button class="text-button" id="logout">Sign out <span aria-hidden="true">↗</span></button>{{end}}</nav>
     </header>
     <main id="main">
@@ -38,7 +38,7 @@
           {{end}}
           <div class="trust"><span aria-hidden="true">◇</span> Signed releases <span class="trust-divider">/</span> No ads <span class="trust-divider">/</span> Built for Android</div>
         </section>
-        <section class="showcase" aria-label="Private Store preview">
+        <section class="showcase" aria-label="Bazaar preview">
           <span class="orbit orbit-one" aria-hidden="true"></span><span class="orbit orbit-two" aria-hidden="true"></span>
           <div class="showcase-caption"><span class="status-dot"></span> SMALL STORE, GOOD COMPANY</div>
           <div class="phone">
@@ -55,7 +55,7 @@
             <span class="home-indicator" aria-hidden="true"></span>
           </div>
           <div class="floating-note"><span aria-hidden="true">↙</span> Less searching.<br>More making yourself at home.</div>
-          <div class="showcase-bottom"><span>PRIVATE STORE / ANDROID</span><span>01 — 02</span></div>
+          <div class="showcase-bottom"><span>BAZAAR / ANDROID</span><span>01 — 02</span></div>
         </section>
       </div>
       <section class="catalog" id="apps" aria-labelledby="apps-heading">
@@ -73,16 +73,16 @@
         <ol class="steps">
           <li><span class="step-number">01</span><h3>Get the store</h3><p>Sign in with Gravitas, then download the signed Android APK on your phone.</p></li>
           <li><span class="step-number">02</span><h3>Make it yours</h3><p>Open the APK and allow installation from your browser when Android asks.</p></li>
-          <li><span class="step-number">03</span><h3>Find your favorites</h3><p>Open Private Store, sign in with your Gravitas account, then choose your apps.</p></li>
+          <li><span class="step-number">03</span><h3>Find your favorites</h3><p>Open Bazaar, sign in with your Gravitas account, then choose your apps.</p></li>
         </ol>
       </section>
       {{if .SignedIn}}
-      <section class="details" aria-labelledby="details-heading"><div><p class="eyebrow">READY WHEN YOU ARE</p><h2 id="details-heading">Your store address.</h2><p>Private Store connects here automatically. Sign in with the same Gravitas account you use on the web.</p></div><div class="server-address"><code id="server-url">{{.StoreURL}}</code><button class="copy-button" id="copy">Copy address</button></div></section>
-      <details class="checksum"><summary>Verify your download <span>SHA-256</span></summary><p>The published APK is signed with the permanent Private Store release key.</p><code>{{.Digest}}</code></details>
+      <section class="details" aria-labelledby="details-heading"><div><p class="eyebrow">READY WHEN YOU ARE</p><h2 id="details-heading">Your store address.</h2><p>Bazaar connects here automatically. Sign in with the same Gravitas account you use on the web.</p></div><div class="server-address"><code id="server-url">{{.StoreURL}}</code><button class="copy-button" id="copy">Copy address</button></div></section>
+      <details class="checksum"><summary>Verify your download <span>SHA-256</span></summary><p>The published APK is signed with the permanent Bazaar release key.</p><code>{{.Digest}}</code></details>
       {{end}}
       <p id="feedback" role="status" aria-live="polite"></p>
     </main>
-    <section class="details" id="desktop-store" aria-labelledby="desktop-heading"><div><p class="eyebrow">ON YOUR DESKTOP</p><h2 id="desktop-heading">A home for every screen.</h2><p>Private Store for macOS, Windows and Linux. Browse desktop apps, read what changed, and keep your collection current. The store updates itself, too.</p><p>Choose your operating system and processor. macOS and Windows downloads are ZIPs; extract before opening. On Linux, make the AppImage executable. Initial builds are distributed without an Apple or Microsoft signing identity.</p></div><div>{{range .Apps}}{{if eq .ID "appstore"}}{{if .DesktopRelease}}{{range .DesktopRelease.Artifacts}}<p>{{if $.SignedIn}}<a class="button" href="/download/desktop/{{.Platform}}/{{.Arch}}">{{.Platform}} · {{.Arch}} ↓</a>{{else}}<a href="#get-store">Sign in above for {{.Platform}} · {{.Arch}}</a>{{end}}</p>{{end}}{{else}}<p>Desktop downloads will appear after the first verified desktop release is published.</p>{{end}}{{end}}{{end}}</div></section>
+    <section class="details" id="desktop-store" aria-labelledby="desktop-heading"><div><p class="eyebrow">ON YOUR DESKTOP</p><h2 id="desktop-heading">A home for every screen.</h2><p>Bazaar for macOS, Windows and Linux. Browse desktop apps, read what changed, and keep your collection current. The store updates itself, too.</p><p>Choose your operating system and processor. macOS and Windows downloads are ZIPs; extract before opening. On Linux, make the AppImage executable. Initial builds are distributed without an Apple or Microsoft signing identity.</p></div><div>{{range .Apps}}{{if eq .ID "appstore"}}{{if .DesktopRelease}}{{range .DesktopRelease.Artifacts}}<p>{{if $.SignedIn}}<a class="button" href="/download/desktop/{{.Platform}}/{{.Arch}}">{{.Platform}} · {{.Arch}} ↓</a>{{else}}<a href="#get-store">Sign in above for {{.Platform}} · {{.Arch}}</a>{{end}}</p>{{end}}{{else}}<p>Desktop downloads will appear after the first verified desktop release is published.</p>{{end}}{{end}}{{end}}</div></section>
     <footer><span>Small by design. Independent by choice.</span><span>PART OF <a href="https://gravitas.cool">GRAVITAS <span aria-hidden="true">↗</span></a></span></footer>
   </div>
 </body>

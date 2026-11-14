@@ -33,19 +33,19 @@
   },
   {
     "id": "appstore",
-    "name": "Private Store",
+    "name": "Bazaar",
     "packageName": "dev.jeeth.privatestore",
     "repository": "jeethsuresh/appstore",
     "assetName": "appstore-android.apk",
     "certificateSha256": "e70b5b54a0d174f4ad8867889f6481a2b193dc9c130630f321563e12f3293793",
-    "description": "Find and install Gravitas apps on Android, macOS, Windows and Linux. Sign in with Gravitas to browse your collection, read release notes and get verified updates, including updates to Private Store itself.",
+    "description": "Find and install Gravitas apps on Android, macOS, Windows and Linux. Sign in with Gravitas to browse your collection, read release notes and get verified updates, including updates to Bazaar itself.",
     "desktop": true,
     "logoUrl": "/assets/icon.svg",
     "macOSNotarizedFrom": 6
   },
   {
     "id": "launcher",
-    "name": "Still Launcher",
+    "name": "Glyph",
     "packageName": "app.still.launcher",
     "repository": "jeethsuresh/launcher",
     "assetName": "StillLauncher-{tag}-android.apk",

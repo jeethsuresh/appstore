@@ -39,7 +39,7 @@ class UpdateWorker(context: Context, params: WorkerParameters) : CoroutineWorker
                     val installed = Installer.installed(context, app.packageName) ?: return
                     if (!Versions.newer(installed, release.versionCode) || release.minSdk > android.os.Build.VERSION.SDK_INT) return
                     if (!prefs.getBoolean("auto", true) || !context.packageManager.canRequestPackageInstalls() || !Notices.enabled(context)) {
-                        Notices.show(context, 100, "Updates available", "Open Private Store to update your apps.")
+                        Notices.show(context, 100, "Updates available", "Open Bazaar to update your apps.")
                         return
                     }
                     if (prefs.getLong("pending.${app.packageName}", 0) == release.versionCode && context.packageManager.packageInstaller.mySessions.any { it.appPackageName == app.packageName }) return
@@ -55,7 +55,7 @@ class UpdateWorker(context: Context, params: WorkerParameters) : CoroutineWorker
             catch (e: ApiException) {
                 prefs.edit().putString("status", e.message).apply()
                 if (e.code == 401) {
-                    if (checkedSession?.let { BrokerManager.engine(context).invalidateDevice(it) } == true) Notices.show(context, 101, "Private Store needs sign-in", e.message ?: "Sign in again")
+                    if (checkedSession?.let { BrokerManager.engine(context).invalidateDevice(it) } == true) Notices.show(context, 101, "Bazaar needs sign-in", e.message ?: "Sign in again")
                     Result.success()
                 } else Result.retry()
             } catch(e:BrokerFailure) { prefs.edit().putString("status",if(e.reason==BrokerError.LOGIN_REQUIRED) "Sign in with Gravitas again" else "Gravitas is temporarily unavailable").apply();if(e.reason==BrokerError.LOGIN_REQUIRED) Result.success() else Result.retry()

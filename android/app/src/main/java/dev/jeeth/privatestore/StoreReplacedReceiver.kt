@@ -19,7 +19,7 @@ object SelfUpdateRecovery {
         val installed = Installer.installed(context, context.packageName) ?: 0
         if (replaced || (pending > 0 && installed >= pending)) {
             check(prefs.edit().remove("pending.${context.packageName}")
-                .putString("status", "Private Store updated successfully").commit())
+                .putString("status", "Bazaar updated successfully").commit())
         }
         ApkCache(java.io.File(context.filesDir, "downloads")).reconcile { Installer.installed(context, it) }
         // Package replacement retains the app UID, private data and Keystore keys.

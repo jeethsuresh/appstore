@@ -41,7 +41,7 @@ object Installer {
     fun install(context: Context, file: File, app: StoreApp, background: Boolean) {
         verify(context, file, app)
         require(!background || installed(context, app.packageName) != null) { "App was removed before the update finished" }
-        require(context.packageManager.canRequestPackageInstalls()) { "Allow Private Store to install apps in Android settings" }
+        require(context.packageManager.canRequestPackageInstalls()) { "Allow Bazaar to install apps in Android settings" }
         val installer = context.packageManager.packageInstaller
         val prefs = context.getSharedPreferences("updates", Context.MODE_PRIVATE)
         if (background && prefs.getLong("pending.${app.packageName}", 0) == app.release!!.versionCode && installer.mySessions.any { it.appPackageName == app.packageName }) { return }

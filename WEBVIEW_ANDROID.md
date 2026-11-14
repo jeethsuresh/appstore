@@ -45,14 +45,14 @@ and isolated storage. Release CI runs the fixtures before loading signing secret
 Android version code. Update all three together for each shell release.
 
 The main-only `android-release` environment signs both packages with the existing
-permanent Private Store key. The pinned public certificate is checked before
+permanent Bazaar key. The pinned public certificate is checked before
 building and in both finished APKs. Versioned `webview-vX.Y.Z` releases contain
 `work-android.apk`, `news-android.apk`, `changelog.json`, `webview-release.json`
 and `SHA256SUMS`. CI checks both APK identities and signatures, verifies uploaded
 asset sizes and hashes in a draft, then publishes without changing GitHub's
 latest release (which remains the Store APK). Existing versions are immutable.
 
-Private Store discovers the matching assets through its existing release-list
+Bazaar discovers the matching assets through its existing release-list
 fallback. Their catalog entries set `releaseTagPrefix` to `webview-v` so
 changelog tags must match the verified APK version in that release channel.
 The Store verifies their certificate, package, version and checksums, and ingests

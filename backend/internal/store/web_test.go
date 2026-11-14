@@ -42,6 +42,9 @@ func TestWebDownloadRequiresGravitasSession(t *testing.T) {
 	if w.Code != 200 || !strings.Contains(w.Body.String(), `aria-label="Sign in"`) || !strings.Contains(w.Body.String(), `name="username"`) || strings.Contains(w.Body.String(), `href="/download/appstore.apk"`) || w.Header().Get("Content-Security-Policy") == "" {
 		t.Fatal("unsafe login shell")
 	}
+	if !strings.Contains(w.Body.String(), "<title>Bazaar · Gravitas</title>") || !strings.Contains(w.Body.String(), `aria-label="Bazaar home"`) {
+		t.Fatal("missing Bazaar branding on the store home page")
+	}
 	session := httptest.NewRecorder()
 	if err := c.SetSession(session, webTestIdentity(c, "test-subject", "<script>alert(1)</script>")); err != nil {
 		t.Fatal(err)

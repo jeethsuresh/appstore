@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "version": "0.6.13",
-  "versionCode": 25,
+  "version": "0.6.14",
+  "versionCode": 26,
   "changes": [
-    "Morsel now has its own logo in Private Store."
+    "Private Store is now Bazaar. Your installed apps, sign-in and update settings carry over."
   ]
 }

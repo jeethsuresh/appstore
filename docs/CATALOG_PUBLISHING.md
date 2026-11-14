@@ -1,6 +1,6 @@
 # Publish an app catalog from a backend
 
-A backend publishes its complete catalog to Private Store over HTTPS. The Store
+A backend publishes its complete catalog to Bazaar over HTTPS. The Store
 keeps the last accepted catalog in SQLite and uses it for public app pages,
 authenticated app catalogs and release ingestion. Existing GitHub release
 workflows continue to supply the binaries and changelogs.
@@ -86,7 +86,7 @@ check the expected verified release through the Store client.
 ## Account visibility in the Android Store
 
 A hosted app's backend is the source of its catalog. Store-owned listings are
-for Private Store itself and standalone apps without a service backend.
+for Bazaar itself and standalone apps without a service backend.
 Configure each hosted publisher's canonical HTTPS service `origin` in
 `CATALOG_PUBLISHERS`, alongside its key, repositories and adopted app IDs.
 

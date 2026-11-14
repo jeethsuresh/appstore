@@ -48,6 +48,8 @@ test('desktop discovers compatible apps, signs in, installs, updates and stages 
       });
     }, createHash('sha256').update('#!/bin/sh\nexit 0\n').digest('hex'));
     const page = await electron.firstWindow();
+    await expect(page).toHaveTitle('Bazaar');
+    expect(await electron.evaluate(({ app }) => app.getPath('userData'))).toBe(path.join(temporary, 'Private Store'));
     await page.getByRole('button', { name: 'Check for updates' }).click();
     await expect(page.getByRole('heading', { name: 'Example', exact: true })).toBeVisible();
     await page.screenshot({ path: path.join(__dirname, '..', 'test-results', 'desktop-catalog.png') });
@@ -84,10 +86,10 @@ test('desktop discovers compatible apps, signs in, installs, updates and stages 
     await expect(page.getByRole('button', { name: 'Update ↓', exact: true })).toBeVisible();
     await page.getByRole('button', { name: 'Update all ↓' }).click();
     await expect(page.getByRole('button', { name: 'Open ↗' })).toBeVisible();
-    await electron.evaluate((_electron, code) => { global.fixtureApps.push({ ...global.fixtureApps[0], id: 'appstore', name: 'Private Store', desktopRelease: { ...global.fixtureApps[0].desktopRelease, versionCode: code + 1, version: '9.0.0' } }); }, storeVersionCode);
+    await electron.evaluate((_electron, code) => { global.fixtureApps.push({ ...global.fixtureApps[0], id: 'appstore', name: 'Bazaar', desktopRelease: { ...global.fixtureApps[0].desktopRelease, versionCode: code + 1, version: '9.0.0' } }); }, storeVersionCode);
     await page.getByRole('button', { name: 'Check for updates' }).click();
     await page.getByRole('button', { name: 'Update all ↓' }).click();
-    await expect(page.getByText('A new Private Store is ready.', { exact: false })).toBeVisible();
+    await expect(page.getByText('A Bazaar update is ready.', { exact: false })).toBeVisible();
     await electron.evaluate(({ app }) => { app.relaunch = options => { global.restartOptions = options; }; global.originalQuit = app.quit; app.quit = () => { global.restartRequested = true; }; });
     await page.locator('#restart-button').click();
     await expect.poll(() => electron.evaluate(() => global.restartRequested)).toBe(true);

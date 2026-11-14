@@ -1,5 +1,5 @@
 {
-  "name": "Private Store",
+  "name": "Bazaar",
   "kind": "gradle",
   "project_dir": "android",
   "version_file": "android/app/build.gradle.kts",

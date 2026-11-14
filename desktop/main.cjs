@@ -13,6 +13,8 @@ const version = require('./package.json');
 const { CredentialVault } = require('./credential-vault.cjs');
 const { BrokerEngine, serveBroker, validateSession, brokerLoginFor } = require('./broker.cjs');
 protocol.registerSchemesAsPrivileged([{ scheme: 'store', privileges: { standard: true, secure: true, supportFetchAPI: true } }]);
+// Electron uses this name for existing user data and Safe Storage keys.
+// The packaged app and its windows use the Bazaar product name.
 app.setName('Private Store');
 if (!app.requestSingleInstanceLock()) app.quit();
 
@@ -205,24 +207,24 @@ app.whenReady().then(async () => {
     return net.fetch(pathToFileURL(file).href);
   });
   ipcMain.handle('store:action', async (event, name, value) => {
-    if (quitting) throw new Error('Private Store is quitting.');
+    if (quitting) throw new Error('Bazaar is quitting.');
     if (event.sender !== window?.webContents || event.senderFrame !== window.webContents.mainFrame || event.senderFrame.url !== 'store://app/index.html' || !Object.hasOwn(actions, name)) throw new Error('Invalid store action.');
     try { return await actions[name](value); } catch (e) { error = e.message; publish(); throw e; }
   });
   function createWindow() {
-    window = new BrowserWindow({ title: 'Private Store', width: 1180, height: 820, minWidth: 760, minHeight: 600, backgroundColor: '#f5f4ee', webPreferences: { preload: path.join(__dirname, 'preload.cjs'), contextIsolation: true, sandbox: true, nodeIntegration: false } });
+    window = new BrowserWindow({ title: 'Bazaar', width: 1180, height: 820, minWidth: 760, minHeight: 600, backgroundColor: '#f5f4ee', webPreferences: { preload: path.join(__dirname, 'preload.cjs'), contextIsolation: true, sandbox: true, nodeIntegration: false } });
     window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
     window.webContents.on('will-navigate', event => event.preventDefault());
     window.webContents.session.setPermissionRequestHandler((_wc, _permission, answer) => answer(false));
     window.loadURL('store://app/index.html');
     window.webContents.once('did-finish-load', () => refresh(true));
   }
-  Menu.setApplicationMenu(Menu.buildFromTemplate([{ label: 'Private Store', submenu: [{ role: 'about' }, { role: 'quit' }] }, { role: 'editMenu' }, { role: 'windowMenu' }]));
+  Menu.setApplicationMenu(Menu.buildFromTemplate([{ label: 'Bazaar', submenu: [{ role: 'about' }, { role: 'quit' }] }, { role: 'editMenu' }, { role: 'windowMenu' }]));
   createWindow();
   brokerEngine = new BrokerEngine({ fetch: (...args) => net.fetch(...args), getCredential: () => credential, replaceCredential, approve: async ({ appOrigin, account, signal }) => {
     if (!window || window.isDestroyed()) createWindow();
     window.show(); window.focus();
-    const result = await dialog.showMessageBox(window, { signal, type: 'question', title: 'Sign in with Private Store', message: `Sign in to ${new URL(appOrigin).host}?`, detail: `Use ${account} from Private Store for ${appOrigin}.\n\nOnly your basic profile is shared. Approve only if you just asked an app to sign in to this service.`, buttons: ['Cancel', 'Sign in'], defaultId: 0, cancelId: 0, noLink: true });
+    const result = await dialog.showMessageBox(window, { signal, type: 'question', title: 'Sign in with Bazaar', message: `Sign in to ${new URL(appOrigin).host}?`, detail: `Use ${account} from Bazaar for ${appOrigin}.\n\nOnly your basic profile is shared. Approve only if you just asked an app to sign in to this service.`, buttons: ['Cancel', 'Sign in'], defaultId: 0, cancelId: 0, noLink: true });
     return result.response === 1;
   } });
   const launch = { file: process.env.APPIMAGE || process.execPath, args: app.isPackaged ? [] : [__dirname] };

@@ -106,7 +106,7 @@ func TestIOSOnlyAppUsesAppleListing(t *testing.T) {
 	s.cfg.Apps = apps
 	page := request(s, http.MethodGet, "/apps/sample", "", "")
 	if page.Code != http.StatusOK || !strings.Contains(page.Body.String(), app.IOSURL) ||
-		strings.Contains(page.Body.String(), "Install Sample App inside Private Store") {
+		strings.Contains(page.Body.String(), "Install Sample App inside Bazaar") {
 		t.Fatalf("unexpected iOS-only listing: %d %s", page.Code, page.Body)
 	}
 	app.IOSURL = "https://apps.apple.com.evil.example/app/id123456789"

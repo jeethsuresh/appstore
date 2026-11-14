@@ -21,4 +21,4 @@ if not identity or tuple(identity.groups()) != ('dev.jeeth.privatestore',code,ve
 required=required_packages(json.loads((root/'config/apps.json').read_text()))
 verify_apk(args.apk, required)
 print('Verified catalog package visibility: '+', '.join(sorted(required)))
-print('Verified signed Private Store '+version+' / code '+code+' / certificate '+expected)
+print('Verified signed Bazaar '+version+' / code '+code+' / certificate '+expected)

@@ -1,9 +1,9 @@
-# Private Store for desktop
+# Bazaar for desktop
 
 The Electron client in `desktop/` uses the same Go service, Gravitas account,
 GitHub release polling/webhooks, app pages and verified downloads as Android.
 macOS, Windows and Linux builds support x64 and ARM64. Desktop notifications
-are not needed. The first release includes Private Store, RSS Reader and Email
+are not needed. The first release included Private Store, RSS Reader and Email
 on the operating systems/processors for which they have published binaries.
 Apps without published desktop builds are not advertised as installable.
 
@@ -98,10 +98,10 @@ copies installed outside the store are not adopted or removed. There is no
 automatic pruning or uninstall UI yet. Apps remain responsible for their data
 directory and compatibility across versions.
 
-Checks run at launch and every six hours while Private Store is open. Automatic
+Checks run at launch and every six hours while Bazaar is open. Automatic
 updates are enabled by default and can be disabled in Settings. Only installed
 apps and the store are updated. An already running app continues using its old
-binary until reopened from the store or shortcut. Private Store stages its own
+binary until reopened from the store or shortcut. Bazaar stages its own
 new version and shows **Restart to update**; Electron relaunches directly into
 the verified new executable, retaining the same store data and settings. The
 catalog is cached so installed apps can still be opened during an outage.
@@ -152,6 +152,6 @@ installer compatibility beyond the documented Electron formats.
 
 Native Flutter Linux bundles can use ZIPs with an explicit root executable entry and adjacent `lib/` and `data/` directories. The same traversal, symlink, checksum and versioned-install checks apply to these ZIPs. River, Spacetime and Haven are universal catalog entries; Office, RSS Reader and Email are desktop-only.
 
-Desktop Private Store also supplies foreground Gravitas app sign-in. See
+Desktop Bazaar also supplies foreground Gravitas app sign-in. See
 [DESKTOP_SIGN_IN.md](DESKTOP_SIGN_IN.md) for the protocol, account upgrade and
 reusable Dart/Electron helpers.
