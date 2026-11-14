@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate, stage and atomically publish Private Store desktop releases."""
+"""Validate, stage and atomically publish Bazaar desktop releases."""
 import argparse
 import hashlib
 import json
@@ -48,7 +48,7 @@ def stage(directory):
         if (platform, arch) in found or (match[3] == "AppImage") != (platform == "linux"):
             raise ValueError("duplicate or incompatible desktop package")
         found.add((platform, arch))
-        entry = {"macos": "Private Store.app", "windows": "Private Store.exe", "linux": file.name}[platform]
+        entry = {"macos": package["productName"] + ".app", "windows": package["productName"] + ".exe", "linux": file.name}[platform]
         artifacts.append(dict(platform=platform, arch=arch, file=file.name, entry=entry, sha256=sha256(file), size=file.stat().st_size))
     if found != TARGETS:
         raise ValueError(f"all six desktop targets must be present; missing {TARGETS - found}")
@@ -119,7 +119,7 @@ def publish(directory):
                     if previous["versionCode"] >= package["versionCode"]:
                         raise ValueError("desktop versionCode must increase")
             break
-    release = api(f"/repos/{REPO}/releases", "POST", {"tag_name": tag, "target_commitish": os.environ["GITHUB_SHA"], "name": "Private Store desktop " + package["version"], "body": "\n".join("- " + c for c in manifest["changes"]), "draft": True, "prerelease": False, "make_latest": "false"})
+    release = api(f"/repos/{REPO}/releases", "POST", {"tag_name": tag, "target_commitish": os.environ["GITHUB_SHA"], "name": "Bazaar desktop " + package["version"], "body": "\n".join("- " + c for c in manifest["changes"]), "draft": True, "prerelease": False, "make_latest": "false"})
     files = [directory / a["file"] for a in manifest["artifacts"]] + [directory / "desktop-release.json", directory / "desktop-changelog.json", directory / "SHA256SUMS"]
     upload = release["upload_url"].split("{")[0]
     for file in files:

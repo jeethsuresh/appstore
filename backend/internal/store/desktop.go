@@ -172,7 +172,7 @@ func (s *Server) initDesktop() error {
 	s.mux.HandleFunc("GET /desktop/connect", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		w.Header().Set("Content-Security-Policy", "default-src 'none'; frame-ancestors 'none'")
-		_, _ = io.WriteString(w, "<!doctype html><html lang=en><meta charset=utf-8><title>Private Store</title><p>Return to Private Store to finish connecting this desktop.</p></html>")
+		_, _ = io.WriteString(w, "<!doctype html><html lang=en><meta charset=utf-8><title>Bazaar</title><p>Return to Bazaar to finish connecting this desktop.</p></html>")
 	})
 	s.mux.HandleFunc("POST /v1/auth/desktop/enroll", s.desktopEnroll)
 	s.mux.HandleFunc("GET /download/desktop/{platform}/{arch}", s.desktopBootstrap)
@@ -398,7 +398,7 @@ func (s *Server) desktopBootstrap(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
-	fail(w, 404, "no Private Store release for this desktop target")
+	fail(w, 404, "no Bazaar release for this desktop target")
 }
 func (s *Server) webErrorAuth(w http.ResponseWriter, err error) {
 	if errors.Is(err, gravitas.ErrUnavailable) {

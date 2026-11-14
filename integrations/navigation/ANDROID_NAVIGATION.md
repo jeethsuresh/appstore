@@ -21,7 +21,7 @@ app; it never reopens another app or crosses an authentication boundary.
 
 ## Shared implementation
 
-Canonical sources live in Private Store's `integrations/navigation/`:
+Canonical sources live in Bazaar's `integrations/navigation/`:
 https://github.com/jeethsuresh/appstore/tree/main/integrations/navigation
 
 - `GravitasEdgeNavigation.java`: native, side-aware committed system gesture bridge.
@@ -30,7 +30,7 @@ https://github.com/jeethsuresh/appstore/tree/main/integrations/navigation
 - `gravitas_navigation.dart`: one forward stack spanning route and state navigation.
 - `gravitas_navigation_test.dart`: routing regression tests to copy into each client.
 
-From a Private Store checkout, run `python3 integrations/navigation/install-flutter.py /path/to/client` to copy Flutter components and tests; then integrate the routing as below.
+From a Bazaar checkout, run `python3 integrations/navigation/install-flutter.py /path/to/client` to copy Flutter components and tests; then integrate the routing as below.
 
 Use `android:enableOnBackInvokedCallback="true"`. The native helper handles only
 API 34+, preserving the supported legacy behavior below that API. Flutter hosts

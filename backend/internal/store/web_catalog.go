@@ -88,7 +88,7 @@ var appStories = map[string]appStory{
 			{"Show the app, keep your privacy", "Demo View replaces the journal with Alex Morgan’s fictional data. Personal notifications pause and demo edits never touch personal storage."},
 		},
 		LocalData:  "Every journal record stays in an app-private SQLite database. Morsel has no sign-in, backend, analytics or network permission. Android cloud backup and device transfer are disabled; export a JSON backup to keep a copy.",
-		Connection: "Morsel works entirely offline. Only Private Store needs a connection to install signed updates. Android notification permission is required for alerts; optional precise alarm access improves timing. Android force-stop pauses delivery until the app is reopened.",
+		Connection: "Morsel works entirely offline. Only Bazaar needs a connection to install signed updates. Android notification permission is required for alerts; optional precise alarm access improves timing. Android force-stop pauses delivery until the app is reopened.",
 	},
 	"haven": {
 		Category: "Media & backup", Tagline: "A home for every memory.",
@@ -132,16 +132,16 @@ var appStories = map[string]appStory{
 			{"Keep apps together", "Drag an app onto another to create a folder, on a home screen or in the dock. Drop more apps onto it, rename it, or drag apps back out."},
 			{"Make it your own", "Choose an image wallpaper with a preview before applying. Set separate colours and opacity for the app drawer and dock."},
 			{"Reach your apps", "Search at the bottom of the drawer. Hold an app and drag it below the dock to hide it or ask Android to uninstall it."},
-			{"Build your home", "Add resizable widgets, change the grid and icon size, and drag to either edge to add home pages. Still Keyboard is included."},
+			{"Build your home", "Add resizable widgets, change the grid and icon size, and drag to either edge to add home pages. Glyph Keyboard is included."},
 		},
 		LocalData:  "Home layout, folders, hidden apps and appearance settings stay on your device. The launcher needs no account and has no network permission.",
-		Connection: "The launcher works offline. Private Store needs a connection to download signed updates; Android controls app removal and widget permissions.",
+		Connection: "The launcher works offline. Bazaar needs a connection to download signed updates; Android controls app removal and widget permissions.",
 	},
 	"appstore": {
 		Category: "Apps & updates", Tagline: "A small home for your apps.",
 		Architecture: "ARM, ARM64 and x86-64", MinimumAndroid: "Android 8.0+",
 		Features: []appFeature{
-			{"Keep the store current", "New signed versions of Private Store appear alongside your other app updates. Check now or let periodic checks find them; Android may ask you to approve installation."},
+			{"Keep the store current", "New signed versions of Bazaar appear alongside your other app updates. Check now or let periodic checks find them; Android may ask you to approve installation."},
 			{"Keep your settings", "Updating the store preserves its sign-in and update preferences. Every APK must match the configured package, version, checksum and permanent release certificate."},
 			{"Sign in with Gravitas", "Use your Gravitas account to enroll your phone and connect supported apps. Central sign-out revokes connected sessions."},
 		},
@@ -270,7 +270,7 @@ func (s *Server) webApps(ctx context.Context, storeURL string) ([]webApp, error)
 	return apps, nil
 }
 func (s *Server) webData(w http.ResponseWriter, r *http.Request) (webView, error) {
-	data := webView{Enabled: s.cfg.Federation != nil, Error: r.URL.Query().Get("error") != "", Digest: clientSHA256, ClientVersion: clientVersion, ClientSize: downloadSize(clientSize), Title: "Private Store · Gravitas", Description: "A small home for independent apps on Android, macOS, Windows and Linux. Get Private Store with your Gravitas account.", Next: "/", StoreURL: "https://apps.gravitas.cool"}
+	data := webView{Enabled: s.cfg.Federation != nil, Error: r.URL.Query().Get("error") != "", Digest: clientSHA256, ClientVersion: clientVersion, ClientSize: downloadSize(clientSize), Title: "Bazaar · Gravitas", Description: "A small home for independent apps on Android, macOS, Windows and Linux. Get Bazaar with your Gravitas account.", Next: "/", StoreURL: "https://apps.gravitas.cool"}
 	if s.cfg.Federation != nil {
 		data.DefaultDomain = s.cfg.Federation.DefaultDomain()
 	}
@@ -306,7 +306,7 @@ func (s *Server) webAppPage(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 		data.Selected = &data.Apps[i]
-		data.Title = data.Selected.Name + " · Private Store"
+		data.Title = data.Selected.Name + " · Bazaar"
 		data.Description = data.Selected.Description
 		data.Next = "/apps/" + data.Selected.ID
 		s.renderWeb(w, "app.html", data)

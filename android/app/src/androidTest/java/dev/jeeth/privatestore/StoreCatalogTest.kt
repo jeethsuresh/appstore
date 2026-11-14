@@ -32,7 +32,7 @@ class StoreCatalogTest {
     @Test fun catalogSearchDetailsLayoutUpdatesAndProgressSurviveNavigation() {
         assumeTrue(context.packageName.endsWith(".testbed"))
         context.getSharedPreferences("catalog", Context.MODE_PRIVATE).edit().putBoolean("list", false).commit()
-        val apps = listOf(app("daybreak", "Daybreak"), app("spacetime", "Spacetime"), app("atlas", "Atlas"), app("river", "River"), app("launcher", "Still Launcher"), app("haven", "Haven"))
+        val apps = listOf(app("daybreak", "Daybreak"), app("spacetime", "Spacetime"), app("atlas", "Atlas"), app("river", "River"), app("launcher", "Glyph"), app("haven", "Haven"))
         val transfers = mutableStateOf<Map<String, Downloads.Transfer>>(emptyMap())
         var requested = emptyList<StoreApp>()
         compose.runOnUiThread { compose.activity.setContent {

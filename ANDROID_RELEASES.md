@@ -1,6 +1,6 @@
 # Signed Android releases
 
-Private Store uses the same release process as the other Gravitas Android apps. Signing runs on GitHub-hosted runners; a local machine never needs the private key.
+Bazaar uses the same release process as the other Gravitas Android apps. Signing runs on GitHub-hosted runners; a local machine never needs the private key.
 
 Increase both the stable version and Android version code in `android/app/build.gradle.kts`, then merge or push to `main`. **Signed Android release** automatically tests, builds, verifies and publishes the new version. An already published version is skipped. Existing tags, drafts and published assets are never overwritten. A lower version or non-increasing version code fails before signing.
 
@@ -16,4 +16,4 @@ Package: `dev.jeeth.privatestore`. Permanent certificate SHA-256: `e70b5b54a0d17
 
 Each new version must include an updated tracked `changelog.json` in the same PR as the explicit version/code bump. The JSON object has exactly four fields: `schemaVersion` (integer `1`), `version` (the stable source version), `versionCode` (the source Android version code), and `changes` (1–50 nonempty plain-text strings, each at most 2000 UTF-8 bytes). The complete file is limited to 32000 UTF-8 bytes. Keep entries concise and useful to people updating the app.
 
-Every `main` push checks the source version and changelog. A new version automatically builds and publishes; an already published version is skipped. App-code changes intended for Android users require an explicit version/code bump before merge. CI validates the changelog before signing, includes it in `SHA256SUMS` and `release-manifest.json`, verifies the uploaded asset digest, and uses its entries as GitHub release notes. Private Store validates this JSON against the verified APK version and presents its entries as release notes on Android and the web. Legacy releases without the JSON asset retain their GitHub release text.
+Every `main` push checks the source version and changelog. A new version automatically builds and publishes; an already published version is skipped. App-code changes intended for Android users require an explicit version/code bump before merge. CI validates the changelog before signing, includes it in `SHA256SUMS` and `release-manifest.json`, verifies the uploaded asset digest, and uses its entries as GitHub release notes. Bazaar validates this JSON against the verified APK version and presents its entries as release notes on Android and the web. Legacy releases without the JSON asset retain their GitHub release text.

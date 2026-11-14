@@ -23,6 +23,7 @@ cd "$(dirname "$0")/../desktop"
 version="$(node -p 'require("./package.json").version')"
 app_dir=mac
 if [ "$arch" = arm64 ]; then app_dir=mac-arm64; fi
-app="dist/$app_dir/Private Store.app"
+product_name="$(node -p 'require("./package.json").productName')"
+app="dist/$app_dir/$product_name.app"
 npm run package -- --mac "--$arch" --dir -c.mac.identity='(WV3J3848JR)' -c.mac.notarize=true
 ditto -c -k --sequesterRsrc --keepParent "$app" "dist/PrivateStore-$version-mac-$arch.zip"

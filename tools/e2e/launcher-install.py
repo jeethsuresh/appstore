@@ -35,7 +35,7 @@ def approve_install_prompt():
     adb('shell', 'uiautomator', 'dump', '/sdcard/launcher-install-test.xml')
     tree = ET.fromstring(adb('shell', 'cat', '/sdcard/launcher-install-test.xml'))
     nodes = list(tree.iter('node'))
-    if not any(n.get('text') == 'Still Launcher' for n in nodes):
+    if not any(n.get('text') in {'Glyph', 'Still Launcher'} for n in nodes):
         return
     for n in nodes:
         package, text = n.get('package'), n.get('text', '')
@@ -123,7 +123,7 @@ try:
             raise RuntimeError('Emulator clock is over two minutes behind; correct it before running this HTTPS test')
         print('Waiting for test certificate validity on emulator:', int(remaining), 'seconds', flush=True)
         time.sleep(min(remaining, 10))
-    print('Installing through Private Store. Approve the normal Android prompt on', args.serial, flush=True)
+    print('Installing through Bazaar. Approve the normal Android prompt on', args.serial, flush=True)
     with (work/'instrumentation.log').open('w') as output:
         result = subprocess.Popen([str(sdk/'platform-tools/adb'), '-s', args.serial, 'shell', 'am', 'instrument', '-w', '-e', 'class', 'dev.jeeth.privatestore.LauncherInstallationTest', '-e', 'launcherInstallE2E', 'true', '-e', 'serverUrl', f'https://10.0.2.2:{port}', '-e', 'invite', invite, package+'.test/androidx.test.runner.AndroidJUnitRunner'], env=env, stdout=output, stderr=output)
         try:
