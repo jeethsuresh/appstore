@@ -77,6 +77,20 @@ test('desktop discovers compatible apps, signs in, installs, updates and stages 
     await expect(authorizeDesktopStore(request)).rejects.toBeInstanceOf(StoreSignInCancelled);
     await electron.evaluate(() => { global.brokerDecision = 1; });
 
+    await electron.evaluate(() => {
+      const fs = process.getBuiltinModule('node:fs/promises');
+      const mkdtemp = fs.mkdtemp;
+      fs.mkdtemp = async (prefix, ...args) => {
+        if (prefix.endsWith('private-store-')) {
+          fs.mkdtemp = mkdtemp;
+          throw Object.assign(new Error('no space left'), { code: 'ENOSPC' });
+        }
+        return mkdtemp(prefix, ...args);
+      };
+    });
+    await page.getByRole('button', { name: 'Install ↓' }).click();
+    await expect(page.getByText('Bazaar ran out of disk space.', { exact: false })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Install ↓' })).toBeEnabled();
     await page.getByRole('button', { name: 'Install ↓' }).click();
     await expect(page.getByRole('button', { name: 'Open ↗' })).toBeVisible();
     await page.getByRole('button', { name: 'Installed', exact: false }).click();

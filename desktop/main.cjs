@@ -9,6 +9,7 @@ const { randomUUID, randomBytes, createHash } = require('node:crypto');
 const { STORE_URL, target, validID, atomicJSON, readJSON, artifactFor, updateAvailable, downloadVerified, releasePath } = require('./core.cjs');
 const credentials = require('./core.cjs');
 const { installPackage, executable, createShortcut } = require('./installer.cjs');
+const { requireFreeSpace, installError } = require('./install-storage.cjs');
 const version = require('./package.json');
 const { CredentialVault } = require('./credential-vault.cjs');
 const { BrokerEngine, serveBroker, validateSession, brokerLoginFor } = require('./broker.cjs');
@@ -21,6 +22,7 @@ if (!app.requestSingleInstanceLock()) app.quit();
 let window, loginWindow, credential, catalog = [], installed = {}, settings = { autoUpdate: true }, busy = false, checking = false, error = '', progress = null, pendingSelf = null, secureStorage = false;
 const current = target();
 let statePath, sessionPath, root, brokerServer, brokerEngine, authGeneration = 0;
+let stateWrites = Promise.resolve();
 const vault = new CredentialVault({
   read: () => credential,
   commit: value => { credential = value; publish(); },
@@ -35,7 +37,17 @@ function snapshot() {
   return { apps: catalog, installed: { ...installed, appstore: { version: app.getVersion(), versionCode: version.versionCode } }, account: credential?.account || '', settings, busy, error, progress, pendingSelf: !!pendingSelf, platform: current, version: app.getVersion(), secureStorage, brokerReady: !!credential?.broker };
 }
 function publish() { if (window && !window.isDestroyed()) window.webContents.send('store:state', snapshot()); }
-async function persist() { await atomicJSON(statePath, { installed, settings, pendingSelf, catalog }); }
+function persist(install) {
+  const write = stateWrites.then(async () => {
+    const next = install ? { ...installed, [install.id]: install.record } : installed;
+    const nextSelf = install?.id === 'appstore' ? install.record : pendingSelf;
+    await atomicJSON(statePath, { installed: next, settings, pendingSelf: nextSelf, catalog });
+    if (install) installed = next;
+    if (install?.id === 'appstore') pendingSelf = nextSelf;
+  });
+  stateWrites = write.catch(() => {});
+  return write;
+}
 async function api(route, options = {}) {
   const headers = { ...options.headers };
   const expected = credential;
@@ -119,8 +131,11 @@ async function install(id) {
   if ((id === 'appstore' ? version.versionCode : previous?.versionCode || 0) >= selected.desktopRelease.versionCode) throw new Error('This app is already up to date.');
   if (previous?.versionCode === selected.desktopRelease.versionCode && id === 'appstore') { pendingSelf = previous; publish(); return; }
   busy = true; error = ''; progress = { id, fraction: 0, phase: 'Downloading' }; publish();
-  const directory = await fs.mkdtemp(path.join(app.getPath('temp'), 'private-store-'));
+  let directory;
   try {
+    const temp = app.getPath('temp');
+    await requireFreeSpace(temp, artifact.size, 'download this app');
+    directory = await fs.mkdtemp(path.join(temp, 'private-store-'));
     const download = path.join(directory, artifact.file);
     const response = await api(releasePath(selected, current), { signal: AbortSignal.timeout(20 * 60 * 1000) });
     let lastPublish = 0;
@@ -131,10 +146,12 @@ async function install(id) {
     progress = { id, fraction: 1, phase: 'Installing' }; publish();
     const next = await installPackage({ app: selected, archive: download, root, current });
     await createShortcut({ app: selected, installed: next, home: os.homedir() });
-    installed[id] = next;
-    if (id === 'appstore') pendingSelf = next;
-    await persist();
-  } finally { await fs.rm(directory, { recursive: true, force: true }); busy = false; progress = null; publish(); }
+    await persist({ id, record: next });
+  } catch (e) { throw installError(e); }
+  finally {
+    if (directory) await fs.rm(directory, { recursive: true, force: true }).catch(e => console.warn('Could not remove temporary download:', e));
+    busy = false; progress = null; publish();
+  }
 }
 async function updateAll() {
   for (const selected of catalog) {
