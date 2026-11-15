@@ -51,6 +51,34 @@ test('failed extraction never replaces an installed app or leaves a partial dire
   await assert.rejects(installPackage({ app, archive: 'ignored', root: temp, current: target('win32', 'x64'), extractZip: async () => { throw new Error('Bad archive'); } }));
   assert.deepEqual(await fs.readdir(path.join(temp, 'example')), []);
 });
+test('a failed install cleans up a staged ASAR and preserves the disk error', async t => {
+  const io = (process.versions.electron ? require('original-fs') : require('node:fs')).promises;
+  const temp = await fs.mkdtemp(path.join(os.tmpdir(), 'store-test-'));
+  const { removeStaging } = require('../install-storage.cjs');
+  t.after(() => removeStaging(temp));
+  const app = fixture(); app.desktopRelease.artifacts[0] = { ...app.desktopRelease.artifacts[0], platform: 'macos', arch: 'arm64', file: 'app.zip', entry: 'Example.app' };
+  const current = target('darwin', 'arm64'), archive = path.join(__dirname, 'fixtures', 'asar-file.zip');
+  const diskError = Object.assign(new Error('write failed'), { code: 'ENOSPC' });
+  await assert.rejects(installPackage({ app, archive, root: temp, current, extractZip: async (file, options) => {
+    await require('../unzip.cjs')(file, options);
+    throw diskError;
+  } }), e => e === diskError);
+  assert.deepEqual(await fs.readdir(path.join(temp, 'example')), []);
+  const next = await installPackage({ app, archive, root: temp, current });
+  assert.equal(await io.readFile(path.join(next.entry, 'Contents', 'Resources', 'app.asar'), 'utf8'), 'archive bytes');
+});
+test('ZIP extraction checks the expanded size before writing any files', async t => {
+  const io = (process.versions.electron ? require('original-fs') : require('node:fs')).promises;
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'store-space-')); t.after(() => require('../install-storage.cjs').removeStaging(dir));
+  const archive = path.join(__dirname, 'fixtures', 'asar-file.zip'), extract = require('../unzip.cjs');
+  let free = BigInt(Buffer.byteLength('archive bytes')) - 1n;
+  t.mock.method(io, 'statfs', async () => ({ bavail: free, bsize: 1n }));
+  await assert.rejects(extract(archive, { dir }), /Not enough disk space to unpack this app\. Free at least 1 MiB/);
+  assert.deepEqual(await fs.readdir(dir), []);
+  free++;
+  await extract(archive, { dir });
+  assert.equal(await io.readFile(path.join(dir, 'Example.app', 'Contents', 'Resources', 'app.asar'), 'utf8'), 'archive bytes');
+});
 test('desktop shortcut escapes native argument metacharacters', () => { assert.equal(quoteDesktop('/tmp/a"$`\\b'), '"/tmp/a\\"\\$\\`\\\\b"'); });
 
 test('archive extraction preserves internal framework links and rejects escaping or write-through links', { skip: process.platform === 'win32' }, async t => {

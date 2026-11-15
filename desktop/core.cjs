@@ -31,8 +31,13 @@ function updateAvailable(app, installed) {
 async function atomicJSON(file, data) {
   await fs.mkdir(path.dirname(file), { recursive: true, mode: 0o700 });
   const tmp = file + '.' + require('node:crypto').randomUUID() + '.tmp';
-  await fs.writeFile(tmp, JSON.stringify(data, null, 2), { mode: 0o600 });
-  await fs.rename(tmp, file);
+  try {
+    await fs.writeFile(tmp, JSON.stringify(data, null, 2), { mode: 0o600 });
+    await fs.rename(tmp, file);
+  } catch (e) {
+    await fs.rm(tmp, { force: true }).catch(() => {});
+    throw e;
+  }
 }
 async function readJSON(file, fallback) {
   try { return JSON.parse(await fs.readFile(file, 'utf8')); }

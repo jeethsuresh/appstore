@@ -98,6 +98,10 @@ copies installed outside the store are not adopted or removed. There is no
 automatic pruning or uninstall UI yet. Apps remain responsible for their data
 directory and compatibility across versions.
 
+Installations need space for the verified download and the unpacked app at the
+same time. Bazaar checks available space before downloading and unpacking ZIPs,
+and leaves the existing app in place if an update runs out of space.
+
 Checks run at launch and every six hours while Bazaar is open. Automatic
 updates are enabled by default and can be disabled in Settings. Only installed
 apps and the store are updated. An already running app continues using its old

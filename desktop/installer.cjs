@@ -5,6 +5,7 @@ const { execFile } = require('node:child_process');
 const { promisify } = require('node:util');
 const extract = require('./unzip.cjs');
 const { artifactFor, validID, atomicJSON } = require('./core.cjs');
+const { requireFreeSpace, removeStaging } = require('./install-storage.cjs');
 const execute = promisify(execFile);
 
 // Versioned directories keep running executables untouched and retain the
@@ -25,6 +26,7 @@ async function installPackage({ app, archive, root, current, extractZip = extrac
   let entryName = artifact.entry;
   try {
     if (artifact.platform === 'linux' && artifact.file.endsWith('.AppImage')) {
+      await requireFreeSpace(temporary, artifact.size, 'install this app');
       await fs.copyFile(archive, path.join(temporary, artifact.entry));
       await fs.chmod(path.join(temporary, artifact.entry), 0o755);
     } else if (artifact.platform === 'macos' && artifact.file.endsWith('.dmg')) {
@@ -69,7 +71,10 @@ async function installPackage({ app, archive, root, current, extractZip = extrac
     await atomicJSON(path.join(temporary, '.private-store-release.json'), { sha256: artifact.sha256, entry: entryName });
     await fs.rename(temporary, directory);
     return result(entryName);
-  } catch (e) { await fs.rm(temporary, { recursive: true, force: true }); throw e; }
+  } catch (e) {
+    await removeStaging(temporary).catch(cleanup => console.warn('Could not remove incomplete install:', cleanup));
+    throw e;
+  }
 }
 async function executable(installed) {
   if (installed.platform !== 'macos') return installed.entry;

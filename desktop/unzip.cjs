@@ -5,12 +5,32 @@ const { promises: fs, createWriteStream } = process.versions.electron ? require(
 const path = require('node:path');
 const { pipeline } = require('node:stream/promises');
 const yauzl = require('yauzl');
+const { requireFreeSpace } = require('./install-storage.cjs');
+const maxEntries = 100000, maxSize = 5 * 2 ** 30;
+
+function openZip(file) {
+  return new Promise((resolve, reject) => yauzl.open(file, { lazyEntries: true, strictFileNames: true }, (error, value) => error ? reject(error) : resolve(value)));
+}
+
+async function checkZipSpace(file, dir) {
+  const zip = await openZip(file);
+  let bytes = 0;
+  try {
+    if (zip.entryCount > maxEntries) throw new Error('Archive contains too many entries.');
+    for await (const entry of zip.eachEntry()) {
+      bytes += entry.uncompressedSize;
+      if (bytes > maxSize) throw new Error('Expanded app exceeds the installation limit.');
+    }
+  } finally { zip.close(); }
+  await requireFreeSpace(dir, bytes, 'unpack this app');
+}
 
 // Extract files first and create validated symlinks last. No archive entry can
 // write through an earlier symlink, including macOS framework directory links.
 async function extractZip(file, { dir }) {
   dir = await fs.realpath(dir);
-  const zip = await new Promise((resolve, reject) => yauzl.open(file, { lazyEntries: true, strictFileNames: true }, (error, value) => error ? reject(error) : resolve(value)));
+  await checkZipSpace(file, dir);
+  const zip = await openZip(file);
   const links = [], seen = new Set(); let total = 0;
   const inside = location => location.startsWith(dir + path.sep);
   try {
@@ -19,9 +39,9 @@ async function extractZip(file, { dir }) {
       zip.on('entry', entry => {
         (async () => {
           const destination = path.resolve(dir, entry.fileName);
-          if (!inside(destination) || entry.fileName.includes('\\') || /^[A-Za-z]:/.test(entry.fileName) || seen.has(destination) || seen.size >= 100000) throw new Error('Unsafe or duplicate archive entry.');
+          if (!inside(destination) || entry.fileName.includes('\\') || /^[A-Za-z]:/.test(entry.fileName) || seen.has(destination) || seen.size >= maxEntries) throw new Error('Unsafe or duplicate archive entry.');
           seen.add(destination); total += entry.uncompressedSize;
-          if (total > 5 * 2 ** 30) throw new Error('Expanded app exceeds the installation limit.');
+          if (total > maxSize) throw new Error('Expanded app exceeds the installation limit.');
           const mode = entry.externalFileAttributes >>> 16, type = mode & 0o170000;
           if (type === 0o120000) {
             if (entry.uncompressedSize > 4096) throw new Error('Invalid archive symlink.');

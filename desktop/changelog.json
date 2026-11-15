@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "version": "0.1.7",
-  "versionCode": 8,
+  "version": "0.1.8",
+  "versionCode": 9,
   "changes": [
-    "Private Store is now Bazaar on desktop. Your installed apps, sign-in and update settings carry over."
+    "Bazaar checks disk space before downloading and unpacking apps, tells you how much space to free when it can, and keeps installs available to retry after a failure."
   ]
 }
