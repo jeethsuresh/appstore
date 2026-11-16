@@ -63,7 +63,8 @@ test('Linux shortcuts use the installed version’s catalog icon', async t => {
       return new Response(svg, { headers: { 'Content-Type': 'image/svg+xml; charset=utf-8' } });
     },
   });
-  assert.ok((await fs.readFile(shortcut, 'utf8')).includes('\nIcon=' + icon + '\n'));
+  const iconValue = icon.replaceAll('\\', '\\\\');
+  assert.ok((await fs.readFile(shortcut, 'utf8')).includes('\nIcon=' + iconValue + '\n'));
   assert.equal(await fs.readFile(icon, 'utf8'), svg);
 
   const unavailable = ['https://example.com/logo.svg', '/assets/example.svg'];
