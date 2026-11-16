@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "version": "0.1.8",
-  "versionCode": 9,
+  "version": "0.1.9",
+  "versionCode": 10,
   "changes": [
-    "Bazaar checks disk space before downloading and unpacking apps, tells you how much space to free when it can, and keeps installs available to retry after a failure."
+    "Bazaar adds the app's catalog icon to Linux shortcuts when you install or update an app."
   ]
 }

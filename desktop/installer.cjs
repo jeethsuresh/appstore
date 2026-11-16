@@ -2,9 +2,10 @@
 const fs = (process.versions.electron ? require('original-fs') : require('node:fs')).promises;
 const path = require('node:path');
 const { execFile } = require('node:child_process');
+const { randomUUID } = require('node:crypto');
 const { promisify } = require('node:util');
 const extract = require('./unzip.cjs');
-const { artifactFor, validID, atomicJSON } = require('./core.cjs');
+const { STORE_URL, artifactFor, validID, atomicJSON } = require('./core.cjs');
 const { requireFreeSpace, removeStaging } = require('./install-storage.cjs');
 const execute = promisify(execFile);
 
@@ -84,13 +85,43 @@ async function executable(installed) {
   return path.join(installed.entry, 'Contents', 'MacOS', name);
 }
 function quoteDesktop(value) { return '"' + value.replace(/[\\"`$]/g, c => '\\' + c) + '"'; }
-async function createShortcut({ app, installed, home, env = process.env }) {
+async function linuxShortcutIcon(logoUrl, entry, fetchLogo) {
+  const match = typeof logoUrl === 'string' && /^\/assets\/[a-z0-9-]+\.(png|svg)$/.exec(logoUrl);
+  if (!match) return '';
+  const [, extension] = match;
+  const destination = path.join(path.dirname(entry), '.bazaar-icon.' + extension);
+  const temporary = destination + '.' + randomUUID();
+  try {
+    const response = await fetchLogo(STORE_URL + logoUrl, { redirect: 'error', signal: AbortSignal.timeout(5000) });
+    const type = extension === 'png' ? 'image/png' : 'image/svg+xml';
+    if (!response.ok || !response.body || response.headers.get('content-type')?.split(';')[0] !== type) return '';
+    const chunks = [];
+    let size = 0;
+    for await (const chunk of response.body) {
+      size += chunk.byteLength;
+      if (size > 1024 * 1024) return '';
+      chunks.push(chunk);
+    }
+    if (!size) return '';
+    await fs.writeFile(temporary, Buffer.concat(chunks, size), { flag: 'wx' });
+    await fs.rename(temporary, destination);
+    // Icon is a Desktop Entry string value, independent of Exec quoting.
+    const escaped = destination.replace(/\\/g, '\\\\').replace(/\n/g, '\\n').replace(/\r/g, '\\r').replace(/\t/g, '\\t');
+    return 'Icon=' + escaped + '\n';
+  } catch {
+    return '';
+  } finally {
+    await fs.rm(temporary, { force: true }).catch(() => {});
+  }
+}
+async function createShortcut({ app, installed, home, env = process.env, fetchLogo = globalThis.fetch }) {
   if (!validID(app.id)) throw new Error('Invalid app identity.');
   const name = app.name.replace(/[\r\n]/g, ' ');
   if (installed.platform === 'linux') {
     const directory = path.join(env.XDG_DATA_HOME || path.join(home, '.local', 'share'), 'applications');
     await fs.mkdir(directory, { recursive: true });
-    await fs.writeFile(path.join(directory, `gravitas-${app.id}.desktop`), `[Desktop Entry]\nType=Application\nName=${name}\nExec=${quoteDesktop(installed.entry.replace(/%/g, '%%'))}\nTerminal=false\nCategories=Utility;\n`, { mode: 0o644 });
+    const icon = await linuxShortcutIcon(app.logoUrl, installed.entry, fetchLogo);
+    await fs.writeFile(path.join(directory, `gravitas-${app.id}.desktop`), `[Desktop Entry]\nType=Application\nName=${name}\nExec=${quoteDesktop(installed.entry.replace(/%/g, '%%'))}\n${icon}Terminal=false\nCategories=Utility;\n`, { mode: 0o644 });
   } else if (installed.platform === 'macos') {
     const directory = path.join(home, 'Applications');
     await fs.mkdir(directory, { recursive: true });

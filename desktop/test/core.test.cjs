@@ -45,6 +45,35 @@ test('checksum failure and truncated/oversized downloads leave no executable', a
     await assert.rejects(fs.access(destination));
   }
 });
+test('Linux shortcuts use the installed version’s catalog icon', async t => {
+  const temp = await fs.mkdtemp(path.join(os.tmpdir(), 'store-icon-'));
+  t.after(() => fs.rm(temp, { recursive: true, force: true }));
+  const versionDirectory = path.join(temp, 'release with spaces');
+  await fs.mkdir(versionDirectory);
+  const installed = { platform: 'linux', entry: path.join(versionDirectory, 'launch') };
+  const options = { app: { ...fixture(), logoUrl: '/assets/example.svg' }, installed, home: temp, env: {} };
+  const svg = '<svg xmlns="http://www.w3.org/2000/svg"/>';
+  const shortcut = path.join(temp, '.local/share/applications/gravitas-example.desktop');
+  const icon = path.join(versionDirectory, '.bazaar-icon.svg');
+  await createShortcut({
+    ...options,
+    fetchLogo: async (url, settings) => {
+      assert.equal(url, 'https://apps.gravitas.cool/assets/example.svg');
+      assert.equal(settings.redirect, 'error');
+      return new Response(svg, { headers: { 'Content-Type': 'image/svg+xml; charset=utf-8' } });
+    },
+  });
+  assert.ok((await fs.readFile(shortcut, 'utf8')).includes('\nIcon=' + icon + '\n'));
+  assert.equal(await fs.readFile(icon, 'utf8'), svg);
+
+  const unavailable = ['https://example.com/logo.svg', '/assets/example.svg'];
+  for (const logoUrl of unavailable) {
+    const fetchLogo = t.mock.fn(async () => new Response('not an image'));
+    await createShortcut({ ...options, app: { ...options.app, logoUrl }, fetchLogo });
+    assert.ok(!(await fs.readFile(shortcut, 'utf8')).includes('\nIcon='));
+    assert.equal(fetchLogo.mock.callCount(), logoUrl.startsWith('/') ? 1 : 0);
+  }
+});
 test('failed extraction never replaces an installed app or leaves a partial directory', async t => {
   const temp = await fs.mkdtemp(path.join(os.tmpdir(), 'store-test-')); t.after(() => fs.rm(temp, { recursive: true, force: true }));
   const app = fixture(); app.desktopRelease.artifacts[0] = { ...app.desktopRelease.artifacts[0], platform: 'windows', file: 'app.zip', entry: 'App.exe' };
