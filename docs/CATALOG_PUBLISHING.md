@@ -83,6 +83,20 @@ Publish on backend startup and retry if the Store is temporarily unavailable.
 To verify an onboarding, check the public `/apps/<id>` page and its logo, then
 check the expected verified release through the Store client.
 
+Registration creates the public description page automatically. To edit its
+description afterward, send the same `PUT /v1/catalog/{publisher}` API request
+with a higher `revision`, the updated `description`, and the complete app list
+(including unchanged entries and logos). Use the publisher's server-only bearer.
+The existing `/apps/<id>` page and client descriptions update together and
+survive Store restarts. This does not change release notes or require a new app
+release; omitted apps are withdrawn.
+
+Changelogs come from the notes on the matching published GitHub release, for
+both desktop and Android. Editing that release's notes is picked up by a release
+webhook or the next poll. Empty release bodies fall back to the verified Android
+`changelog.json` or desktop manifest's `changes`. These are separate from the
+app description supplied at registration.
+
 ## Account visibility in the Android Store
 
 A hosted app's backend is the source of its catalog. Store-owned listings are

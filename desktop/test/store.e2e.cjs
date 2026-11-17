@@ -26,7 +26,7 @@ test('desktop discovers compatible apps, signs in, installs, updates and stages 
       dialog.showMessageBox = async (_window, options) => { global.brokerPrompt = options; return { response: global.brokerDecision }; };
       const bytes = '#!/bin/sh\nexit 0\n';
       const artifact = { platform: 'linux', arch: 'x64', file: 'Example.AppImage', entry: 'Example.AppImage', size: Buffer.byteLength(bytes), sha256: digest };
-      global.fixtureApps = [{ id: 'example', name: 'Example', repository: 'owner/example', description: 'An independent desktop app.', desktopRelease: { schemaVersion: 1, version: '1.0.0', versionCode: 1, changes: ['A first release.'], artifacts: [artifact] } }];
+      global.fixtureApps = [{ id: 'example', name: 'Example', repository: 'owner/example', description: 'An independent desktop app.', desktopRelease: { schemaVersion: 1, version: '1.0.0', versionCode: 1, notes: '## GitHub release changes 🔥\n\n<script>window.executed = true</script>', changes: ['A first release.'], artifacts: [artifact] } }];
       const originalFetch = net.fetch;
       net.fetch = async (url, options) => {
         if (String(url).startsWith('https://gravitas.cool/')) {
@@ -55,7 +55,19 @@ test('desktop discovers compatible apps, signs in, installs, updates and stages 
     await page.screenshot({ path: path.join(__dirname, '..', 'test-results', 'desktop-catalog.png') });
     await expect(page.getByRole('button', { name: 'Install ↓' })).toBeDisabled();
     await page.getByRole('button', { name: 'App details' }).click();
+    await expect(page.locator('.release-notes')).toHaveText('## GitHub release changes 🔥\n\n<script>window.executed = true</script>');
+    await expect(page.locator('.release-notes')).toHaveCSS('white-space', 'pre-wrap');
+    await expect(page.getByText('An independent desktop app.')).toBeVisible();
+    await expect(page.getByText('A first release.')).toHaveCount(0);
+    expect(await page.evaluate(() => window.executed)).toBeUndefined();
+    await page.screenshot({ path: path.join(__dirname, '..', 'test-results', 'desktop-release-notes.png') });
+    await electron.evaluate(() => { global.fixtureApps[0].desktopRelease.notes = ''; });
+    await page.getByRole('button', { name: 'Check for updates' }).click();
     await expect(page.getByText('A first release.')).toBeVisible();
+    await electron.evaluate(() => { global.fixtureApps[0].desktopRelease.notes = 'Edited GitHub release notes.'; });
+    await page.getByRole('button', { name: 'Check for updates' }).click();
+    await expect(page.locator('.release-notes')).toHaveText('Edited GitHub release notes.');
+    await expect(page.getByText('An independent desktop app.')).toBeVisible();
     await page.getByRole('button', { name: 'Back to the collection' }).click();
     await page.getByLabel('Gravitas username').fill('desktop-user');
     await page.getByRole('button', { name: 'Sign in 🔥' }).click();

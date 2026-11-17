@@ -19,6 +19,7 @@ The Android client checks the exact callback origin/path, unique constant-time m
 ## Device endpoints
 
 - `GET /v1/apps`: visible apps and their latest verified release, if available. A release includes `id`, `tag`, `versionCode`, `versionName`, `sha256`, `size`, `minSdk`, `notes` and `createdAt`. Apps include their package and signing-certificate identity, display name, description and a public Store-relative `logoUrl`. An app with its own website includes `website`. Assets verified under a different configuration are hidden until reverified.
+- `notes` uses the matching GitHub release's body, refreshed by webhooks and polling. Empty bodies fall back to verified changelog entries. Desktop catalogs also expose `desktopRelease.notes` and mirror nonempty notes in `changes` for older clients. Notes are displayed as text; the app description comes from catalog registration and can be edited through the [catalog publication API](CATALOG_PUBLISHING.md#publish-and-update).
 - `GET /v1/releases/ID/apk`: authenticated APK bytes for the app's current release. Supports HTTP ranges. Refresh the catalog if a superseded release URL returns 404. The Android client verifies the expected size/hash, package, version and certificate before handing the APK to Android's installer.
 - `DELETE /v1/device`: immediately revokes the calling device, returning 204.
 

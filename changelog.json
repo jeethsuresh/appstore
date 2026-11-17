@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "version": "0.6.15",
-  "versionCode": 27,
+  "version": "0.6.16",
+  "versionCode": 28,
   "changes": [
-    "Bazaar recognizes the new Glyph package after installation and can check it for future updates. Glyph installs separately from Still Launcher, with its own layout and settings."
+    "App changelogs use the notes from their matching GitHub release. App descriptions remain separate and can be updated after registration."
   ]
 }

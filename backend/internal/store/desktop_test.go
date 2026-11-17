@@ -55,15 +55,18 @@ func TestDesktopIngestionIsolationImmutabilityAndRepair(t *testing.T) {
 	manifest := desktopFixture()
 	data, _ := json.Marshal(manifest)
 	badDownload := false
+	body := "## Desktop changelog\n\n- The matching release body 🔥"
+	downloads := 0
 	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case "/repos/owner/desktop/releases/latest":
 			fmt.Fprint(w, `{"tag_name":"v9.0.0","assets":[{"id":1,"name":"mobile.apk","size":8}]}`)
 		case "/repos/owner/desktop/releases":
-			fmt.Fprintf(w, `[{"tag_name":"desktop-v1.0.0","assets":[{"id":2,"name":"desktop-release.json","size":%d},{"id":3,"name":"Store-linux-x64.AppImage","size":8}]}]`, len(data))
+			fmt.Fprintf(w, `[{"tag_name":"desktop-v1.0.0","body":%q,"assets":[{"id":2,"name":"desktop-release.json","size":%d},{"id":3,"name":"Store-linux-x64.AppImage","size":8}]}]`, body, len(data))
 		case "/repos/owner/desktop/releases/assets/2":
 			w.Write(data)
 		case "/repos/owner/desktop/releases/assets/3":
+			downloads++
 			if badDownload {
 				fmt.Fprint(w, "badimage")
 			} else {
@@ -86,6 +89,24 @@ func TestDesktopIngestionIsolationImmutabilityAndRepair(t *testing.T) {
 	badDownload = false
 	if err := s.Sync(context.Background(), a, ""); err != nil {
 		t.Fatal(err)
+	}
+	body = "Edited desktop release notes\n<script>shown as text</script>"
+	if err := s.Sync(context.Background(), a, ""); err != nil {
+		t.Fatal("editing release prose changed the verified release:", err)
+	}
+	if rel, _ := s.latestDesktop(context.Background(), a); rel == nil || rel.Notes != body || rel.Changes[0] != manifest.Changes[0] || downloads != 2 {
+		t.Fatalf("notes refresh changed manifest or redownloaded artifact: %+v downloads=%d", rel, downloads)
+	}
+	w := request(s, "GET", "/v1/desktop/apps?platform=linux&arch=x64", "", "")
+	var catalog struct {
+		Apps []App `json:"apps"`
+	}
+	if err := json.Unmarshal(w.Body.Bytes(), &catalog); err != nil || len(catalog.Apps) != 1 || catalog.Apps[0].DesktopRelease.Notes != body || catalog.Apps[0].DesktopRelease.Changes[0] != body {
+		t.Fatalf("desktop clients did not receive release prose: %s, %v", w.Body.String(), err)
+	}
+	page := request(s, "GET", "/apps/desktop", "", "")
+	if page.Code != 200 || !strings.Contains(page.Body.String(), "Edited desktop release notes") || strings.Contains(page.Body.String(), "<script>shown as text</script>") || !strings.Contains(page.Body.String(), "&lt;script&gt;") {
+		t.Fatalf("desktop web notes were missing or unescaped: %d %s", page.Code, page.Body.String())
 	}
 	tok, id := enrollDevice(t, s)
 	if w := request(s, "GET", "/v1/apps", tok, ""); strings.Contains(w.Body.String(), `"id":"desktop"`) {
@@ -201,6 +222,45 @@ func TestLegacyDesktopAssetsNeedOnlyOneCatalogFlag(t *testing.T) {
 		t.Fatal("unverified legacy artifact accepted")
 	}
 }
+
+func TestLegacyDesktopNotesRefreshAfterUpgrade(t *testing.T) {
+	s := testServer(t)
+	a := App{ID: "reader", Name: "Reader", Repo: "owner/reader", Desktop: true}
+	s.cfg.Apps = append(s.cfg.Apps, a)
+	body := "Original release body"
+	downloads := 0
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/repos/owner/reader/releases":
+			fmt.Fprintf(w, `[{"tag_name":"v1.0.0","body":%q,"assets":[{"id":1,"name":"Reader-linux-x64.AppImage","size":8,"digest":"sha256:%s"}]}]`, body, hash("appimage"))
+		case "/repos/owner/reader/releases/assets/1":
+			downloads++
+			fmt.Fprint(w, "appimage")
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer upstream.Close()
+	s.api = upstream.URL
+	if err := s.Sync(context.Background(), a, ""); err != nil {
+		t.Fatal(err)
+	}
+	// Simulate a persisted manifest from the backend that put the body in Changes.
+	previous, _ := s.latestDesktop(context.Background(), a)
+	previous.Notes, previous.Changes = "", []string{body}
+	data, _ := json.Marshal(previous)
+	if _, err := s.db.Exec("UPDATE desktop_releases SET manifest=? WHERE app_id=?", data, a.ID); err != nil {
+		t.Fatal(err)
+	}
+	body = "Edited release body after upgrading Bazaar"
+	if err := s.Sync(context.Background(), a, ""); err != nil {
+		t.Fatal("legacy release migration:", err)
+	}
+	current, _ := s.latestDesktop(context.Background(), a)
+	if current == nil || current.Notes != body || downloads != 1 {
+		t.Fatalf("legacy notes edit did not preserve the verified download: %+v downloads=%d", current, downloads)
+	}
+}
 func TestDesktopEnrollmentUsesValidatedWebSessionAndRevocation(t *testing.T) {
 	s := nativeFixture(t)
 	if request(s, "POST", "/v1/auth/desktop/enroll", "", `{"deviceName":"Desktop"}`).Code != 403 {
@@ -293,8 +353,8 @@ func TestSharedRepoDesktopReleaseChannels(t *testing.T) {
 		case "/repos/owner/shared/releases":
 			fmt.Fprintf(w, `[
 				{"tag_name":"thornwake-desktop-v1.0.1","draft":true,"assets":[{"id":9,"name":"desktop-release.json","size":%d}]},
-				{"tag_name":"thornwake-desktop-v1.0.0","assets":[{"id":2,"name":"desktop-release.json","size":%d},{"id":5,"name":"Store-linux-x64.AppImage","size":8}]},
-				{"tag_name":"desktop-v1.0.0","assets":[{"id":3,"name":"desktop-release.json","size":%d},{"id":5,"name":"Store-linux-x64.AppImage","size":8}]}]`, len(data), len(data), len(data))
+				{"tag_name":"thornwake-desktop-v1.0.0","body":"Thornwake changes","assets":[{"id":2,"name":"desktop-release.json","size":%d},{"id":5,"name":"Store-linux-x64.AppImage","size":8}]},
+				{"tag_name":"desktop-v1.0.0","body":"Bazaar changes","assets":[{"id":3,"name":"desktop-release.json","size":%d},{"id":5,"name":"Store-linux-x64.AppImage","size":8}]}]`, len(data), len(data), len(data))
 		case "/repos/owner/shared/releases/assets/2", "/repos/owner/shared/releases/assets/3":
 			w.Write(data)
 		case "/repos/owner/shared/releases/assets/5":
@@ -314,6 +374,13 @@ func TestSharedRepoDesktopReleaseChannels(t *testing.T) {
 		got, err := s.latestDesktop(ctx, app)
 		if err != nil || got == nil || got.Tag != app.DesktopReleaseTagPrefix+"desktop-v1.0.0" {
 			t.Fatalf("%s release: got %+v, err %v", app.ID, got, err)
+		}
+		want := "Bazaar changes"
+		if app.ID == thornwake.ID {
+			want = "Thornwake changes"
+		}
+		if got.Notes != want {
+			t.Fatalf("%s received another app's release notes: %q", app.ID, got.Notes)
 		}
 	}
 	if desktopTrust(bazaar) == desktopTrust(thornwake) {

@@ -39,8 +39,11 @@ detected when an existing native package uses a different executable name.
 Windows NSIS payloads are extracted without running their installer or changing
 an existing installation's uninstall registry. Legacy versions use
 `major*1000000+minor*1000+patch`, with each component below 1000. Missing digests,
-ambiguous targets and unsupported packages fail ingestion. Legacy release bodies
-provide notes; absent bodies get a short version notice.
+ambiguous targets and unsupported packages fail ingestion. The matching GitHub
+release's body supplies the changelog for both legacy and manifest-based desktop
+releases. Empty bodies fall back to the manifest's `changes` or a short legacy
+version notice. Webhooks and polling refresh edited release notes while retaining
+the immutable version and verified artifacts.
 
 For other packaging or explicit version codes, publish `desktop-release.json`
 alongside the binaries. It is the preferred contract:

@@ -41,6 +41,7 @@ type DesktopRelease struct {
 	Changes       []string          `json:"changes"`
 	Artifacts     []DesktopArtifact `json:"artifacts"`
 	Tag           string            `json:"tag,omitempty"`
+	Notes         string            `json:"notes,omitempty"`
 }
 
 func desktopTrust(a App) string {
@@ -64,7 +65,7 @@ func parseDesktopManifest(data []byte, tag string) (*DesktopRelease, error) {
 	if len(data) > maxDesktopManifest || d.Decode(&rel) != nil || d.Decode(new(any)) != io.EOF {
 		return nil, errors.New("invalid desktop release manifest")
 	}
-	if rel.SchemaVersion != 1 || !desktopVersion.MatchString(rel.Version) || rel.VersionCode < 1 || rel.VersionCode > 9007199254740991 || (tag != "v"+rel.Version && tag != "desktop-v"+rel.Version) || rel.Tag != "" {
+	if rel.SchemaVersion != 1 || !desktopVersion.MatchString(rel.Version) || rel.VersionCode < 1 || rel.VersionCode > 9007199254740991 || (tag != "v"+rel.Version && tag != "desktop-v"+rel.Version) || rel.Tag != "" || rel.Notes != "" {
 		return nil, errors.New("desktop schema, version or tag mismatch")
 	}
 	// Reuse the exact plain-text changelog validation used for mobile releases.
@@ -249,13 +250,22 @@ func (s *Server) syncDesktop(ctx context.Context, a App, tag string) error {
 	if err != nil {
 		return err
 	}
-	data, _ := json.Marshal(next)
 	if current != nil && next.VersionCode <= current.VersionCode {
-		previous, _ := json.Marshal(current)
-		if next.VersionCode != current.VersionCode || !bytes.Equal(data, previous) {
+		// Release prose can be edited; the verified version and artifacts cannot.
+		previous := *current
+		previous.Notes = ""
+		if !hasManifest {
+			// Older generated manifests copied the release body into Changes.
+			previous.Changes = next.Changes
+		}
+		previousData, _ := json.Marshal(previous)
+		nextData, _ := json.Marshal(next)
+		if next.VersionCode != current.VersionCode || !bytes.Equal(nextData, previousData) {
 			return errors.New("desktop releases are immutable and cannot decrease version code")
 		}
 	}
+	next.Notes = releaseBodyNotes(rel.Body)
+	data, _ := json.Marshal(next)
 	for _, artifact := range next.Artifacts {
 		dest := filepath.Join(s.cfg.DataDir, "desktop", artifact.SHA256)
 		// The content-addressed cache is private to the backend; repair missing files.
@@ -301,7 +311,7 @@ func (s *Server) syncDesktop(ctx context.Context, a App, tag string) error {
 		}
 	}
 	// Publish the complete multi-platform release atomically, after every target verifies.
-	_, err = s.db.ExecContext(ctx, "INSERT INTO desktop_releases(app_id,version_code,manifest,config_hash) VALUES(?,?,?,?) ON CONFLICT(app_id,version_code) DO NOTHING", a.ID, next.VersionCode, data, desktopTrust(a))
+	_, err = s.db.ExecContext(ctx, "INSERT INTO desktop_releases(app_id,version_code,manifest,config_hash) VALUES(?,?,?,?) ON CONFLICT(app_id,version_code) DO UPDATE SET manifest=excluded.manifest,config_hash=excluded.config_hash", a.ID, next.VersionCode, data, desktopTrust(a))
 	return err
 }
 func (s *Server) desktopAsset(ctx context.Context, a App, rel githubRelease, name string, limit int64) ([]byte, error) {
@@ -342,6 +352,10 @@ func (s *Server) desktopCatalog(w http.ResponseWriter, r *http.Request) {
 				continue
 			}
 			selected := *rel
+			if selected.Notes != "" {
+				// Existing desktop clients read Changes rather than Notes.
+				selected.Changes = []string{selected.Notes}
+			}
 			selected.Artifacts = nil
 			for _, artifact := range rel.Artifacts {
 				if artifact.Platform == platform && artifact.Arch == arch {
@@ -528,17 +542,6 @@ func legacyDesktopManifest(a App, rel githubRelease) ([]byte, error) {
 	result := DesktopRelease{SchemaVersion: 1, Version: version, VersionCode: nums[0]*1000000 + nums[1]*1000 + nums[2], Changes: []string{"Published desktop release " + version + ". See the app repository for full release history."}}
 	if result.VersionCode == 0 {
 		return nil, errors.New("legacy version must be newer than 0.0.0")
-	}
-	if notes := strings.TrimSpace(rel.Body); notes != "" && len(notes) <= 2000 {
-		result.Changes = nil
-		for _, line := range strings.FieldsFunc(notes, func(r rune) bool { return r < ' ' }) {
-			if strings.TrimSpace(line) != "" {
-				result.Changes = append(result.Changes, strings.TrimSpace(line))
-			}
-		}
-		if len(result.Changes) > 50 {
-			result.Changes = result.Changes[:50]
-		}
 	}
 	for _, asset := range rel.Assets {
 		target := legacyDesktopTarget(asset.Name)

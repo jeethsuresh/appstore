@@ -39,7 +39,8 @@ function detail(app) {
   node.append(button('← Back to the collection', () => { selectedID = null; render(); }, 'text-button'));
   const identity = text('div', '', 'identity'); identity.append(icon(app), text('h2', app.name)); node.append(identity, text('p', app.description), installButton(app));
   const facts = text('div', '', 'facts'); facts.append(text('span', `${state.platform.platform} · ${state.platform.arch}`), text('span', `v${app.desktopRelease.version}`), text('span', size(app.desktopRelease.artifacts[0].size))); node.append(facts, text('h3', 'What’s new'));
-  const changes = document.createElement('ul'); app.desktopRelease.changes.forEach(change => changes.append(text('li', change))); node.append(changes);
+  if (app.desktopRelease.notes?.trim()) node.append(text('p', app.desktopRelease.notes, 'release-notes'));
+  else { const changes = document.createElement('ul'); app.desktopRelease.changes.forEach(change => changes.append(text('li', change))); node.append(changes); }
   node.append(text('p', `From ${app.repository}. Downloads are verified against the release checksum before installation. Apps install for your user; updating an open app takes effect the next time you launch it from Bazaar or its shortcut.`));
   return node;
 }
