@@ -46,8 +46,8 @@ plist="$app/Contents/Info.plist"
 [[ "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$plist")" == "cool.gravitas.thornwake" ]]
 [[ "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$plist")" == "$version" ]]
 library="$app/Contents/Frameworks/libthornwake_core.dylib"
-lipo -verify_arch arm64 x86_64 "$app/Contents/MacOS/Thornwake"
-lipo -verify_arch arm64 x86_64 "$library"
+lipo "$app/Contents/MacOS/Thornwake" -verify_arch arm64 x86_64
+lipo "$library" -verify_arch arm64 x86_64
 
 printf '%s' "$MAC_CERTIFICATE_P12_BASE64" | base64 -D > "$temp/cert.p12"
 printf '%s' "$MAC_NOTARY_KEY_BASE64" | base64 -D > "$temp/key.p8"
