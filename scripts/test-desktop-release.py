@@ -7,10 +7,69 @@ import sys
 from pathlib import Path
 import tempfile
 import unittest
+from unittest.mock import patch
 
 spec = importlib.util.spec_from_file_location("desktop_release", Path(__file__).with_name("desktop-release.py"))
 release = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(release)
+spec = importlib.util.spec_from_file_location("apple_timestamp", Path(__file__).with_name("package-with-apple-timestamp.py"))
+timestamp = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(timestamp)
+
+
+class AppleTimestampTest(unittest.TestCase):
+    command = ["npm", "run", "package", "--", "--mac", "--arm64", "--dir",
+               "-c.mac.identity=(WV3J3848JR)", "-c.mac.notarize=true"]
+
+    def runner(self, results):
+        calls = []
+        def run(command):
+            calls.append(command)
+            code, output = results[len(calls) - 1]
+            return subprocess.CompletedProcess(command, code, output)
+        return calls, run
+
+    def test_normal_success_does_not_resolve_or_retry(self):
+        calls, run = self.runner([(0, "Notarized")])
+        self.assertEqual(timestamp.package(self.command, run, lambda: self.fail("unexpected DNS")), 0)
+        self.assertEqual(calls, [self.command])
+
+    def test_only_missing_timestamps_trigger_fallback(self):
+        calls, run = self.runner([(7, "Signing identity missing")])
+        self.assertEqual(timestamp.package(self.command, run, lambda: self.fail("unexpected DNS")), 7)
+        self.assertEqual(len(calls), 1)
+
+    def test_cli_executes_the_command_and_preserves_failure(self):
+        result = subprocess.run([sys.executable, str(Path(__file__).with_name("package-with-apple-timestamp.py")),
+                                 "--", sys.executable, "-c", "print('signing fixture failed'); raise SystemExit(7)"],
+                                text=True, capture_output=True)
+        self.assertEqual(result.returncode, 7)
+        self.assertIn("signing fixture failed", result.stdout)
+
+    def test_ipv4_fallback_preserves_signing_notarization_and_has_bounded_attempts(self):
+        calls, run = self.runner([(1, timestamp.TIMESTAMP_ERROR), (1, timestamp.TIMESTAMP_ERROR), (0, "Notarized")])
+        self.assertEqual(timestamp.package(self.command, run, lambda: ["17.32.213.1", "17.32.213.1", "127.0.0.1", "17.179.249.1"]), 0)
+        self.assertEqual(calls[1], [*self.command, "-c.mac.timestamp=http://17.32.213.1/ts01"])
+        self.assertEqual(calls[2], [*self.command, "-c.mac.timestamp=http://17.179.249.1/ts01"])
+
+    def test_notarization_failure_after_retry_is_not_retried_or_accepted(self):
+        calls, run = self.runner([(1, timestamp.TIMESTAMP_ERROR), (9, "Notarization rejected")])
+        self.assertEqual(timestamp.package(self.command, run, lambda: ["17.32.213.1", "17.32.213.2"]), 9)
+        self.assertEqual(len(calls), 2)
+
+    def test_unavailable_or_untrusted_addresses_keep_signing_failed(self):
+        for addresses in [[], ["127.0.0.1"], ["invalid"]]:
+            calls, run = self.runner([(3, timestamp.TIMESTAMP_ERROR)])
+            self.assertEqual(timestamp.package(self.command, run, lambda: addresses), 3)
+            self.assertEqual(len(calls), 1)
+        calls, run = self.runner([(3, timestamp.TIMESTAMP_ERROR)])
+        with patch.object(timestamp.socket, "getaddrinfo", side_effect=OSError("DNS unavailable")):
+            self.assertEqual(timestamp.package(self.command, run), 3)
+
+    def test_no_more_than_three_ipv4_retries(self):
+        calls, run = self.runner([(4, timestamp.TIMESTAMP_ERROR)] * 4)
+        self.assertEqual(timestamp.package(self.command, run, lambda: [f"17.32.213.{i}" for i in range(1, 10)]), 4)
+        self.assertEqual(len(calls), 4)
 
 
 class DesktopReleaseTest(unittest.TestCase):

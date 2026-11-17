@@ -87,6 +87,12 @@ user namespaces are required. Published macOS builds use Apple Developer ID and
 carry a stapled Apple notarization ticket. Windows builds may require
 first-launch approval.
 
+If Apple timestamping fails with a missing-timestamp error, the macOS packager
+retries against up to three fresh IPv4 addresses resolved for Apple's timestamp
+host. Each retry retains the Developer ID identity, secure timestamp, hardened
+runtime and notarization requirements. Other signing or notarization errors
+still stop the release.
+
 The store signs in through an isolated, sandboxed Gravitas browser window. Its
 device credential is held in the main process and encrypted with the OS secret
 service when available. On desktops without secure storage, credentials remain
