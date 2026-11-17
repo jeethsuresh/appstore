@@ -10,9 +10,10 @@ const games = {
     id: 'ember-rest', name: 'Ember Rest', stem: 'EmberRest', bundle: 'cool.gravitas.emberrest',
     library: 'libember_core.dylib', frame: 'EMBER_FRAME', enter: true, replay: 'res://assets/validation.emberreplay',
     changes: [
-      'Smooth movement between simulation updates with continuous actor interpolation.',
-      'Keep the camera steady inside a movement dead zone and ease into follow motion beyond it.',
-      'Use a fixed camera angle and grounded walking animation with stable combat framing.',
+      'Remove whole-dungeon navigation stalls when enemies spawn or pursue moving players.',
+      'Batch enemy rendering, prepare models before encounters, and reuse bounded combat effects for smoother crowds.',
+      'Add curved weapon trails, impact poses, readable windups, critical numbers, pickup chimes and reactive health meters.',
+      'Follow macOS Reduce Motion by default and offer a saved calm-motion setting while retaining the steady camera and movement dead zone.',
     ],
   },
 };

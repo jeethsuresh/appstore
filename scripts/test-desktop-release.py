@@ -64,12 +64,12 @@ class ThornwakeReleaseTest(unittest.TestCase):
             self.assertEqual(artifact["size"], len(b"signed and stapled package"))
 
     def test_shared_publisher_preserves_ember_rest_metadata(self):
-        result, manifest = self.build_manifest({}, "1.0.1", "ember-rest")
+        result, manifest = self.build_manifest({}, "1.0.2", "ember-rest")
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual(manifest["version"], "1.0.1")
-        self.assertEqual(manifest["versionCode"], 1000001)
+        self.assertEqual(manifest["version"], "1.0.2")
+        self.assertEqual(manifest["versionCode"], 1000002)
         self.assertEqual(manifest["artifacts"][0]["entry"], "Ember Rest.app")
-        self.assertIn("continuous actor interpolation", manifest["changes"][0])
+        self.assertIn("navigation stalls", manifest["changes"][0])
         self.assertTrue(any("dead zone" in change for change in manifest["changes"]))
         self.assertEqual({a["arch"] for a in manifest["artifacts"]}, {"arm64", "x64"})
 
