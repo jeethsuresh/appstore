@@ -159,3 +159,18 @@ Native Flutter Linux bundles can use ZIPs with an explicit root executable entry
 Desktop Bazaar also supplies foreground Gravitas app sign-in. See
 [DESKTOP_SIGN_IN.md](DESKTOP_SIGN_IN.md) for the protocol, account upgrade and
 reusable Dart/Electron helpers.
+
+## Thornwake
+
+Thornwake is a separate, macOS-only desktop listing. Its shipped packages are
+universal builds from Rail Yard. Bazaar discovers them in the Appstore
+repository under `thornwake-desktop-vX.Y.Z`, using the same manifest and
+download verification as its other desktop listings.
+
+Stage the headlessly tested universal app ZIP as `Thornwake-unsigned.zip` on
+a draft with that tag. Dispatch **Sign and publish Thornwake** on main with
+the version and SHA-256 of the staged ZIP. The workflow signs both
+architectures in the existing macOS release environment, notarizes and
+staples the app, tests the installed build headlessly, and publishes the
+verified ZIP and desktop manifest. The draft input ZIP is removed before
+publication.
