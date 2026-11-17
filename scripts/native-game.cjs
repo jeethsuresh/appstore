@@ -10,10 +10,9 @@ const games = {
     id: 'ember-rest', name: 'Ember Rest', stem: 'EmberRest', bundle: 'cool.gravitas.emberrest',
     library: 'libember_core.dylib', frame: 'EMBER_FRAME', enter: true, replay: 'res://assets/validation.emberreplay',
     changes: [
-      'Explore 144-room regions with over sixteen times the previous floor area and six biomes.',
-      'Build around procedural equipment, enemy affixes, elemental immunities and fourteen modifiable abilities.',
-      'Inspect inventory, equipment, effective stats and skills with elemental particles and reactive sound.',
-      'Sign in with Gravitas to host or join two-to-four-player native co-op lobbies.',
+      'Smooth movement between simulation updates with continuous actor interpolation.',
+      'Keep the camera steady inside a movement dead zone and ease into follow motion beyond it.',
+      'Use a fixed camera angle and grounded walking animation with stable combat framing.',
     ],
   },
 };
