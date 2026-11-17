@@ -39,7 +39,7 @@ async function smoke() {
       assert.doesNotMatch(output, /SCRIPT ERROR|Parse Error|Battle engine|ERROR:/);
       return output;
     }
-    const output = run(['--solo', ...(game.enter ? ['--enter'] : []), '--smoke-view', '--until', '30', '--timeout', '30']);
+    const output = run(['--solo', ...(game.enter ? ['--enter'] : []), '--smoke-view', '--record', path.join(temp, 'installer-smoke.replay'), '--until', '30', '--timeout', '30']);
     assert.match(output, new RegExp(game.frame + ' 30'));
     if (game.replay) {
       assert.match(run(['--verify', game.replay]), /EMBER_REPLAY_OK 1800/);
