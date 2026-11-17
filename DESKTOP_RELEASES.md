@@ -70,6 +70,9 @@ are immutable. When migrating a legacy app to a manifest, continue increasing
 its existing inferred version code. Android codes and desktop codes remain
 independent. Release selection looks for matching assets, so a desktop tag
 never displaces the latest Android update.
+Within each desktop channel, discovery selects the highest stable numeric
+`major.minor.patch` version among the first 200 releases, regardless of GitHub's
+list order. Explicit tag syncs still select only the requested tag.
 
 The backend fetches every binary from the configured GitHub repository's asset
 API, verifies size and SHA-256, and exposes the release only when every artifact

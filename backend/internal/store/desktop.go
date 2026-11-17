@@ -123,6 +123,10 @@ func (s *Server) releaseMetadata(ctx context.Context, path string, limit int64) 
 	return data, nil
 }
 func (s *Server) findRelease(ctx context.Context, a App, tag string, matches func(githubRelease) bool) (githubRelease, error) {
+	return s.findReleaseWithPreference(ctx, a, tag, matches, nil)
+}
+
+func (s *Server) findReleaseWithPreference(ctx context.Context, a App, tag string, matches func(githubRelease) bool, prefer func(githubRelease, githubRelease) bool) (githubRelease, error) {
 	var rel githubRelease
 	// Desktop releases can follow an older GitHub /latest tag. Search the list
 	// and share it with mobile discovery for universal apps.
@@ -145,6 +149,7 @@ func (s *Server) findRelease(ctx context.Context, a App, tag string, matches fun
 			return rel, errors.New("stable release is missing this platform's assets")
 		}
 	}
+	found := false
 	for page := 1; page <= 4; page++ {
 		data, err := s.releaseMetadata(ctx, fmt.Sprintf("/repos/%s/releases?per_page=50&page=%d", a.Repo, page), 8<<20)
 		if err != nil {
@@ -156,12 +161,20 @@ func (s *Server) findRelease(ctx context.Context, a App, tag string, matches fun
 		}
 		for _, candidate := range releases {
 			if !candidate.Draft && !candidate.Prerelease && matches(candidate) {
-				return candidate, nil
+				if prefer == nil {
+					return candidate, nil
+				}
+				if !found || prefer(candidate, rel) {
+					rel, found = candidate, true
+				}
 			}
 		}
 		if len(releases) < 50 {
 			break
 		}
+	}
+	if found {
+		return rel, nil
 	}
 	return rel, errors.New("no published release has this platform's assets")
 }
@@ -219,9 +232,33 @@ func desktopReleaseMatches(a App, release githubRelease) bool {
 	return false
 }
 
+// GitHub's release list is not ordered by semantic version. Both tags have
+// already passed desktopReleaseMatches, including the app's channel prefix.
+func desktopReleaseNewer(a App, candidate, current githubRelease) bool {
+	version := func(tag string) []string {
+		tag = strings.TrimPrefix(tag, a.DesktopReleaseTagPrefix)
+		tag = strings.TrimPrefix(tag, "desktop-")
+		return strings.Split(strings.TrimPrefix(tag, "v"), ".")
+	}
+	next, previous := version(candidate.Tag), version(current.Tag)
+	for i := range next {
+		// Canonical decimal components compare by length, then lexically,
+		// without overflowing on a large, otherwise valid version number.
+		if len(next[i]) != len(previous[i]) {
+			return len(next[i]) > len(previous[i])
+		}
+		if next[i] != previous[i] {
+			return next[i] > previous[i]
+		}
+	}
+	return false
+}
+
 func (s *Server) syncDesktop(ctx context.Context, a App, tag string) error {
-	rel, err := s.findRelease(ctx, a, tag, func(r githubRelease) bool {
+	rel, err := s.findReleaseWithPreference(ctx, a, tag, func(r githubRelease) bool {
 		return desktopReleaseMatches(a, r)
+	}, func(candidate, current githubRelease) bool {
+		return desktopReleaseNewer(a, candidate, current)
 	})
 	if err != nil {
 		return err
