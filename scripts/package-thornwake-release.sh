@@ -13,12 +13,7 @@ output="${3:?Supply the output directory}"
 : "${MAC_NOTARY_ISSUER_ID:?Missing notarization issuer ID}"
 
 temp="$(mktemp -d)"
-keychain="$temp/signing.keychain-db"
-cleanup() {
-  security delete-keychain "$keychain" >/dev/null 2>&1 || true
-  rm -rf "$temp"
-}
-trap cleanup EXIT
+trap 'rm -rf "$temp"' EXIT
 python3 - "$archive" <<'PY'
 from pathlib import PurePosixPath
 from zipfile import ZipFile
@@ -49,20 +44,10 @@ library="$app/Contents/Frameworks/libthornwake_core.dylib"
 lipo "$app/Contents/MacOS/Thornwake" -verify_arch arm64 x86_64
 lipo "$library" -verify_arch arm64 x86_64
 
-printf '%s' "$MAC_CERTIFICATE_P12_BASE64" | base64 -D > "$temp/cert.p12"
+APP_BUILDER_TMP_DIR="$temp" node "$(dirname "$0")/sign-thornwake.cjs" "$app"
+unset MAC_CERTIFICATE_P12_BASE64 MAC_CERTIFICATE_PASSWORD
 printf '%s' "$MAC_NOTARY_KEY_BASE64" | base64 -D > "$temp/key.p8"
-unset MAC_CERTIFICATE_P12_BASE64 MAC_NOTARY_KEY_BASE64
-key_password="$(openssl rand -hex 24)"
-security create-keychain -p "$key_password" "$keychain"
-security unlock-keychain -p "$key_password" "$keychain"
-security set-keychain-settings -t 3600 "$keychain"
-security import "$temp/cert.p12" -k "$keychain" -P "$MAC_CERTIFICATE_PASSWORD" -T /usr/bin/codesign
-security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$key_password" "$keychain" >/dev/null
-unset MAC_CERTIFICATE_PASSWORD key_password
-identity="$(security find-identity -v -p codesigning "$keychain" | awk '/Developer ID Application:.*\(WV3J3848JR\)/ {print $2}')"
-[[ "$identity" =~ ^[0-9A-F]{40}$ ]]
-codesign --keychain "$keychain" --force --timestamp --options runtime --sign "$identity" "$library"
-codesign --keychain "$keychain" --force --timestamp --options runtime --sign "$identity" "$app"
+unset MAC_NOTARY_KEY_BASE64
 codesign --verify --deep --strict "$app"
 mkdir -p "$output"
 filename="Thornwake-$version-mac-universal.zip"
