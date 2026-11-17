@@ -1,0 +1,124 @@
+name: Sign and publish Thornwake
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Thornwake version staged in the draft release
+        required: true
+        type: string
+      digest:
+        description: SHA-256 of Thornwake-unsigned.zip
+        required: true
+        type: string
+permissions:
+  contents: read
+concurrency:
+  group: thornwake-desktop-release
+  cancel-in-progress: false
+jobs:
+  intake:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    timeout-minutes: 10
+    steps:
+      - name: Download exact staged draft package
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_VERSION: ${{ inputs.version }}
+          RELEASE_DIGEST: ${{ inputs.digest }}
+        run: |
+          set -euo pipefail
+          [[ "$RELEASE_VERSION" =~ ^(0|[1-9][0-9]{0,2})\.(0|[1-9][0-9]{0,2})\.(0|[1-9][0-9]{0,2})$ ]]
+          [[ "$RELEASE_DIGEST" =~ ^[a-f0-9]{64}$ ]]
+          tag="thornwake-desktop-v$RELEASE_VERSION"
+          [[ "$(gh release view "$tag" --json isDraft --jq .isDraft)" == true ]]
+          gh release download "$tag" --pattern Thornwake-unsigned.zip --dir "$RUNNER_TEMP"
+          printf '%s  %s\n' "$RELEASE_DIGEST" "$RUNNER_TEMP/Thornwake-unsigned.zip" | shasum -a 256 -c -
+      - uses: actions/upload-artifact@v4
+        with:
+          name: unsigned-thornwake
+          path: ${{ runner.temp }}/Thornwake-unsigned.zip
+          if-no-files-found: error
+  sign:
+    needs: intake
+    runs-on: macos-15
+    environment: macos-release
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        with:
+          name: unsigned-thornwake
+          path: ${{ runner.temp }}
+      - name: Verify the staged ZIP again on the signing runner
+        env:
+          RELEASE_DIGEST: ${{ inputs.digest }}
+        run: printf '%s  %s\n' "$RELEASE_DIGEST" "$RUNNER_TEMP/Thornwake-unsigned.zip" | shasum -a 256 -c -
+      - name: Sign and notarize the two-architecture build
+        env:
+          RELEASE_VERSION: ${{ inputs.version }}
+          MAC_CERTIFICATE_P12_BASE64: ${{ secrets.MAC_CERTIFICATE_P12_BASE64 }}
+          MAC_CERTIFICATE_PASSWORD: ${{ secrets.MAC_CERTIFICATE_PASSWORD }}
+          MAC_NOTARY_KEY_BASE64: ${{ secrets.MAC_NOTARY_KEY_BASE64 }}
+          MAC_NOTARY_KEY_ID: ${{ secrets.MAC_NOTARY_KEY_ID }}
+          MAC_NOTARY_ISSUER_ID: ${{ secrets.MAC_NOTARY_ISSUER_ID }}
+        run: scripts/package-thornwake-release.sh "$RELEASE_VERSION" "$RUNNER_TEMP/Thornwake-unsigned.zip" "$RUNNER_TEMP/thornwake"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: notarized-thornwake
+          path: ${{ runner.temp }}/thornwake/
+          if-no-files-found: error
+  smoke:
+    needs: sign
+    strategy:
+      matrix:
+        runner: [macos-15, macos-15-intel]
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: desktop/package-lock.json
+      - run: npm --prefix desktop ci --ignore-scripts
+      - uses: actions/download-artifact@v4
+        with:
+          name: notarized-thornwake
+          path: release
+      - name: Install through Bazaar and launch headlessly
+        run: node scripts/smoke-thornwake-release.cjs release
+  publish:
+    needs: smoke
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    timeout-minutes: 10
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: notarized-thornwake
+          path: release
+      - name: Verify draft downloads and publish the stable release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          tag="thornwake-desktop-v$RELEASE_VERSION"
+          [[ "$(gh release view "$tag" --json isDraft --jq .isDraft)" == true ]]
+          gh release upload "$tag" release/desktop-release.json release/Thornwake-*-mac-universal.zip --clobber
+          gh release download "$tag" --pattern desktop-release.json --pattern 'Thornwake-*-mac-universal.zip' --dir round-trip
+          cmp release/desktop-release.json round-trip/desktop-release.json
+          cmp release/Thornwake-*-mac-universal.zip round-trip/Thornwake-*-mac-universal.zip
+          gh release delete-asset "$tag" Thornwake-unsigned.zip --yes
+          gh release edit "$tag" --draft=false --latest=false

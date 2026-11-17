@@ -161,5 +161,16 @@
     "releaseTagPrefix": "webview-v",
     "logoUrl": "/assets/news.svg",
     "website": "https://news.gravitas.cool"
+  },
+  {
+    "id": "thornwake",
+    "name": "Thornwake",
+    "repository": "jeethsuresh/appstore",
+    "desktop": true,
+    "desktopReleaseTagPrefix": "thornwake-",
+    "macOSNotarizedFrom": 1001000,
+    "description": "Lead woodland factions across cel-shaded battlefields. Play solo or sign in with Gravitas to host and join online lobbies for up to three players.",
+    "logoUrl": "/assets/thornwake.png",
+    "website": "https://games.gravitas.cool"
   }
 ]

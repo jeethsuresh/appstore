@@ -281,3 +281,42 @@ func TestUniversalDiscoverySharesRequestsAndRefreshesNextPoll(t *testing.T) {
 		t.Fatal("desktop-only app followed stale /latest", err, rel.Tag, requests)
 	}
 }
+
+func TestSharedRepoDesktopReleaseChannels(t *testing.T) {
+	s := testServer(t)
+	bazaar := App{ID: "appstore", Repo: "owner/shared", Desktop: true}
+	thornwake := App{ID: "thornwake", Repo: bazaar.Repo, Desktop: true, DesktopReleaseTagPrefix: "thornwake-"}
+	manifest := desktopFixture()
+	data, _ := json.Marshal(manifest)
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/repos/owner/shared/releases":
+			fmt.Fprintf(w, `[
+				{"tag_name":"thornwake-desktop-v1.0.1","draft":true,"assets":[{"id":9,"name":"desktop-release.json","size":%d}]},
+				{"tag_name":"thornwake-desktop-v1.0.0","assets":[{"id":2,"name":"desktop-release.json","size":%d},{"id":5,"name":"Store-linux-x64.AppImage","size":8}]},
+				{"tag_name":"desktop-v1.0.0","assets":[{"id":3,"name":"desktop-release.json","size":%d},{"id":5,"name":"Store-linux-x64.AppImage","size":8}]}]`, len(data), len(data), len(data))
+		case "/repos/owner/shared/releases/assets/2", "/repos/owner/shared/releases/assets/3":
+			w.Write(data)
+		case "/repos/owner/shared/releases/assets/5":
+			fmt.Fprint(w, "appimage")
+		default:
+			t.Error("unexpected upstream path", r.URL.Path)
+			http.NotFound(w, r)
+		}
+	}))
+	defer upstream.Close()
+	s.api = upstream.URL
+	ctx := context.Background()
+	for _, app := range []App{bazaar, thornwake} {
+		if err := s.Sync(ctx, app, ""); err != nil {
+			t.Fatal(err)
+		}
+		got, err := s.latestDesktop(ctx, app)
+		if err != nil || got == nil || got.Tag != app.DesktopReleaseTagPrefix+"desktop-v1.0.0" {
+			t.Fatalf("%s release: got %+v, err %v", app.ID, got, err)
+		}
+	}
+	if desktopTrust(bazaar) == desktopTrust(thornwake) {
+		t.Fatal("distinct release channels have a shared trust identity")
+	}
+}

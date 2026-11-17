@@ -31,6 +31,7 @@ type App struct {
 	IOSURL                            string           `json:"iosUrl,omitempty"`
 	Desktop                           bool             `json:"desktop,omitempty"`
 	MacOSNotarizedFrom                int64            `json:"macOSNotarizedFrom,omitempty"`
+	DesktopReleaseTagPrefix           string           `json:"desktopReleaseTagPrefix,omitempty"`
 	DesktopRelease                    *DesktopRelease  `json:"desktopRelease,omitempty"`
 	Release                           *Release         `json:"release,omitempty"`
 	Notifications                     *NotificationApp `json:"notifications,omitempty"`
@@ -127,6 +128,8 @@ var (
 	releasePrefixPattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$`)
 )
 
+var desktopTagPrefixPattern = regexp.MustCompile(`^[a-z][a-z0-9-]{1,30}-$`)
+
 var hexDigest = regexp.MustCompile(`^[a-f0-9]{64}$`)
 
 func validateApp(a *App) error {
@@ -135,6 +138,7 @@ func validateApp(a *App) error {
 		(a.Package == "" && !a.Desktop && a.IOS == "") ||
 		(a.Package != "" && (!packagePattern.MatchString(a.Package) || !strings.HasSuffix(a.Asset, ".apk"))) ||
 		(a.ReleaseTagPrefix != "" && (a.Package == "" || !releasePrefixPattern.MatchString(a.ReleaseTagPrefix))) ||
+		(a.DesktopReleaseTagPrefix != "" && (!a.Desktop || !desktopTagPrefixPattern.MatchString(a.DesktopReleaseTagPrefix) || a.DesktopReleaseTagPrefix == "desktop-")) ||
 		strings.ContainsAny(a.Asset, "/\\") ||
 		(a.Package == "" && (a.Asset != "" || a.Certificate != "" || a.Notifications != nil)) ||
 		(a.Certificate != "" && !hexDigest.MatchString(a.Certificate)) {
@@ -157,12 +161,14 @@ func LoadApps(path string) ([]App, error) {
 	}
 	seen := map[string]bool{}
 	packages := map[string]bool{}
+	desktopSources := map[string]bool{}
 	for i := range apps {
 		a := &apps[i]
 		if err := validateApp(a); err != nil {
 			return nil, err
 		}
-		if seen[a.ID] || (a.Package != "" && packages[a.Package]) {
+		desktopSource := strings.ToLower(a.Repo) + "/" + a.DesktopReleaseTagPrefix
+		if seen[a.ID] || (a.Package != "" && packages[a.Package]) || (a.Desktop && desktopSources[desktopSource]) {
 			return nil, fmt.Errorf("duplicate app configuration: %s", a.ID)
 		}
 		if err := validateBranding(*a); err != nil {
@@ -171,6 +177,9 @@ func LoadApps(path string) ([]App, error) {
 		a.catalogHost = catalogOriginHost(a.Website)
 		seen[a.ID] = true
 		packages[a.Package] = true
+		if a.Desktop {
+			desktopSources[desktopSource] = true
+		}
 	}
 	return apps, nil
 }

@@ -309,7 +309,7 @@ func (s *Server) publishCatalog(w http.ResponseWriter, r *http.Request) {
 }
 
 func validatePublishedEntry(entry *catalogEntry) error {
-	if entry.ManualGlobal || entry.LogoURL != "" || entry.Release != nil || entry.DesktopRelease != nil || entry.Notifications != nil {
+	if entry.ManualGlobal || entry.DesktopReleaseTagPrefix != "" || entry.LogoURL != "" || entry.Release != nil || entry.DesktopRelease != nil || entry.Notifications != nil {
 		return errors.New("catalog entries cannot set Store-managed fields")
 	}
 	if err := validateApp(&entry.App); err != nil {

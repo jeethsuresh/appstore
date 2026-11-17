@@ -43,7 +43,13 @@ type DesktopRelease struct {
 	Tag           string            `json:"tag,omitempty"`
 }
 
-func desktopTrust(a App) string { return hash(a.Repo + "\x00desktop-release-v1") }
+func desktopTrust(a App) string {
+	source := a.Repo + "\x00desktop-release-v1"
+	if a.DesktopReleaseTagPrefix != "" {
+		source += "\x00" + a.DesktopReleaseTagPrefix
+	}
+	return hash(source)
+}
 func validTarget(platform, arch string) bool {
 	return (platform == "macos" || platform == "windows" || platform == "linux") && (arch == "x64" || arch == "arm64")
 }
@@ -192,14 +198,29 @@ func (s *Server) latestDesktop(ctx context.Context, a App) (*DesktopRelease, err
 	err = json.Unmarshal(data, &rel)
 	return &rel, err
 }
+func desktopReleaseMatches(a App, release githubRelease) bool {
+	tag, tagged := strings.CutPrefix(release.Tag, a.DesktopReleaseTagPrefix)
+	if !tagged {
+		return false
+	}
+	version, stable := strings.CutPrefix(tag, "desktop-v")
+	if !stable {
+		version, stable = strings.CutPrefix(tag, "v")
+	}
+	if !stable || !desktopVersion.MatchString(version) {
+		return false
+	}
+	for _, asset := range release.Assets {
+		if asset.Name == "desktop-release.json" || (a.DesktopReleaseTagPrefix == "" && legacyDesktopTarget(asset.Name) != "") {
+			return true
+		}
+	}
+	return false
+}
+
 func (s *Server) syncDesktop(ctx context.Context, a App, tag string) error {
 	rel, err := s.findRelease(ctx, a, tag, func(r githubRelease) bool {
-		for _, v := range r.Assets {
-			if v.Name == "desktop-release.json" || legacyDesktopTarget(v.Name) != "" {
-				return true
-			}
-		}
-		return false
+		return desktopReleaseMatches(a, r)
 	})
 	if err != nil {
 		return err
@@ -219,10 +240,11 @@ func (s *Server) syncDesktop(ctx context.Context, a App, tag string) error {
 	if err != nil {
 		return err
 	}
-	next, err := parseDesktopManifest(manifest, rel.Tag)
+	next, err := parseDesktopManifest(manifest, strings.TrimPrefix(rel.Tag, a.DesktopReleaseTagPrefix))
 	if err != nil {
 		return err
 	}
+	next.Tag = rel.Tag
 	current, err := s.latestDesktop(ctx, a)
 	if err != nil {
 		return err
