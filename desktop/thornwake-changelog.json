@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "version": "1.2.0",
+  "versionCode": 1002000,
+  "changes": [
+    "Selected units appear as individual portraits with health bars. Click a portrait to select it, or Shift-click to remove it from the selection.",
+    "Build, train, and use abilities through an icon grid. Hover for descriptions, resource costs, shortcuts, and requirements.",
+    "Squirrels visibly gather food and water, carry bundles and pails to Burrow Halls, and unload before repeating the trip. Water is credited on delivery.",
+    "Cows and sheep replace hares in pens and wild herds, with distinct models and portraits.",
+    "Multiplayer players need matching 1.2.0 game builds."
+  ]
+}
