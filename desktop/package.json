@@ -41,7 +41,8 @@
         "zip"
       ],
       "category": "public.app-category.utilities",
-      "identity": "-"
+      "identity": "-",
+      "sign": "./macos-sign.cjs"
     },
     "win": {
       "target": [
