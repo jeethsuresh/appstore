@@ -1,7 +1,7 @@
 'use strict';
 
 const assert = require('node:assert/strict');
-const { execFileSync } = require('node:child_process');
+const { execFileSync, spawnSync } = require('node:child_process');
 const { createHash } = require('node:crypto');
 const { promises: fs } = require('node:fs');
 const os = require('node:os');
@@ -30,11 +30,20 @@ async function smoke() {
     execFileSync('/usr/bin/codesign', ['--verify', '-R', '=' + appleIdentity, installed.entry], { stdio: 'inherit' });
     execFileSync('/usr/bin/xcrun', ['stapler', 'validate', installed.entry], { stdio: 'inherit' });
     execFileSync('/usr/sbin/spctl', ['--assess', '--type', 'execute', '--verbose=2', installed.entry], { stdio: 'inherit' });
-    const output = execFileSync(await executable(installed),
-      ['--headless', '--', '--solo', ...(game.enter ? ['--enter'] : []), '--smoke-view', '--until', '30', '--timeout', '30'],
-      { cwd: temp, encoding: 'utf8', timeout: 40000 });
+    const program = await executable(installed);
+    function run(args) {
+      const process = spawnSync(program, ['--headless', '--', ...args],
+        { cwd: temp, encoding: 'utf8', timeout: 60000 });
+      const output = (process.stdout || '') + (process.stderr || '');
+      assert.equal(process.status, 0, output || process.error?.message);
+      assert.doesNotMatch(output, /SCRIPT ERROR|Parse Error|Battle engine|ERROR:/);
+      return output;
+    }
+    const output = run(['--solo', ...(game.enter ? ['--enter'] : []), '--smoke-view', '--until', '30', '--timeout', '30']);
     assert.match(output, new RegExp(game.frame + ' 30'));
-    assert.doesNotMatch(output, /SCRIPT ERROR|Battle engine/);
+    if (game.replay) {
+      assert.match(run(['--verify', game.replay]), /EMBER_REPLAY_OK 1800/);
+    }
     console.log('Bazaar installed and launched verified ' + game.name + ' on ' + current.arch);
   } finally {
     await fs.rm(temp, { recursive: true, force: true });

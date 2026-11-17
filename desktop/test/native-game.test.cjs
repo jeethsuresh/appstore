@@ -19,6 +19,7 @@ test('native signing metadata matches independently versioned Bazaar listings', 
   assert.equal(game().id, 'thornwake');
   assert.equal(game('ember-rest').name, 'Ember Rest');
   assert.equal(game('ember-rest').stem, 'EmberRest');
+  assert.equal(game('ember-rest').replay, 'res://assets/validation.emberreplay');
   assert.throws(() => game('../unsafe'));
   assert.throws(() => game('__proto__'));
 });

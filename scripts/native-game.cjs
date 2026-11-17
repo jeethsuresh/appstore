@@ -8,7 +8,7 @@ const games = {
   },
   'ember-rest': {
     id: 'ember-rest', name: 'Ember Rest', stem: 'EmberRest', bundle: 'cool.gravitas.emberrest',
-    library: 'libember_core.dylib', frame: 'EMBER_FRAME', enter: true,
+    library: 'libember_core.dylib', frame: 'EMBER_FRAME', enter: true, replay: 'res://assets/validation.emberreplay',
     changes: [
       'Explore 144-room regions with over sixteen times the previous floor area and six biomes.',
       'Build around procedural equipment, enemy affixes, elemental immunities and fourteen modifiable abilities.',
