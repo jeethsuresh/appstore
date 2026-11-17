@@ -145,7 +145,7 @@ async function install(id) {
     });
     progress = { id, fraction: 1, phase: 'Installing' }; publish();
     const next = await installPackage({ app: selected, archive: download, root, current });
-    await createShortcut({ app: selected, installed: next, home: os.homedir() });
+    await createShortcut({ app: selected, installed: next, home: os.homedir(), fetchLogo: net.fetch.bind(net) });
     await persist({ id, record: next });
   } catch (e) { throw installError(e); }
   finally {
@@ -229,7 +229,7 @@ app.whenReady().then(async () => {
     try { return await actions[name](value); } catch (e) { error = e.message; publish(); throw e; }
   });
   function createWindow() {
-    window = new BrowserWindow({ title: 'Bazaar', width: 1180, height: 820, minWidth: 760, minHeight: 600, backgroundColor: '#f5f4ee', webPreferences: { preload: path.join(__dirname, 'preload.cjs'), contextIsolation: true, sandbox: true, nodeIntegration: false } });
+    window = new BrowserWindow({ title: 'Bazaar', icon: path.join(__dirname, 'assets', 'icon.png'), width: 1180, height: 820, minWidth: 760, minHeight: 600, backgroundColor: '#f5f4ee', webPreferences: { preload: path.join(__dirname, 'preload.cjs'), contextIsolation: true, sandbox: true, nodeIntegration: false } });
     window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
     window.webContents.on('will-navigate', event => event.preventDefault());
     window.webContents.session.setPermissionRequestHandler((_wc, _permission, answer) => answer(false));

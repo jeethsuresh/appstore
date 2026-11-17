@@ -1,8 +1,8 @@
 {
   "name": "private-store",
   "productName": "Bazaar",
-  "version": "0.1.8",
-  "versionCode": 9,
+  "version": "0.1.9",
+  "versionCode": 10,
   "description": "Your Gravitas apps for desktop",
   "author": "Jeeth Suresh",
   "private": true,
