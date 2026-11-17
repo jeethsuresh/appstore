@@ -167,6 +167,10 @@ universal builds from Rail Yard. Bazaar discovers them in the Appstore
 repository under `thornwake-desktop-vX.Y.Z`, using the same manifest and
 download verification as its other desktop listings.
 
+Update `desktop/thornwake-changelog.json` with the game version, its numeric
+version code (`major * 1000000 + minor * 1000 + patch`), and user-facing notes.
+The publisher validates and copies these notes into the release manifest.
+
 Stage the headlessly tested universal app ZIP as `Thornwake-unsigned.zip` on
 a draft with that tag. Dispatch **Sign and publish Thornwake** on main with
 the version and SHA-256 of the staged ZIP. The workflow signs both

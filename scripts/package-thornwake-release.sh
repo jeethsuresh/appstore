@@ -60,7 +60,7 @@ codesign --verify --deep --strict "$app"
 spctl --assess --type execute --verbose=2 "$app"
 rm "$output/$filename"
 ditto -c -k --sequesterRsrc --keepParent "$app" "$output/$filename"
-python3 - "$output" "$filename" "$version" <<'PY'
+python3 - "$output" "$filename" "$version" "$(dirname "$0")/../desktop/thornwake-changelog.json" <<'PY'
 from pathlib import Path
 import hashlib, json, sys
 out, file, version = Path(sys.argv[1]), sys.argv[2], sys.argv[3]
@@ -68,11 +68,20 @@ binary = out / file
 major, minor, patch = map(int, version.split("."))
 with binary.open("rb") as stream:
     digest = hashlib.file_digest(stream, "sha256").hexdigest()
+notes = Path(sys.argv[4]).read_bytes()
+if len(notes) > 32000:
+    raise ValueError("Thornwake changelog exceeds the size limit")
+changelog = json.loads(notes)
+version_code = major * 1_000_000 + minor * 1000 + patch
+if (changelog.get("schemaVersion"), changelog.get("version"), changelog.get("versionCode")) != (1, version, version_code):
+    raise ValueError("Thornwake changelog must match the release version and versionCode")
+changes = changelog.get("changes")
+if not isinstance(changes, list) or not 1 <= len(changes) <= 50 or any(
+    not isinstance(c, str) or not c.strip() or len(c.encode()) > 2000 or any(ord(x) < 32 for x in c) for c in changes
+):
+    raise ValueError("Thornwake changes must be nonempty plain-text strings")
 manifest = {
-    "schemaVersion": 1,
-    "version": version,
-    "versionCode": major * 1_000_000 + minor * 1000 + patch,
-    "changes": ["Sign in with Gravitas and host or join native Thornwake multiplayer lobbies."],
+    **changelog,
     "artifacts": [{"platform": "macos", "arch": arch, "file": file, "entry": "Thornwake.app",
                    "sha256": digest, "size": binary.stat().st_size} for arch in ("arm64", "x64")],
 }
