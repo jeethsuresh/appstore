@@ -25,5 +25,5 @@ app_dir=mac
 if [ "$arch" = arm64 ]; then app_dir=mac-arm64; fi
 product_name="$(node -p 'require("./package.json").productName')"
 app="dist/$app_dir/$product_name.app"
-python3 ../scripts/package-with-apple-timestamp.py -- npm run package -- --mac "--$arch" --dir -c.mac.identity='(WV3J3848JR)' -c.mac.notarize=true
+npm run package -- --mac "--$arch" --dir -c.mac.identity='(WV3J3848JR)' -c.mac.notarize=true
 ditto -c -k --sequesterRsrc --keepParent "$app" "dist/PrivateStore-$version-mac-$arch.zip"
