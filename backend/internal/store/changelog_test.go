@@ -9,6 +9,7 @@ import (
 	"strings"
 	"sync/atomic"
 	"testing"
+	"unicode/utf8"
 )
 
 func TestChangelogNotesValidation(t *testing.T) {
@@ -38,7 +39,7 @@ func TestChangelogNotesValidation(t *testing.T) {
 }
 
 func TestChangelogIngestionAndExistingClientNotes(t *testing.T) {
-	for _, scenario := range []string{"valid", "legacy", "wrong-version", "bad-digest", "bad-size", "duplicate", "malformed", "unavailable"} {
+	for _, scenario := range []string{"valid", "legacy", "release-body", "wrong-version", "bad-digest", "bad-size", "duplicate", "malformed", "unavailable"} {
 		t.Run(scenario, func(t *testing.T) {
 			s := testServer(t)
 			a := s.cfg.Apps[0]
@@ -58,6 +59,13 @@ func TestChangelogIngestionAndExistingClientNotes(t *testing.T) {
 				size++
 			}
 			var apkDownloads atomic.Int64
+			body := ""
+			if scenario == "legacy" || scenario == "release-body" {
+				body = "## What changed\n\n- Notes from this GitHub release 🔥\n<script>plain text</script>"
+			}
+			if scenario == "bad-digest" {
+				body = "Release prose must not bypass asset verification."
+			}
 			gh := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				switch r.URL.Path {
 				case "/repos/" + a.Repo + "/releases/latest":
@@ -69,7 +77,7 @@ func TestChangelogIngestionAndExistingClientNotes(t *testing.T) {
 					if scenario == "duplicate" {
 						assets = append(assets, asset)
 					}
-					json.NewEncoder(w).Encode(map[string]any{"tag_name": "v1.4.2", "body": "Legacy release notes", "assets": assets})
+					json.NewEncoder(w).Encode(map[string]any{"tag_name": "v1.4.2", "body": body, "assets": assets})
 				case "/repos/" + a.Repo + "/releases/assets/1":
 					apkDownloads.Add(1)
 					w.Write(apk)
@@ -96,7 +104,7 @@ func TestChangelogIngestionAndExistingClientNotes(t *testing.T) {
 			if queryErr != nil {
 				t.Fatal(queryErr)
 			}
-			if scenario != "valid" && scenario != "legacy" {
+			if scenario != "valid" && scenario != "legacy" && scenario != "release-body" {
 				if err == nil || latest != nil {
 					t.Fatalf("unverified changelog exposed a release: %v %+v", err, latest)
 				}
@@ -106,11 +114,21 @@ func TestChangelogIngestionAndExistingClientNotes(t *testing.T) {
 				t.Fatalf("ingestion failed: %v", err)
 			}
 			want := "• Swipe between months\n• Choose visible calendars"
-			if scenario == "legacy" {
-				want = "Legacy release notes"
+			if body != "" {
+				want = body
 			}
 			if latest.Notes != want {
 				t.Fatalf("notes: got %q want %q", latest.Notes, want)
+			}
+			if scenario == "release-body" {
+				body, want = "Edited notes for the same APK", "Edited notes for the same APK"
+				if err := s.Sync(context.Background(), a, ""); err != nil {
+					t.Fatal("release body refresh:", err)
+				}
+				latest, _ = s.latest(context.Background(), a.ID)
+				if latest.Notes != want || apkDownloads.Load() != 1 {
+					t.Fatalf("notes edit redownloaded or lost APK: %+v downloads=%d", latest, apkDownloads.Load())
+				}
 			}
 			if scenario == "valid" {
 				// Simulate a release cached by the old backend before JSON support.
@@ -132,5 +150,15 @@ func TestChangelogIngestionAndExistingClientNotes(t *testing.T) {
 				t.Fatalf("existing Android catalog API omitted the changelog: %s", catalog.Body.String())
 			}
 		})
+	}
+}
+
+func TestReleaseBodyNotesBounds(t *testing.T) {
+	notes := releaseBodyNotes("  " + strings.Repeat("a", maxChangelog-1) + "🔥extra  ")
+	if !utf8.ValidString(notes) || len(notes) > maxChangelog || len(notes) != maxChangelog-1 {
+		t.Fatal("release notes were truncated inside a UTF-8 character")
+	}
+	if releaseBodyNotes(" \n\t ") != "" || !utf8.ValidString(releaseBodyNotes("invalid\xff")) {
+		t.Fatal("invalid release body normalization")
 	}
 }

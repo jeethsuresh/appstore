@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "version": "0.1.9",
-  "versionCode": 10,
+  "version": "0.1.10",
+  "versionCode": 11,
   "changes": [
-    "Bazaar adds the app's catalog icon to Linux shortcuts when you install or update an app."
+    "App changelogs now show the notes from their matching GitHub release, including later edits."
   ]
 }

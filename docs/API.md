@@ -19,6 +19,7 @@ The Android client checks the exact callback origin/path, unique constant-time m
 ## Device endpoints
 
 - `GET /v1/apps`: visible apps and their latest verified release, if available. A release includes `id`, `tag`, `versionCode`, `versionName`, `sha256`, `size`, `minSdk`, `notes` and `createdAt`. Apps include their package and signing-certificate identity, display name, description and a public Store-relative `logoUrl`. An app with its own website includes `website`. Assets verified under a different configuration are hidden until reverified.
+- `notes` uses the matching GitHub release's body, refreshed by webhooks and polling. Empty bodies fall back to verified changelog entries. Desktop catalogs also expose `desktopRelease.notes` and mirror nonempty notes in `changes` for older clients. Notes are displayed as text; the app description comes from catalog registration and can be edited through the [catalog publication API](CATALOG_PUBLISHING.md#publish-and-update).
 - `GET /v1/releases/ID/apk`: authenticated APK bytes for the app's current release. Supports HTTP ranges. Refresh the catalog if a superseded release URL returns 404. The Android client verifies the expected size/hash, package, version and certificate before handing the APK to Android's installer.
 - `DELETE /v1/device`: immediately revokes the calling device, returning 204.
 
@@ -39,7 +40,7 @@ Unknown apps/releases/devices return 404. Invalid input returns 400. Upstream in
 
 `POST /webhooks/github` accepts signed GitHub `release` events for configured repositories. Validate with `X-Hub-Signature-256` and `WEBHOOK_SECRET`. Accepted events return 202 and queue a fresh GitHub API lookup; unsigned events return 401. A full queue returns 503 so GitHub can retry. Polling also recovers missed events.
 
-For releases with a `changelog.json` asset, ingestion verifies its size, digest, schema, version name and version code against the verified APK. The existing release `notes` field contains its plain-text `changes` as a bulleted list, so existing Android and web clients display the new changelog without an API migration. Previously cached APKs also refresh their notes from verified JSON without downloading the APK again. Legacy releases without the JSON asset use their GitHub release body. Invalid JSON assets fail ingestion rather than silently falling back to unrelated notes. See [app integrations](INTEGRATIONS.md) for the JSON contract.
+For releases with a `changelog.json` asset, ingestion verifies its size, digest, schema, version name and version code against the verified APK. The existing release `notes` field uses the matching GitHub release's body, falling back to the verified JSON's plain-text `changes` as a bulleted list when the body is empty. Previously cached APKs refresh their notes without downloading the APK again. Releases without the JSON asset also use their GitHub release body. Invalid JSON assets still fail ingestion. See [app integrations](INTEGRATIONS.md) for the JSON contract.
 
 `GET /healthz` is an unauthenticated liveness/readiness check with a SQLite ping. The container runs `store healthcheck` against it. No admin or device data is exposed.
 

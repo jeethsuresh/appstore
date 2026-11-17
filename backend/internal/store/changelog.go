@@ -59,12 +59,7 @@ func (s *Server) releaseNotes(ctx context.Context, a App, rel githubRelease, inf
 		assetID, size, digest = asset.ID, asset.Size, asset.Digest
 	}
 	if assetID == 0 {
-		// Preserve notes for releases published before the JSON contract existed.
-		notes := rel.Body
-		if len(notes) > maxChangelog {
-			notes = notes[:maxChangelog]
-		}
-		return notes, nil
+		return releaseBodyNotes(rel.Body), nil
 	}
 	prefix := a.ReleaseTagPrefix
 	if prefix == "" {
@@ -77,5 +72,25 @@ func (s *Server) releaseNotes(ctx context.Context, a App, rel githubRelease, inf
 	if err != nil {
 		return "", err
 	}
-	return changelogNotes(data, info)
+	notes, err := changelogNotes(data, info)
+	if err != nil {
+		return "", err
+	}
+	if body := releaseBodyNotes(rel.Body); body != "" {
+		return body, nil
+	}
+	return notes, nil
+}
+
+// GitHub's release body is the editable changelog for this exact release.
+// Clients display it as text, never as executable HTML.
+func releaseBodyNotes(body string) string {
+	notes := strings.TrimSpace(strings.ToValidUTF8(body, "�"))
+	if len(notes) > maxChangelog {
+		notes = notes[:maxChangelog]
+		for !utf8.ValidString(notes) {
+			notes = notes[:len(notes)-1]
+		}
+	}
+	return notes
 }

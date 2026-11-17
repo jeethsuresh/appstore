@@ -96,9 +96,22 @@ func TestPublishedCatalogAdoptionWithdrawalAndRestart(t *testing.T) {
 		t.Fatalf("adoption lost the verified release: %d %s", w.Code, w.Body.String())
 	}
 	publication.Apps[0].Name = "Revised Calendar"
+	publication.Apps[0].Description = "Edited after registration, independent of release notes."
 	putCatalog(t, s, "calendar", key, publication, 409)
 	publication.Revision = 2
 	putCatalog(t, s, "calendar", key, publication, 204)
+	pageHas(publication.Apps[0].Description)
+	if err := s.Close(); err != nil {
+		t.Fatal(err)
+	}
+	s, err = New(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	pageHas(publication.Apps[0].Description)
+	if w := request(s, "GET", "/v1/apps", tok, ""); w.Code != 200 || !strings.Contains(w.Body.String(), publication.Apps[0].Description) || !strings.Contains(w.Body.String(), "Verified release") {
+		t.Fatalf("description edit lost the release notes or did not persist: %d %s", w.Code, w.Body.String())
+	}
 	publication.Revision = 3
 	publication.Apps = []catalogEntry{}
 	putCatalog(t, s, "calendar", key, publication, 204)
