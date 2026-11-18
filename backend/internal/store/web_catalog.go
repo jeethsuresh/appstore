@@ -192,6 +192,9 @@ func (s *Server) webApps(ctx context.Context, storeURL string) ([]webApp, error)
 	catalog := s.catalogApps()
 	apps := make([]webApp, 0, len(catalog))
 	for _, configured := range catalog {
+		if configured.DesktopRequiresSignIn {
+			continue
+		}
 		app := configured
 		release, err := s.latest(ctx, app.ID)
 		if err != nil {

@@ -189,6 +189,8 @@ func (s *Server) rebuildCatalog() {
 					continue
 				}
 				a.Notifications = original.Notifications
+				// The bundled account requirement follows the listing through adoption.
+				a.DesktopRequiresSignIn = a.DesktopRequiresSignIn || original.DesktopRequiresSignIn
 			}
 			a.catalogPublisher, a.catalogHost = publisher, catalogOriginHost(p.Origin)
 			a.LogoURL = "/assets/catalog-" + a.ID + ".png"

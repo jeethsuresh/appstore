@@ -31,6 +31,7 @@ type App struct {
 	IOSURL                            string           `json:"iosUrl,omitempty"`
 	Desktop                           bool             `json:"desktop,omitempty"`
 	MacOSNotarizedFrom                int64            `json:"macOSNotarizedFrom,omitempty"`
+	DesktopRequiresSignIn             bool             `json:"desktopRequiresSignIn,omitempty"`
 	DesktopReleaseTagPrefix           string           `json:"desktopReleaseTagPrefix,omitempty"`
 	DesktopRelease                    *DesktopRelease  `json:"desktopRelease,omitempty"`
 	Release                           *Release         `json:"release,omitempty"`
@@ -136,6 +137,7 @@ func validateApp(a *App) error {
 	a.Certificate = strings.ToLower(strings.ReplaceAll(a.Certificate, ":", ""))
 	if !appIDPattern.MatchString(a.ID) || !repositoryPattern.MatchString(a.Repo) ||
 		(a.Package == "" && !a.Desktop && a.IOS == "") ||
+		(a.DesktopRequiresSignIn && (!a.Desktop || a.Package != "" || a.IOS != "")) ||
 		(a.Package != "" && (!packagePattern.MatchString(a.Package) || !strings.HasSuffix(a.Asset, ".apk"))) ||
 		(a.ReleaseTagPrefix != "" && (a.Package == "" || !releasePrefixPattern.MatchString(a.ReleaseTagPrefix))) ||
 		(a.DesktopReleaseTagPrefix != "" && (!a.Desktop || !desktopTagPrefixPattern.MatchString(a.DesktopReleaseTagPrefix) || a.DesktopReleaseTagPrefix == "desktop-")) ||

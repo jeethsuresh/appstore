@@ -183,5 +183,17 @@
     "description": "Explore vast, shifting isometric regions, discover procedural equipment and craft elemental ability builds. Play solo or sign in with Gravitas for two-to-four-player co-op.",
     "logoUrl": "/assets/ember-rest.png",
     "website": "https://games.gravitas.cool"
+  },
+  {
+    "id": "railyard-fps",
+    "name": "Railyard FPS",
+    "repository": "jeethsuresh/railyard",
+    "desktop": true,
+    "desktopReleaseTagPrefix": "railyard-fps-",
+    "macOSNotarizedFrom": 4000,
+    "description": "Fight across 23 arenas with seven weapons and ten game modes. Practice against bots, share a screen with up to four players, or join friends over LAN and Gravitas multiplayer.",
+    "logoUrl": "/assets/railyard-fps.svg",
+    "website": "https://games.gravitas.cool",
+    "desktopRequiresSignIn": true
   }
 ]

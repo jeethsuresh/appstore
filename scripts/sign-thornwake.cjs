@@ -27,7 +27,9 @@ async function sign() {
       throw new Error('Bazaar Developer ID Application identity is unavailable.');
     }
     const signArgs = ['--keychain', keychainFile, '--force', '--timestamp', '--options', 'runtime', '--sign', identity.hash];
-    execFileSync('/usr/bin/codesign', [...signArgs, path.join(app, 'Contents/Frameworks', game.library)], { stdio: 'inherit' });
+    if (game.library) {
+      execFileSync('/usr/bin/codesign', [...signArgs, path.join(app, 'Contents/Frameworks', game.library)], { stdio: 'inherit' });
+    }
     execFileSync('/usr/bin/codesign', [...signArgs, app], { stdio: 'inherit' });
   } finally {
     if (keychainFile) await removeKeychain(keychainFile);
