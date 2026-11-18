@@ -7,8 +7,8 @@ archive="${2:?Supply the staged universal ZIP}"
 output="${3:?Supply the output directory}"
 game="${4:-thornwake}"
 IFS=$'\t' read -r name stem bundle library_name pck_name < <(node "$(dirname "$0")/native-game.cjs" "$game")
-[[ -n "$bundle" && -n "$library_name" && -n "$pck_name" ]]
-[[ "$version" =~ ^(0|[1-9][0-9]{0,2})\.(0|[1-9][0-9]{0,2})\.(0|[1-9][0-9]{0,2})$ ]]
+[[ -n "$bundle" && -n "$library_name" && -n "$pck_name" ]] || { echo "Unknown game configuration" >&2; exit 1; }
+[[ "$version" =~ ^(0|[1-9][0-9]{0,2})\.(0|[1-9][0-9]{0,2})\.(0|[1-9][0-9]{0,2})$ ]] || { echo "Invalid native game version" >&2; exit 1; }
 : "${MAC_CERTIFICATE_P12_BASE64:?Missing Developer ID certificate}"
 : "${MAC_CERTIFICATE_PASSWORD:?Missing certificate password}"
 : "${MAC_NOTARY_KEY_BASE64:?Missing notarization key}"
@@ -21,9 +21,9 @@ python3 "$(dirname "$0")/validate-native-archive.py" "$archive" "$name" "$pck_na
 ditto -x -k "$archive" "$temp"
 app="$temp/$name.app"
 plist="$app/Contents/Info.plist"
-[[ "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$plist")" == "$bundle" ]]
-[[ "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$plist")" == "$version" ]]
-[[ "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$plist")" == "$name" ]]
+[[ "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$plist")" == "$bundle" ]] || { echo "Unexpected bundle identifier" >&2; exit 1; }
+[[ "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$plist")" == "$version" ]] || { echo "Unexpected bundle version" >&2; exit 1; }
+[[ "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$plist")" == "$name" ]] || { echo "Unexpected bundle executable" >&2; exit 1; }
 lipo "$app/Contents/MacOS/$name" -verify_arch arm64 x86_64
 if [[ "$library_name" != "-" ]]; then
   lipo "$app/Contents/Frameworks/$library_name" -verify_arch arm64 x86_64

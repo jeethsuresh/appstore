@@ -188,6 +188,7 @@ func (s *Server) initDesktop() error {
 		return err
 	}
 	s.mux.HandleFunc("GET /v1/desktop/apps", s.desktopCatalog)
+	s.mux.HandleFunc("POST /v1/desktop/publish/{app}", s.publishDesktop)
 	s.mux.Handle("GET /v1/desktop/releases/{app}/{version}/{platform}/{arch}", s.device(http.HandlerFunc(s.desktopDownload)))
 	s.mux.HandleFunc("GET /desktop/connect", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
@@ -325,31 +326,39 @@ func (s *Server) syncDesktop(ctx context.Context, a App, tag string) error {
 		if e != nil {
 			return e
 		}
-		f, e := os.CreateTemp(filepath.Join(s.cfg.DataDir, "desktop"), "ingest-*")
+		staged, e := s.stageDesktopAsset(res.Body, artifact)
+		res.Body.Close()
 		if e != nil {
-			res.Body.Close()
 			return e
 		}
-		h := sha256.New()
-		n, copyErr := io.Copy(io.MultiWriter(f, h), io.LimitReader(res.Body, artifact.Size+1))
-		res.Body.Close()
-		closeErr := f.Close()
-		if err := errors.Join(copyErr, closeErr); err != nil {
-			os.Remove(f.Name())
-			return fmt.Errorf("writing desktop artifact %s: %w", artifact.File, err)
-		}
-		if n != artifact.Size || hex.EncodeToString(h.Sum(nil)) != artifact.SHA256 {
-			os.Remove(f.Name())
-			return errors.New("desktop download failed size/checksum verification")
-		}
-		if e = os.Rename(f.Name(), dest); e != nil {
-			os.Remove(f.Name())
+		if e = os.Rename(staged, dest); e != nil {
+			os.Remove(staged)
 			return e
 		}
 	}
 	// Publish the complete multi-platform release atomically, after every target verifies.
 	_, err = s.db.ExecContext(ctx, "INSERT INTO desktop_releases(app_id,version_code,manifest,config_hash) VALUES(?,?,?,?) ON CONFLICT(app_id,version_code) DO UPDATE SET manifest=excluded.manifest,config_hash=excluded.config_hash", a.ID, next.VersionCode, data, desktopTrust(a))
 	return err
+}
+
+var errDesktopIntegrity = errors.New("desktop artifact failed size/checksum verification")
+
+func (s *Server) stageDesktopAsset(r io.Reader, artifact DesktopArtifact) (string, error) {
+	f, err := os.CreateTemp(filepath.Join(s.cfg.DataDir, "desktop"), "ingest-*")
+	if err != nil {
+		return "", err
+	}
+	h := sha256.New()
+	n, copyErr := io.Copy(io.MultiWriter(f, h), io.LimitReader(r, artifact.Size+1))
+	if err := errors.Join(copyErr, f.Close()); err != nil {
+		os.Remove(f.Name())
+		return "", fmt.Errorf("writing desktop artifact %s: %w", artifact.File, err)
+	}
+	if n != artifact.Size || hex.EncodeToString(h.Sum(nil)) != artifact.SHA256 {
+		os.Remove(f.Name())
+		return "", errDesktopIntegrity
+	}
+	return f.Name(), nil
 }
 func (s *Server) desktopAsset(ctx context.Context, a App, rel githubRelease, name string, limit int64) ([]byte, error) {
 	var id, size int64

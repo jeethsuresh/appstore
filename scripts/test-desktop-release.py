@@ -36,6 +36,13 @@ class DesktopReleaseTest(unittest.TestCase):
 
 
 class ThornwakeReleaseTest(unittest.TestCase):
+    def test_native_signer_rejects_invalid_version_before_loading_credentials(self):
+        signer = Path(__file__).with_name("package-thornwake-release.sh")
+        result = subprocess.run(["/bin/bash", str(signer), "01.1.0", "input.zip", "out"],
+                                capture_output=True, text=True)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("Invalid native game version", result.stderr)
+
     def build_manifest(self, changelog, version="1.2.0", game="thornwake"):
         script = Path(__file__).with_name("package-thornwake-release.sh").read_text()
         # Run the publisher's actual manifest step without requiring signing credentials.

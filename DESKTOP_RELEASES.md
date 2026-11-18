@@ -38,6 +38,35 @@ reader. A signed-in Bazaar device uses `/v1/apps?platform=macos&arch=arm64`
 device credential to download it. Public catalog pages and legacy invite-only
 devices omit the listing.
 
+### Direct publishing of private macOS games
+
+A private desktop game can send a signed universal Godot archive directly from
+its release pipeline. To enable this source, configure a dedicated verifier
+in the Bazaar backend environment. Derive the setting name by uppercasing the
+catalog ID, replacing hyphens with underscores, and appending
+`_PUBLISH_TOKEN_SHA256`. For example, a listing called `sample-game` uses
+`SAMPLE_GAME_PUBLISH_TOKEN_SHA256`. The backend polls GitHub for all listings
+without a configured publisher.
+
+The pipeline holds a fresh 32-byte random token encoded as lowercase hex. Set
+the backend verifier to the lowercase hex SHA-256 of that ASCII token, with
+no newline. Each private game requires its own verifier. The upload credential
+only authorizes publishing to the configured listing.
+
+Send a multipart POST to `/v1/desktop/publish/<app-id>` with a Bearer token.
+The first part, `manifest`, carries `desktop-release.json`. The second,
+`archive`, carries the ZIP named in the manifest, up to 192 MiB. The two macOS
+architecture records must reference one ZIP with the same size and SHA-256.
+The filename is the catalog name with spaces removed, followed by
+`-<version>-mac-universal.zip`. The ZIP contains the catalog name followed by
+`.app`, and the embedded executable and pack use that same product name.
+
+A first submission returns HTTP 201. A verified identical replay returns 200
+and can repair a missing cached archive. Both responses carry `appId`,
+`version`, `versionCode`, `sha256` and `size`. A modified or older version
+returns 409. The signing pipeline must verify the Developer ID signature,
+notarization and installed game before submitting its archive.
+
 Existing Electron releases can be ingested without upstream changes: assets
 named `*-mac-arm64.dmg`, `*-win-x64.exe` and `*-linux-x86_64.AppImage` (also
 `x64`, `arm64`, `aarch64`, `amd64`) supply their GitHub SHA-256 digest. The

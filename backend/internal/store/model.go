@@ -51,6 +51,7 @@ type Release struct {
 	Created     string `json:"createdAt"`
 }
 type Config struct {
+	DesktopPublisherHashes                                           map[string]string
 	ProtocolRelayKey                                                 string
 	DataDir, AdminToken, WebhookSecret, GitHubToken, AAPT, APKSigner string
 	Apps                                                             []App

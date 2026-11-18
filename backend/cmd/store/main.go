@@ -44,6 +44,11 @@ func main() {
 		slog.Error("configure catalog publishers", "error", err)
 		os.Exit(1)
 	}
+	desktopPublishers, err := store.DesktopPublishers(apps, os.Getenv)
+	if err != nil {
+		slog.Error("configure desktop release publishers", "error", err)
+		os.Exit(1)
+	}
 	var federation *gravitas.Client
 	if issuer := os.Getenv("GRAVITAS_ISSUER"); issuer != "" {
 		federation, err = gravitas.New(issuer, os.Getenv("GRAVITAS_APP_URL"), os.Getenv("GRAVITAS_SESSION_KEY"))
@@ -73,22 +78,23 @@ func main() {
 		os.Exit(1)
 	}
 	s, err := store.New(store.Config{
-		ProtocolRelayKey:    os.Getenv("PROTOCOL_RELAY_KEY"),
-		NotificationGateway: os.Getenv("NOTIFICATION_GATEWAY_ADDR"),
-		NotificationURL:     os.Getenv("NOTIFICATION_PUBLIC_URL"),
-		NotificationKeys:    notificationKeys,
-		APNSConfig:          os.Getenv("NOTIFICATION_APNS_CONFIG"),
-		DataDir:             env("DATA_DIR", "data"),
-		AdminToken:          os.Getenv("ADMIN_TOKEN"),
-		WebhookSecret:       os.Getenv("WEBHOOK_SECRET"),
-		GitHubToken:         os.Getenv("GITHUB_TOKEN"),
-		AAPT:                env("AAPT", "aapt"),
-		APKSigner:           env("APKSIGNER", "apksigner"),
-		Apps:                apps,
-		CatalogPublishers:   publishers,
-		PersonalCatalog:     os.Getenv("PERSONAL_ANDROID_CATALOG") == "true",
-		Federation:          federation,
-		ClientAPK:           env("CLIENT_APK", "/usr/local/share/store/appstore.apk"),
+		DesktopPublisherHashes: desktopPublishers,
+		ProtocolRelayKey:       os.Getenv("PROTOCOL_RELAY_KEY"),
+		NotificationGateway:    os.Getenv("NOTIFICATION_GATEWAY_ADDR"),
+		NotificationURL:        os.Getenv("NOTIFICATION_PUBLIC_URL"),
+		NotificationKeys:       notificationKeys,
+		APNSConfig:             os.Getenv("NOTIFICATION_APNS_CONFIG"),
+		DataDir:                env("DATA_DIR", "data"),
+		AdminToken:             os.Getenv("ADMIN_TOKEN"),
+		WebhookSecret:          os.Getenv("WEBHOOK_SECRET"),
+		GitHubToken:            os.Getenv("GITHUB_TOKEN"),
+		AAPT:                   env("AAPT", "aapt"),
+		APKSigner:              env("APKSIGNER", "apksigner"),
+		Apps:                   apps,
+		CatalogPublishers:      publishers,
+		PersonalCatalog:        os.Getenv("PERSONAL_ANDROID_CATALOG") == "true",
+		Federation:             federation,
+		ClientAPK:              env("CLIENT_APK", "/usr/local/share/store/appstore.apk"),
 	})
 	if err != nil {
 		slog.Error("start", "error", err)
