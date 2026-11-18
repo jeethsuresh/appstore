@@ -1,12 +1,9 @@
 {
   "schemaVersion": 1,
-  "version": "1.3.0",
-  "versionCode": 1003000,
+  "version": "1.3.1",
+  "versionCode": 1003001,
   "changes": [
-    "Heart Spores grow a continuous purple fungal surface. Select a Heart to spend one of its Ring Fungi on a unit or to found another Heart on friendly fungal ground.",
-    "Each Heart shows how many Ring Fungi remain. Spend the last one and the Heart starts losing health. Revive it to regrow its crown, or its patch will recede after it dies.",
-    "All 30 units and structures have distinct silhouettes, movement and working parts. Open the Field Guide to rotate a model and see its stats and poses.",
-    "Preview buildings on their tiles and see area spells before casting. Bows, siege shells, lightning and spores have distinct sounds and impacts. Deliveries, finished recruits, research and captured shrines get their own feedback and a match recap.",
-    "Crowded battles animate more smoothly. Sound and motion controls are available during play, and the first Mac launch follows your Reduce Motion setting. Multiplayer and replays use matching simulation versions."
+    "Revive Heart stops withering immediately. A recovering Heart regrows one Ring Fungus every 12 seconds until its brood is full. Select the Heart to see when the next Ring Fungus will appear.",
+    "Multiplayer and replay playback require a matching game version."
   ]
 }
