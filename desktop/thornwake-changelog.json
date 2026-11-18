@@ -1,12 +1,11 @@
 {
   "schemaVersion": 1,
-  "version": "1.2.0",
-  "versionCode": 1002000,
+  "version": "1.3.0",
+  "versionCode": 1003000,
   "changes": [
-    "Selected units appear as individual portraits with health bars. Click a portrait to select it, or Shift-click to remove it from the selection.",
-    "Build, train, and use abilities through an icon grid. Hover for descriptions, resource costs, shortcuts, and requirements.",
-    "Squirrels visibly gather food and water, carry bundles and pails to Burrow Halls, and unload before repeating the trip. Water is credited on delivery.",
-    "Cows and sheep replace hares in pens and wild herds, with distinct models and portraits.",
-    "Multiplayer players need matching 1.2.0 game builds."
+    "All 30 units and structures have distinct silhouettes, movement and working parts. Open the Field Guide to rotate a model and see its stats and poses.",
+    "Preview buildings on their exact tiles and see area spells before casting. Thinner territory lines keep units visible when armies converge on a shrine.",
+    "Bows, siege shells, lightning and spores have distinct sounds and impacts. Deliveries, finished recruits, research and captured shrines get their own feedback and a match recap.",
+    "Crowded battles animate more smoothly. Sound and motion controls are available in setup and during play, and the first launch on Mac follows your Reduce Motion setting."
   ]
 }
