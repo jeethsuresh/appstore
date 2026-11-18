@@ -255,7 +255,9 @@ public class NavigationTest {
             push(scenario, "/fixture/b");
             scenario.onActivity(activity -> {
                 android.widget.EditText input = new android.widget.EditText(activity);
-                ((android.widget.LinearLayout) activity.web.getParent()).addView(input, 0);
+                android.view.ViewGroup content = activity.findViewById(android.R.id.content);
+                android.view.ViewGroup root = (android.view.ViewGroup) content.getChildAt(0);
+                root.addView(input, 0);
                 input.requestFocus();
                 activity.getSystemService(android.view.inputmethod.InputMethodManager.class).showSoftInput(input, 0);
             });
