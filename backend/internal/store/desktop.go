@@ -371,6 +371,17 @@ func (a App) allowsDesktopArtifact(platform string, versionCode int64) bool {
 	return platform != "macos" || (a.MacOSNotarizedFrom > 0 && versionCode >= a.MacOSNotarizedFrom)
 }
 
+// Account-only games are visible through the enrolled device route after its
+// middleware checks the Gravitas session. Public browsing and legacy invite
+// credentials have no verified account identity.
+func (a App) desktopVisibleTo(ctx context.Context) bool {
+	if !a.DesktopRequiresSignIn {
+		return true
+	}
+	identity, _ := ctx.Value(catalogIdentityKey{}).(gravitas.Identity)
+	return identity.Subject != ""
+}
+
 func (s *Server) desktopCatalog(w http.ResponseWriter, r *http.Request) {
 	platform, arch := r.URL.Query().Get("platform"), r.URL.Query().Get("arch")
 	if !validTarget(platform, arch) {
@@ -379,7 +390,7 @@ func (s *Server) desktopCatalog(w http.ResponseWriter, r *http.Request) {
 	}
 	apps := []App{}
 	for _, a := range s.catalogApps() {
-		if a.Desktop {
+		if a.Desktop && a.desktopVisibleTo(r.Context()) {
 			rel, err := s.latestDesktop(r.Context(), a)
 			if err != nil {
 				s.internal(w, err)
@@ -413,7 +424,7 @@ func (s *Server) desktopCatalog(w http.ResponseWriter, r *http.Request) {
 }
 func (s *Server) desktopDownload(w http.ResponseWriter, r *http.Request) {
 	for _, a := range s.catalogApps() {
-		if a.ID == r.PathValue("app") && a.Desktop {
+		if a.ID == r.PathValue("app") && a.Desktop && a.desktopVisibleTo(r.Context()) {
 			rel, err := s.latestDesktop(r.Context(), a)
 			if err != nil {
 				s.internal(w, err)

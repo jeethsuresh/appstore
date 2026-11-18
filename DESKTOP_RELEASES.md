@@ -27,9 +27,16 @@ the first release verified for Developer ID and Apple notarization. Wait until
 that release is ingested before enabling the cutoff. Earlier Mac releases stay
 in the cache but cannot be downloaded, and future releases must pass the
 publishing repository's notarization checks.
-The public `/v1/desktop/apps` endpoint exposes the same desktop descriptions
-and release metadata. Artifact downloads still require a device credential;
-the website's desktop bootstrap downloads require a checked Gravitas session.
+The public `/v1/desktop/apps` endpoint exposes desktop descriptions and release
+metadata for public listings. Artifact downloads require a device credential.
+The website's desktop bootstrap downloads require a checked Gravitas session.
+
+For an account-only desktop listing, set `desktopRequiresSignIn: true` and keep
+the release assets in a private repository readable by the backend's GitHub
+reader. A signed-in Bazaar device uses `/v1/apps?platform=macos&arch=arm64`
+(or its own platform and architecture) to discover the app and its existing
+device credential to download it. Public catalog pages and legacy invite-only
+devices omit the listing.
 
 Existing Electron releases can be ingested without upstream changes: assets
 named `*-mac-arm64.dmg`, `*-win-x64.exe` and `*-linux-x86_64.AppImage` (also

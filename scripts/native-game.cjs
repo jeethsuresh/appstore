@@ -6,6 +6,15 @@ const games = {
     library: 'libthornwake_core.dylib', frame: 'THORNWAKE_FRAME', enter: false,
     changes: ['Sign in with Gravitas and host or join native Thornwake multiplayer lobbies.'],
   },
+  'railyard-fps': {
+    id: 'railyard-fps', name: 'Railyard FPS', stem: 'RailyardFPS', bundle: 'cool.gravitas.railyard-fps',
+    pck: 'Railyard FPS.pck',
+    changes: [
+      'Play ten modes across 23 arenas in practice, over LAN or with a Gravitas lobby.',
+      'Connect controllers for up to four local players with independent views.',
+      'Explore redesigned arenas with layered materials, environmental lighting and new combat effects.',
+    ],
+  },
   'ember-rest': {
     id: 'ember-rest', name: 'Ember Rest', stem: 'EmberRest', bundle: 'cool.gravitas.emberrest',
     library: 'libember_core.dylib', frame: 'EMBER_FRAME', enter: true, replay: 'res://assets/validation.emberreplay',
@@ -24,5 +33,5 @@ function game(id = 'thornwake') {
 module.exports = game;
 if (require.main === module) {
   const value = game(process.argv[2]);
-  console.log([value.name, value.stem, value.bundle, value.library].join('\t'));
+  console.log([value.name, value.stem, value.bundle, value.library || "-", value.pck || "-"].join('\t'));
 }

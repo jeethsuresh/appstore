@@ -23,3 +23,18 @@ test('native signing metadata matches independently versioned Bazaar listings', 
   assert.throws(() => game('../unsafe'));
   assert.throws(() => game('__proto__'));
 });
+
+
+test('Railyard identifies its pure Godot export and validates a completed installed match', () => {
+  const config = game('railyard-fps');
+  assert.equal(config.name, 'Railyard FPS');
+  assert.equal(config.bundle, 'cool.gravitas.railyard-fps');
+  assert.equal(config.pck, 'Railyard FPS.pck');
+  assert.equal(config.library, undefined);
+  const { verifyFreight } = require('../../scripts/smoke-thornwake-release.cjs');
+  const report = { map: 'freight', mode: 'deathmatch', server: true, actors: 2, peers: 0, elapsed: 2.0167, positions: { 1: [0, 1, 0], 100: [3, 1, 0] } };
+  verifyFreight(report);
+  for (const change of [{ map: 'lockout' }, { elapsed: 0 }, { actors: 1 }, { positions: { 1: [], 100: [] } }]) {
+    assert.throws(() => verifyFreight({ ...report, ...change }));
+  }
+});

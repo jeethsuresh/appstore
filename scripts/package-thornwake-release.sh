@@ -6,8 +6,8 @@ version="${1:?Supply a semver}"
 archive="${2:?Supply the staged universal ZIP}"
 output="${3:?Supply the output directory}"
 game="${4:-thornwake}"
-IFS=$'\t' read -r name stem bundle library_name < <(node "$(dirname "$0")/native-game.cjs" "$game")
-[[ -n "$library_name" ]]
+IFS=$'\t' read -r name stem bundle library_name pck_name < <(node "$(dirname "$0")/native-game.cjs" "$game")
+[[ -n "$bundle" && -n "$library_name" && -n "$pck_name" ]]
 [[ "$version" =~ ^(0|[1-9][0-9]{0,2})\.(0|[1-9][0-9]{0,2})\.(0|[1-9][0-9]{0,2})$ ]]
 : "${MAC_CERTIFICATE_P12_BASE64:?Missing Developer ID certificate}"
 : "${MAC_CERTIFICATE_PASSWORD:?Missing certificate password}"
@@ -17,35 +17,17 @@ IFS=$'\t' read -r name stem bundle library_name < <(node "$(dirname "$0")/native
 
 temp="$(mktemp -d)"
 trap 'rm -rf "$temp"' EXIT
-python3 - "$archive" "$name" <<'PY'
-from pathlib import PurePosixPath
-from zipfile import ZipFile
-from stat import S_IFDIR, S_IFREG, S_IFMT
-import sys
-with ZipFile(sys.argv[1]) as z:
-    paths = set()
-    total = 0
-    for entry in z.infolist():
-        path = PurePosixPath(entry.filename)
-        if (not path.parts or path.parts[0] != sys.argv[2] + ".app" or path.is_absolute() or ".." in path.parts
-                or "\\" in entry.filename or S_IFMT(entry.external_attr >> 16) not in (0, S_IFDIR, S_IFREG)
-                or path.as_posix().casefold() in paths):
-            raise SystemExit("Unexpected or unsafe native game ZIP entry")
-        paths.add(path.as_posix().casefold())
-        total += entry.file_size
-        if total > 384 * 1024 * 1024:
-            raise SystemExit("Native game ZIP exceeds the expanded size limit")
-    if (sys.argv[2] + ".app/contents/macos/" + sys.argv[2]).casefold() not in paths:
-        raise SystemExit("The ZIP is missing its executable")
-PY
+python3 "$(dirname "$0")/validate-native-archive.py" "$archive" "$name" "$pck_name"
 ditto -x -k "$archive" "$temp"
 app="$temp/$name.app"
 plist="$app/Contents/Info.plist"
 [[ "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$plist")" == "$bundle" ]]
 [[ "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$plist")" == "$version" ]]
-library="$app/Contents/Frameworks/$library_name"
+[[ "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$plist")" == "$name" ]]
 lipo "$app/Contents/MacOS/$name" -verify_arch arm64 x86_64
-lipo "$library" -verify_arch arm64 x86_64
+if [[ "$library_name" != "-" ]]; then
+  lipo "$app/Contents/Frameworks/$library_name" -verify_arch arm64 x86_64
+fi
 
 APP_BUILDER_TMP_DIR="$temp" node "$(dirname "$0")/sign-thornwake.cjs" "$app" "$game"
 unset MAC_CERTIFICATE_P12_BASE64 MAC_CERTIFICATE_PASSWORD

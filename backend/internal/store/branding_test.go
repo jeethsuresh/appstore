@@ -65,6 +65,12 @@ func TestEveryCatalogAppHasBrandedPublicPage(t *testing.T) {
 			logos[app.LogoURL] = app.ID
 			path := "/apps/" + app.ID
 			page := request(s, http.MethodGet, path, "", "")
+			if app.DesktopRequiresSignIn {
+				if page.Code != http.StatusNotFound || strings.Contains(home.Body.String(), app.Description) || strings.Contains(home.Body.String(), path) {
+					t.Fatalf("account-only desktop listing exposed on public page: %s", app.ID)
+				}
+				return
+			}
 			if page.Code != http.StatusOK {
 				t.Fatalf("page returned %d", page.Code)
 			}

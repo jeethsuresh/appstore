@@ -203,6 +203,88 @@ func TestMacOSCatalogAndDownloadsRequireNotarizedReleaseCutoff(t *testing.T) {
 	}
 }
 
+func TestPrivateDesktopReleaseRequiresSignedInBazaarDevice(t *testing.T) {
+	s := nativeFixture(t)
+	apps, err := LoadApps("../../../config/apps.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var private App
+	for _, a := range apps {
+		if a.ID == "railyard-fps" {
+			private = a
+			break
+		}
+	}
+	if !private.DesktopRequiresSignIn || private.Repo != "jeethsuresh/railyard" || private.DesktopReleaseTagPrefix != "railyard-fps-" || private.MacOSNotarizedFrom != 4000 {
+		t.Fatal("Railyard requires its private, notarized release channel")
+	}
+	public := App{ID: "public-game", Name: "Public game", Repo: "owner/games", Desktop: true, MacOSNotarizedFrom: 4000}
+	s.cfg.Apps = append(s.cfg.Apps, public, private)
+	release := desktopFixture()
+	release.Version, release.VersionCode = "0.4.0", 4000
+	artifact := &release.Artifacts[0]
+	artifact.Platform, artifact.Arch, artifact.File, artifact.Entry = "macos", "arm64", "Game.zip", "Game.app"
+	if err := os.WriteFile(filepath.Join(s.cfg.DataDir, "desktop", artifact.SHA256), []byte("appimage"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	data, err := json.Marshal(release)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, app := range []App{public, private} {
+		if _, err := s.db.Exec("INSERT INTO desktop_releases(app_id,version_code,manifest,config_hash) VALUES(?,?,?,?)",
+			app.ID, release.VersionCode, data, desktopTrust(app)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	const target = "?platform=macos&arch=arm64"
+	const signedInCatalog = "/v1/apps" + target
+	const publicCatalog = "/v1/desktop/apps" + target
+	const privateArtifact = "/v1/desktop/releases/railyard-fps/4000/macos/arm64"
+	invite, _ := enrollDevice(t, s)
+	for _, browse := range []struct{ path, token string }{{publicCatalog, ""}, {signedInCatalog, invite}} {
+		res := request(s, "GET", browse.path, browse.token, "")
+		if res.Code != 200 || !strings.Contains(res.Body.String(), public.ID) || strings.Contains(res.Body.String(), private.ID) {
+			t.Fatalf("catalog visibility for %s: %d %s", browse.path, res.Code, res.Body.String())
+		}
+	}
+	if res := request(s, "GET", signedInCatalog, "", ""); res.Code != 401 {
+		t.Fatalf("anonymous device catalog status: %d", res.Code)
+	}
+	if res := request(s, "GET", privateArtifact, "", ""); res.Code != 401 {
+		t.Fatalf("anonymous private download status: %d", res.Code)
+	}
+	if res := request(s, "GET", privateArtifact, invite, ""); res.Code != 404 {
+		t.Fatalf("invite-only private download status: %d", res.Code)
+	}
+	const publicArtifact = "/v1/desktop/releases/public-game/4000/macos/arm64"
+	if res := request(s, "GET", publicArtifact, invite, ""); res.Code != 200 || res.Body.String() != "appimage" {
+		t.Fatalf("public artifact unavailable to enrolled device: %d", res.Code)
+	}
+	login := request(s, "POST", "/v1/auth/gravitas/exchange", "",
+		`{"code":"first","codeVerifier":"`+strings.Repeat("v", 43)+`","deviceName":"Bazaar Mac"}`)
+	if login.Code != 201 {
+		t.Fatalf("Bazaar sign-in failed: %d %s", login.Code, login.Body.String())
+	}
+	token := field(t, login, "token")
+	if res := request(s, "GET", signedInCatalog, token, ""); res.Code != 200 || !strings.Contains(res.Body.String(), private.ID) || !strings.Contains(res.Body.String(), artifact.SHA256) {
+		t.Fatalf("verified catalog omitted private release: %d %s", res.Code, res.Body.String())
+	}
+	if res := request(s, "GET", privateArtifact, token, ""); res.Code != 200 || res.Body.String() != "appimage" {
+		t.Fatalf("verified private download failed: %d", res.Code)
+	}
+	if res := request(s, "GET", "/v1/apps?platform=windows&arch=x64", token, ""); res.Code != 200 || strings.Contains(res.Body.String(), private.ID) {
+		t.Fatalf("incompatible private artifact advertised: %d %s", res.Code, res.Body.String())
+	}
+	request(s, "DELETE", "/v1/device", token, "")
+	for _, path := range []string{signedInCatalog, privateArtifact} {
+		if res := request(s, "GET", path, token, ""); res.Code != 401 {
+			t.Fatalf("revoked private access to %s: %d", path, res.Code)
+		}
+	}
+}
+
 func TestLegacyDesktopAssetsNeedOnlyOneCatalogFlag(t *testing.T) {
 	var rel githubRelease
 	json.Unmarshal([]byte(`{"tag_name":"v0.1.4","body":"A desktop update.\nAnother change.","assets":[{"id":1,"name":"Reader-0.1.4-linux-x86_64.AppImage","size":8,"digest":"sha256:`+strings.Repeat("a", 64)+`"},{"id":2,"name":"Reader-0.1.4-mac-arm64.dmg","size":8,"digest":"sha256:`+strings.Repeat("b", 64)+`"},{"id":3,"name":"Reader-0.1.4-win-x64.exe","size":8,"digest":"sha256:`+strings.Repeat("c", 64)+`"}]}`), &rel)

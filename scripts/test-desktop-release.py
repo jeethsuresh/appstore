@@ -7,6 +7,7 @@ import sys
 from pathlib import Path
 import tempfile
 import unittest
+from zipfile import ZipFile
 
 spec = importlib.util.spec_from_file_location("desktop_release", Path(__file__).with_name("desktop-release.py"))
 release = importlib.util.module_from_spec(spec)
@@ -41,8 +42,8 @@ class ThornwakeReleaseTest(unittest.TestCase):
         generator = script.split("<<'PY'\n")[-1].rsplit("\nPY", 1)[0]
         with tempfile.TemporaryDirectory() as temporary:
             directory = Path(temporary)
-            name = "Thornwake" if game == "thornwake" else "Ember Rest"
-            filename = ("Thornwake" if game == "thornwake" else "EmberRest") + "-" + version + "-mac-universal.zip"
+            name = {"thornwake":"Thornwake", "ember-rest":"Ember Rest", "railyard-fps":"Railyard FPS"}[game]
+            filename = name.replace(" ", "") + "-" + version + "-mac-universal.zip"
             (directory / filename).write_bytes(b"signed and stapled package")
             notes = directory / "changelog.json"
             notes.write_text(json.dumps(changelog))
@@ -62,6 +63,31 @@ class ThornwakeReleaseTest(unittest.TestCase):
         for artifact in manifest["artifacts"]:
             self.assertEqual(artifact["sha256"], hashlib.sha256(b"signed and stapled package").hexdigest())
             self.assertEqual(artifact["size"], len(b"signed and stapled package"))
+
+    def test_pure_godot_archive_and_manifest(self):
+        result, manifest = self.build_manifest({}, "0.4.0", "railyard-fps")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(manifest["versionCode"], 4000)
+        self.assertEqual({a["arch"] for a in manifest["artifacts"]}, {"arm64", "x64"})
+        self.assertTrue(all(a["file"] == "RailyardFPS-0.4.0-mac-universal.zip" and
+                            a["entry"] == "Railyard FPS.app" for a in manifest["artifacts"]))
+
+        prefix = "Railyard FPS.app/Contents/"
+        binary = prefix + "MacOS/Railyard FPS"
+        pck = prefix + "Resources/Railyard FPS.pck"
+        base = {binary:b"executable fixture", pck:b"GDPCpack fixture"}
+        cases = [(base, True), ({binary: b"executable fixture"}, False), ({**base, pck: b"not a pack"}, False),
+                 ({**base, prefix + "Frameworks/unlisted.dylib": b"unexpected"}, False)]
+        with tempfile.TemporaryDirectory() as directory:
+            archive = Path(directory) / "input.zip"
+            for files, valid in cases:
+                with self.subTest(files=list(files), valid=valid):
+                    with ZipFile(archive, "w") as z:
+                        for path, data in files.items():
+                            z.writestr(path, data)
+                    check = subprocess.run([sys.executable, str(Path(__file__).with_name("validate-native-archive.py")),
+                                            str(archive), "Railyard FPS", "Railyard FPS.pck"], capture_output=True)
+                    self.assertEqual(check.returncode == 0, valid, check.stderr)
 
     def test_shared_publisher_preserves_ember_rest_metadata(self):
         result, manifest = self.build_manifest({}, "1.0.2", "ember-rest")
