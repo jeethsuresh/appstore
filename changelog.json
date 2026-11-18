@@ -1,8 +1,9 @@
 {
   "schemaVersion": 1,
-  "version": "0.6.16",
-  "versionCode": 28,
+  "version": "0.6.17",
+  "versionCode": 29,
   "changes": [
-    "App changelogs use the notes from their matching GitHub release. App descriptions remain separate and can be updated after registration."
+    "Install progress takes the place of the Install button while Bazaar downloads and verifies an app.",
+    "App details make the app name and release notes easier to find."
   ]
 }

@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "version": "0.1.10",
-  "versionCode": 11,
+  "version": "0.1.11",
+  "versionCode": 12,
   "changes": [
-    "App changelogs now show the notes from their matching GitHub release, including later edits."
+    "Install and Update show download progress in the same place on the app card and its detail page."
   ]
 }

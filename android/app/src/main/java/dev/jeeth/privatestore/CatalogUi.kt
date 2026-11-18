@@ -55,12 +55,26 @@ fun AppAction(app: StoreApp, installed: Long?, transfer: Downloads.Transfer?, pe
     val release = app.release
     val active = transfer?.active == true
     val update = release != null && Versions.newer(installed, release.versionCode)
-    Button(onClick = onInstall, enabled = !active && update && release!!.minSdk <= Build.VERSION.SDK_INT, contentPadding = PaddingValues(horizontal = 18.dp, vertical = 8.dp)) {
-        Text(when { active -> transfer!!.label; pending -> "Retry install"; installed == null -> "Install"; update -> "Update"; else -> "Installed" })
-    }
     if (active) {
-        transfer?.fraction?.let { LinearProgressIndicator(progress = { it }, modifier = Modifier.fillMaxWidth()) }
-            ?: LinearProgressIndicator(Modifier.fillMaxWidth())
+        Surface(
+            color = MaterialTheme.colorScheme.secondaryContainer,
+            shape = RoundedCornerShape(20.dp)
+        ) {
+            Column(Modifier.padding(horizontal = 16.dp, vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text(transfer!!.label, style = MaterialTheme.typography.labelLarge)
+                transfer.fraction?.let { fraction ->
+                    LinearProgressIndicator(progress = { fraction }, modifier = Modifier.fillMaxWidth())
+                } ?: LinearProgressIndicator(Modifier.fillMaxWidth())
+            }
+        }
+    } else {
+        Button(
+            onClick = onInstall,
+            enabled = update && release!!.minSdk <= Build.VERSION.SDK_INT,
+            contentPadding = PaddingValues(horizontal = 18.dp, vertical = 8.dp)
+        ) {
+            Text(when { pending -> "Retry install"; installed == null -> "Install"; update -> "Update"; else -> "Installed" })
+        }
     }
     if (transfer != null && !active && update) Text(if (pending) "Finish installing in Android, or retry using the saved download." else transfer.label, style = MaterialTheme.typography.bodySmall)
 }
@@ -104,10 +118,12 @@ fun StoreCatalog(
         Column(Modifier.fillMaxSize().padding(insets).consumeWindowInsets(insets)) {
             Row(Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
                 if (selected != null) IconButton(onClick = { history.back()?.let { restore(it) } ?: navigate("apps") }) { UiSymbol("back", "Back to apps") }
-                Column(Modifier.weight(1f)) {
-                    Text("BAZAAR", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, letterSpacing = androidx.compose.ui.unit.TextUnit(2f, androidx.compose.ui.unit.TextUnitType.Sp))
-                    Text(if (page == "settings") "Settings" else if (selected != null) "App details" else "Your collection", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.SemiBold)
-                }
+                Text(
+                    if (page == "settings") "Settings" else selected?.name ?: "Bazaar",
+                    Modifier.weight(1f),
+                    style = MaterialTheme.typography.headlineMedium,
+                    fontWeight = FontWeight.SemiBold
+                )
                 if (page == "apps" && selected == null) IconButton(onClick = { list = !list; preferences.edit().putBoolean("list", list).apply() }) { UiSymbol(if (list) "apps" else "list", if (list) "Show two columns" else "Show list") }
             }
             if (busy) LinearProgressIndicator(Modifier.fillMaxWidth())
@@ -118,17 +134,15 @@ fun StoreCatalog(
                 page == "settings" -> Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp), content = settings)
                 selected != null -> Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(24.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
                     AppIcon(selected, Modifier.size(88.dp))
-                    Text(selected.name, style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold)
                     Text(availability(selected, installed[selected.packageName]), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
                     AppAction(selected, installed[selected.packageName], transfers[selected.packageName], selected.packageName in pending) { onInstall(listOf(selected)) }
                     HorizontalDivider()
-                    Text("About this app", style = MaterialTheme.typography.titleLarge)
                     Text(selected.description, style = MaterialTheme.typography.bodyLarge)
                     Text("Release notes", style = MaterialTheme.typography.titleLarge)
                     Text(selected.release?.notes?.takeIf { it.isNotBlank() } ?: "Release notes are not available for this version.")
                     HorizontalDivider()
                     Text("App information", style = MaterialTheme.typography.titleMedium)
-                    selected.release?.let { Text("Version ${it.versionName} · ${DownloadSizes.format(it.size)}\nRequires Android API ${it.minSdk}+") }
+                    selected.release?.let { Text("Requires Android API ${it.minSdk}+") }
                     Text(selected.packageName, style = MaterialTheme.typography.bodySmall)
                     Text("Every installation is checked against its package, version, checksum and release certificate.", style = MaterialTheme.typography.bodySmall)
                 }
