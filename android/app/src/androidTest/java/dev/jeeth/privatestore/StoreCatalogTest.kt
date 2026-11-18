@@ -3,6 +3,8 @@ package dev.jeeth.privatestore
 import android.content.Context
 import android.graphics.Bitmap
 import androidx.compose.ui.graphics.asAndroidBitmap
+import androidx.compose.ui.semantics.ProgressBarRangeInfo
+import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.activity.compose.setContent
 import androidx.compose.material3.*
 import androidx.compose.runtime.mutableStateOf
@@ -45,24 +47,32 @@ class StoreCatalogTest {
         compose.onNodeWithText("Search apps").performTextInput("Atlas")
         compose.onNodeWithText("Daybreak").assertDoesNotExist()
         compose.onNode(hasText("Atlas") and hasClickAction() and !hasSetTextAction()).performClick()
-        compose.onNodeWithText("About this app").assertIsDisplayed()
+        compose.onNodeWithText("Atlas makes your day a little easier.").assertIsDisplayed()
         compose.onNodeWithText("Release notes").performScrollTo().assertIsDisplayed()
         screenshot("app-details")
         compose.onNodeWithContentDescription("Back to apps").performClick()
         compose.onNodeWithText("Search apps").assertTextContains("Atlas")
         compose.runOnIdle { compose.activity.navigateForward?.invoke() }
-        compose.onNodeWithText("About this app").assertIsDisplayed()
+        compose.onNodeWithText("Atlas makes your day a little easier.").assertIsDisplayed()
         compose.runOnIdle { compose.activity.onBackPressedDispatcher.onBackPressed() }
         compose.onNodeWithText("Search apps").assertTextContains("Atlas")
         compose.onNodeWithText("Search apps").performTextClearance()
         compose.onNodeWithText("Updates (1)").performClick()
         compose.onNodeWithText("Update all").performClick()
         compose.runOnIdle { assertEquals(listOf(apps.first()), requested); transfers.value = mapOf("dev.example.daybreak" to Downloads.Transfer("Downloading", 0.45f)) }
-        compose.onNodeWithText("Downloading").assertIsNotEnabled()
+        compose.onNodeWithText("Downloading").assertIsDisplayed()
+        compose.onNode(SemanticsMatcher.expectValue(
+            SemanticsProperties.ProgressBarRangeInfo, ProgressBarRangeInfo(0.45f, 0f..1f)
+        )).assertExists()
+        compose.onNodeWithText("Update").assertDoesNotExist()
         compose.onNode(hasText("Settings") and hasClickAction()).performClick()
         compose.onNodeWithText("Settings content").assertIsDisplayed()
         compose.onNodeWithText("Apps").performClick()
-        compose.onNodeWithText("Downloading").assertIsNotEnabled()
+        compose.onNodeWithText("Downloading").assertIsDisplayed()
+        compose.onNode(SemanticsMatcher.expectValue(
+            SemanticsProperties.ProgressBarRangeInfo, ProgressBarRangeInfo(0.45f, 0f..1f)
+        )).assertExists()
+        compose.onNodeWithText("Update").assertDoesNotExist()
         screenshot("parallel-progress")
     }
 
