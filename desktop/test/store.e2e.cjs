@@ -68,7 +68,7 @@ test('desktop discovers compatible apps, signs in, installs, updates and stages 
     await page.getByRole('button', { name: 'Check for updates' }).click();
     await expect(page.locator('.release-notes')).toHaveText('Edited GitHub release notes.');
     await expect(page.getByText('An independent desktop app.')).toBeVisible();
-    await page.getByRole('button', { name: 'Back to the collection' }).click();
+    await page.getByRole('button', { name: 'Back to apps' }).click();
     await page.getByLabel('Gravitas username').fill('desktop-user');
     await page.getByRole('button', { name: 'Sign in 🔥' }).click();
     await expect.poll(async () => (await electron.windows()).length).toBe(2);
@@ -103,7 +103,22 @@ test('desktop discovers compatible apps, signs in, installs, updates and stages 
     await page.getByRole('button', { name: 'Install ↓' }).click();
     await expect(page.getByText('Bazaar ran out of disk space.', { exact: false })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Install ↓' })).toBeEnabled();
+    await page.getByRole('button', { name: 'App details' }).click();
+    await electron.evaluate(({ net }) => {
+      const fetch = net.fetch;
+      net.fetch = async (url, options) => {
+        if (String(url).includes('/v1/desktop/releases/')) {
+          net.fetch = fetch;
+          await new Promise(resolve => { global.finishDownload = resolve; });
+        }
+        return fetch(url, options);
+      };
+    });
     await page.getByRole('button', { name: 'Install ↓' }).click();
+    await expect(page.getByRole('progressbar', { name: 'Downloading Example' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Install ↓' })).toHaveCount(0);
+    await expect.poll(() => electron.evaluate(() => typeof global.finishDownload)).toBe('function');
+    await electron.evaluate(() => global.finishDownload());
     await expect(page.getByRole('button', { name: 'Open ↗' })).toBeVisible();
     await page.getByRole('button', { name: 'Installed', exact: false }).click();
     await expect(page.getByRole('heading', { name: 'Example', exact: true })).toBeVisible();

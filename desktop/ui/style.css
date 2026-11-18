@@ -3,3 +3,25 @@
 img.app-logo { object-fit: contain; }
 
 .release-notes{white-space:pre-wrap;overflow-wrap:anywhere}
+
+.install-action, .install-progress { min-height:42px; }
+.install-action { position:relative; isolation:isolate; }
+.install-action::after {
+ content:""; position:absolute; inset:0; border-radius:inherit; pointer-events:none;
+ background:currentColor; opacity:0;
+ transition:transform 170ms cubic-bezier(.22,.8,.25,1.2), opacity 150ms;
+}
+.install-action:active:not(:disabled)::after { transform:scale(1.055,.87); opacity:.16; transition-duration:75ms; }
+.install-progress {
+ display:inline-flex; align-items:center; position:relative; isolation:isolate; overflow:hidden;
+ border:1px solid #a7b69c; border-radius:10px; padding:8px 12px; font-weight:700;
+ color:#1b422f; background:#eef2e8; width:fit-content;
+}
+.install-progress::before {
+ content:""; position:absolute; inset:0; z-index:-1;
+ background:#c8dbc4; transform:scaleX(var(--install-progress)); transform-origin:left;
+}
+@media(prefers-reduced-motion:reduce) {
+ .install-action::after { transition:none; }
+ .install-action:active:not(:disabled)::after { transform:none; }
+}

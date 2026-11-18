@@ -1,9 +1,11 @@
 package cool.gravitas.webview;
 
+import android.animation.ValueAnimator;
 import android.app.Activity;
 import android.content.ActivityNotFoundException;
 import android.content.Intent;
 import android.graphics.Bitmap;
+import android.content.res.ColorStateList;
 import android.net.Uri;
 import android.net.http.SslError;
 import android.os.Build;
@@ -23,6 +25,7 @@ import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.Button;
 import android.widget.LinearLayout;
+import android.widget.FrameLayout;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -37,6 +40,8 @@ public final class MainActivity extends Activity {
     Button back, forward;
     private ProgressBar progress;
     private LinearLayout failure;
+    private boolean loadFailed;
+    private String loadingUrl;
     private ValueCallback<Uri[]> fileResult;
     private boolean authenticating;
     private OnBackInvokedCallback backCallback;
@@ -58,24 +63,40 @@ public final class MainActivity extends Activity {
             return insets;
         });
         setContentView(root);
+        FrameLayout page = new FrameLayout(this);
+        root.addView(page, new LinearLayout.LayoutParams(-1, 0, 1));
+        web = new WebView(this);
+        web.setId(View.generateViewId());
+        page.addView(web, new FrameLayout.LayoutParams(-1, -1));
+
         progress = new ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal);
         progress.setMax(100);
-        root.addView(progress, new LinearLayout.LayoutParams(-1, dp(3)));
+        progress.setProgressTintList(ColorStateList.valueOf(
+            "News".equals(getString(R.string.app_name)) ? 0xffb26d39 : 0xff397050));
+        progress.setVisibility(View.GONE);
+        progress.setContentDescription("Loading " + getString(R.string.app_name));
+        page.addView(progress, new FrameLayout.LayoutParams(-1, dp(4)));
+
         failure = new LinearLayout(this);
         failure.setOrientation(LinearLayout.VERTICAL);
-        failure.setPadding(dp(20), dp(12), dp(20), dp(12));
+        failure.setGravity(android.view.Gravity.CENTER);
+        failure.setPadding(dp(24), dp(16), dp(24), dp(16));
+        failure.setBackgroundColor(0xfff4f1e9);
+        failure.setClickable(true);
         TextView error = new TextView(this);
-        error.setText("Unable to load " + getString(R.string.app_name) + ". Check your connection and try again.");
+        error.setText("Unable to load " + getString(R.string.app_name));
+        error.setTextColor(0xff263e34);
+        error.setTextSize(20);
+        error.setAccessibilityLiveRegion(View.ACCESSIBILITY_LIVE_REGION_POLITE);
         failure.addView(error);
         Button retry = new Button(this);
         retry.setText("Retry");
+        retry.setAllCaps(false);
+        retry.setMinHeight(dp(48));
         retry.setOnClickListener(view -> web.reload());
         failure.addView(retry);
         failure.setVisibility(View.GONE);
-        root.addView(failure);
-        web = new WebView(this);
-        web.setId(View.generateViewId());
-        root.addView(web, new LinearLayout.LayoutParams(-1, 0, 1));
+        page.addView(failure, new FrameLayout.LayoutParams(-1, -1));
         LinearLayout toolbar = new LinearLayout(this);
         back = button(toolbar, "Back", () -> navigate(false));
         forward = button(toolbar, "Forward", () -> navigate(true));
@@ -89,6 +110,13 @@ public final class MainActivity extends Activity {
         } else if (state == null || web.restoreState(state) == null) web.loadUrl(BuildConfig.APP_ORIGIN + "/");
         updateNavigation();
         installBackHandler();
+    }
+
+    private void showFailure() {
+        loadFailed = true;
+        progress.setVisibility(View.GONE);
+        web.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS);
+        failure.setVisibility(View.VISIBLE);
     }
 
     private int dp(int value) { return Math.round(value * getResources().getDisplayMetrics().density); }
@@ -135,7 +163,12 @@ public final class MainActivity extends Activity {
                 return true;
             }
             @Override public void onPageStarted(WebView view, String url, Bitmap icon) {
+                loadingUrl = url;
+                loadFailed = false;
+                web.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_AUTO);
                 failure.setVisibility(View.GONE);
+                progress.setProgress(0, false);
+                progress.setVisibility(View.VISIBLE);
                 if (NavigationPolicy.authentication(url, BuildConfig.APP_ORIGIN)) authenticating = true;
                 updateNavigation();
             }
@@ -158,22 +191,23 @@ public final class MainActivity extends Activity {
                 dontResend.sendToTarget();
             }
             @Override public void onReceivedError(WebView view, WebResourceRequest request, WebResourceError error) {
-                if (request.isForMainFrame()) failure.setVisibility(View.VISIBLE);
+                if (request.isForMainFrame()) showFailure();
             }
             @Override public void onReceivedHttpError(WebView view, WebResourceRequest request, WebResourceResponse response) {
                 if (NavigationPolicy.sameOrigin(request.getUrl().toString(), BuildConfig.APP_ORIGIN)
                     && (response.getStatusCode() == 401 || response.getStatusCode() == 403)) web.clearHistory();
-                if (request.isForMainFrame() && response.getStatusCode() >= 500) failure.setVisibility(View.VISIBLE);
+                if (request.isForMainFrame() && response.getStatusCode() >= 500) showFailure();
             }
             @Override public void onReceivedSslError(WebView view, SslErrorHandler handler, SslError error) {
                 handler.cancel();
-                failure.setVisibility(View.VISIBLE);
+                // A failed image or stylesheet should not replace the hosted page.
+                if (java.util.Objects.equals(loadingUrl, error.getUrl())) showFailure();
             }
         });
         web.setWebChromeClient(new WebChromeClient() {
             @Override public void onProgressChanged(WebView view, int value) {
-                progress.setProgress(value);
-                progress.setVisibility(value < 100 ? View.VISIBLE : View.GONE);
+                progress.setProgress(value, ValueAnimator.areAnimatorsEnabled());
+                progress.setVisibility(!loadFailed && value < 100 ? View.VISIBLE : View.GONE);
             }
             @Override public boolean onShowFileChooser(WebView view, ValueCallback<Uri[]> result, FileChooserParams params) {
                 if (fileResult != null) fileResult.onReceiveValue(null);

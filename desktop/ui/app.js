@@ -19,29 +19,41 @@ function icon(app) {
 }
 function installButton(app) {
   const local = state.installed[app.id], needsUpdate = local && app.desktopRelease.versionCode > local.versionCode;
+  const transfer = state.progress?.id === app.id ? state.progress : null;
+  if (transfer) {
+    const amount = Math.round(transfer.fraction * 100);
+    const node = text('div', transfer.phase === 'Downloading' ? `Downloading · ${amount}%` : transfer.phase + '…', 'download install-progress');
+    node.style.setProperty('--install-progress', String(transfer.fraction));
+    node.setAttribute('role', 'progressbar');
+    node.setAttribute('aria-label', transfer.phase + ' ' + app.name);
+    if (transfer.phase === 'Downloading') node.setAttribute('aria-valuenow', String(amount));
+    return node;
+  }
   let node;
   if (app.id === 'appstore' && state.pendingSelf) node = button('Restart to update ↗', () => act('restart'), 'download');
   else if (local && !needsUpdate) node = app.id === 'appstore' ? text('span', 'Up to date', 'meta') : button('Open ↗', () => act('launch', app.id));
   else node = button(needsUpdate ? 'Update ↓' : 'Install ↓', () => act('install', app.id), 'download');
-  if (node.tagName === 'BUTTON') node.disabled = state.busy || (!state.account && (!local || needsUpdate));
+  if (node.tagName === 'BUTTON') {
+    node.disabled = state.busy || (!state.account && (!local || needsUpdate));
+    node.classList.add('install-action');
+  }
   return node;
 }
 function card(app) {
   const node = text('article', '', 'card'), top = text('div', '', 'card-top'), identity = text('div', '');
   identity.append(text('h2', app.name), text('div', `v${app.desktopRelease.version} · ${size(app.desktopRelease.artifacts[0].size)}`, 'meta'));
   top.append(icon(app), identity); node.append(top, text('p', app.description));
-  if (state.progress?.id === app.id) { const progress = document.createElement('progress'); progress.max = 1; progress.value = state.progress.fraction; node.append(text('span', `${state.progress.phase} · ${Math.round(state.progress.fraction * 100)}%`, 'progress-label'), progress); }
   const actions = text('div', '', 'card-actions');
   actions.append(button('App details ↗', () => { selectedID = app.id; render(); }, 'text-button'), installButton(app)); node.append(actions); return node;
 }
 function detail(app) {
   const node = text('article', '', 'detail');
-  node.append(button('← Back to the collection', () => { selectedID = null; render(); }, 'text-button'));
+  node.append(button('← Back to apps', () => { selectedID = null; render(); }, 'text-button'));
   const identity = text('div', '', 'identity'); identity.append(icon(app), text('h2', app.name)); node.append(identity, text('p', app.description), installButton(app));
   const facts = text('div', '', 'facts'); facts.append(text('span', `${state.platform.platform} · ${state.platform.arch}`), text('span', `v${app.desktopRelease.version}`), text('span', size(app.desktopRelease.artifacts[0].size))); node.append(facts, text('h3', 'What’s new'));
   if (app.desktopRelease.notes?.trim()) node.append(text('p', app.desktopRelease.notes, 'release-notes'));
   else { const changes = document.createElement('ul'); app.desktopRelease.changes.forEach(change => changes.append(text('li', change))); node.append(changes); }
-  node.append(text('p', `From ${app.repository}. Downloads are verified against the release checksum before installation. Apps install for your user; updating an open app takes effect the next time you launch it from Bazaar or its shortcut.`));
+  node.append(text('p', `From ${app.repository}. Updating an open app takes effect the next time you launch it.`, 'meta'));
   return node;
 }
 function render() {
@@ -87,7 +99,7 @@ function render() {
   $('#app-count').textContent = `${apps.length} app${apps.length === 1 ? '' : 's'}`;
   $('#update-all').hidden = !state.account || !updates().length; $('#update-all').disabled = state.busy;
   if (!apps.length) {
-    const empty = text('div', '', 'empty'); empty.append(text('h2', view === 'updates' ? 'Everything in its place.' : view === 'installed' ? 'Your collection starts here.' : 'A little room to grow.'), text('p', view === 'updates' ? 'Your installed apps are up to date.' : view === 'installed' ? 'Install an app from Discover to find it here.' : 'No compatible published apps match this view. Try another search or check again soon.')); content.append(empty);
+    const empty = text('div', '', 'empty'); empty.append(text('h2', view === 'updates' ? 'Apps are up to date' : view === 'installed' ? 'No installed apps' : 'No matching apps')); content.append(empty);
   } else { const grid = text('div', '', 'grid'); apps.forEach(app => grid.append(card(app))); content.append(grid); }
 }
 document.querySelectorAll('[data-view]').forEach(node => { node.onclick = () => { view = node.dataset.view; selectedID = null; render(); }; });
