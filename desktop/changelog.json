@@ -1,8 +1,10 @@
 {
   "schemaVersion": 1,
-  "version": "0.1.12",
-  "versionCode": 13,
+  "version": "0.1.13",
+  "versionCode": 14,
   "changes": [
-    "Bazaar opens on Linux systems with FUSE 3, including SteamOS and Fedora setups that lack the old FUSE 2 library."
+    "Install Bazaar as a Flatpak on Linux x86-64, including SteamOS, alongside the existing AppImage downloads.",
+    "Flatpak installations update Bazaar in place and keep updating installed apps, with a restart when a Bazaar update is ready.",
+    "Apps and games opened by the Flatpak use the host environment and graphics drivers."
   ]
 }

@@ -138,6 +138,43 @@ test('desktop discovers compatible apps, signs in, installs, updates and stages 
     expect(options.execPath).toContain(path.join('appstore', String(storeVersionCode + 1)));
     expect(options.args).toEqual([]);
     await fs.access(options.execPath);
+    // Exercise the Flatpak branch through the same UI and verified download
+    // path. Native Flatpak transactions and actual process replacement are
+    // exercised separately by flatpak-smoke.cjs on the packaging runner.
+    await electron.evaluate(({ net }, code) => {
+      const path = process.getBuiltinModule('node:path');
+      const load = process.getBuiltinModule('node:module').createRequire(path.resolve('main.cjs'));
+      const flatpak = load('./flatpak.cjs'), originalInstall = flatpak.installSelf;
+      process.env.FLATPAK_ID = flatpak.ID;
+      global.flatpakCalls = [];
+      global.failFlatpak = true;
+      flatpak.installSelf = options => originalInstall({ ...options, scope: '--user', run: async (file, args) => {
+        global.flatpakCalls.push({ file, args });
+        if (global.failFlatpak) throw new Error('Flatpak transaction failed.');
+        return { stdout: '' };
+      } });
+      flatpak.launchHost = async (file, args) => { global.hostLaunch = { file, args }; };
+      const selected = global.fixtureApps.find(app => app.id === 'appstore');
+      selected.desktopRelease.versionCode = code + 2;
+      selected.desktopRelease.artifacts = [{ ...selected.desktopRelease.artifacts[0], format: 'flatpak', file: 'Bazaar.flatpak', entry: flatpak.ID }];
+      const fetch = net.fetch;
+      net.fetch = async (url, options) => { global.lastStoreURL = String(url); return fetch(url, options); };
+    }, storeVersionCode);
+    await page.getByRole('button', { name: 'Check for updates' }).click();
+    expect(await electron.evaluate(() => global.lastStoreURL)).toContain('format=flatpak');
+    await page.getByRole('button', { name: 'Update all ↓' }).click();
+    await expect(page.getByText('Flatpak transaction failed.', { exact: true })).toBeVisible();
+    const failedState = JSON.parse(await fs.readFile(path.join(temporary, 'Private Store/state.json'), 'utf8'));
+    expect(failedState.pendingSelf.format).toBeUndefined();
+    await electron.evaluate(() => { global.failFlatpak = false; });
+    await page.getByRole('button', { name: 'Update all ↓' }).click();
+    await expect.poll(async () => JSON.parse(await fs.readFile(path.join(temporary, 'Private Store/state.json'), 'utf8')).pendingSelf.format).toBe('flatpak');
+    expect((await electron.evaluate(() => global.flatpakCalls))[1].args).toContain('--or-update');
+    await page.locator('#restart-button').click();
+    await expect.poll(() => electron.evaluate(() => global.hostLaunch)).toEqual({ file: '/usr/bin/flatpak', args: ['run', '--user', 'cool.gravitas.privatestore'] });
+    await page.getByRole('button', { name: 'Open ↗' }).first().click();
+    await expect.poll(() => electron.evaluate(() => global.hostLaunch.file)).toContain(path.join('example', '2'));
+    await electron.evaluate(() => { delete process.env.FLATPAK_ID; });
     await page.getByRole('button', { name: 'Settings', exact: false }).click();
     await expect(page.getByLabel('Automatic app updates')).toBeChecked();
     await page.getByLabel('Automatic app updates').uncheck();

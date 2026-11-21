@@ -29,10 +29,19 @@ class DesktopReleaseTest(unittest.TestCase):
                 for arch in ("x64", "arm64"):
                     extension = "AppImage" if platform == "linux" else "zip"
                     (directory / f"PrivateStore-{package['version']}-{platform}-{arch}.{extension}").write_bytes(b"verified package")
+            with self.assertRaisesRegex(ValueError, "seven"):
+                release.stage(directory)
+            (directory / f"PrivateStore-{package['version']}-linux-x64.flatpak").write_bytes(b"verified package")
             _, manifest = release.stage(directory)
-            self.assertEqual(6, len(manifest["artifacts"]))
+            self.assertEqual(7, len(manifest["artifacts"]))
+            flatpak = next(a for a in manifest["artifacts"] if a.get("format") == "flatpak")
+            self.assertEqual(flatpak["entry"], package["build"]["appId"])
+            self.assertEqual(flatpak["arch"], "x64")
             self.assertTrue(all(len(a["sha256"]) == 64 and a["size"] == 16 for a in manifest["artifacts"]))
             self.assertIn("desktop-release.json", (directory / "SHA256SUMS").read_text())
+            (directory / f"PrivateStore-{package['version']}-linux-arm64.flatpak").write_bytes(b"unsupported target")
+            with self.assertRaisesRegex(ValueError, "incompatible"):
+                release.stage(directory)
 
 
 class ThornwakeReleaseTest(unittest.TestCase):

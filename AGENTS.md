@@ -29,7 +29,7 @@ Every new version must update the tracked [`changelog.json`](changelog.json) in 
 
 ## Automatic desktop publishing
 
-Desktop releases use `desktop/package.json` version/versionCode and a matching `desktop/changelog.json`. Keep desktop and Android version codes independent. Main automatically publishes all six desktop packages only after backend, Android, desktop flow and packaging checks pass. Preserve draft upload verification, immutable versions, `desktop-vX.Y.Z` tags, and `make_latest: false` so desktop publication does not displace Android release discovery. See [DESKTOP_RELEASES.md](DESKTOP_RELEASES.md).
+Desktop releases use `desktop/package.json` version/versionCode and a matching `desktop/changelog.json`. Keep desktop and Android version codes independent. Main automatically publishes all six portable desktop packages and the Linux x86-64 Flatpak only after backend, Android, desktop flow and packaging checks pass. Preserve draft upload verification, immutable versions, `desktop-vX.Y.Z` tags, and `make_latest: false` so desktop publication does not displace Android release discovery. See [DESKTOP_RELEASES.md](DESKTOP_RELEASES.md).
 
 ## Work and News Android wrappers
 

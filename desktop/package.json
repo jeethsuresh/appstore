@@ -1,8 +1,8 @@
 {
   "name": "private-store",
   "productName": "Bazaar",
-  "version": "0.1.12",
-  "versionCode": 13,
+  "version": "0.1.13",
+  "versionCode": 14,
   "description": "Your Gravitas apps for desktop",
   "author": "Jeeth Suresh",
   "private": true,
@@ -11,7 +11,8 @@
     "start": "electron .",
     "test": "node --test test/*.test.cjs",
     "test:e2e": "playwright test",
-    "package": "electron-builder --publish never"
+    "package": "electron-builder --publish never",
+    "package:flatpak": "electron-builder --linux flatpak --x64 --publish never"
   },
   "dependencies": {
     "7zip-bin": "5.2.0",
@@ -58,6 +59,28 @@
       ],
       "category": "Utility",
       "executableName": "private-store"
+    },
+    "flatpak": {
+      "runtime": "org.freedesktop.Platform",
+      "runtimeVersion": "25.08",
+      "sdk": "org.freedesktop.Sdk",
+      "base": "org.electronjs.Electron2.BaseApp",
+      "baseVersion": "25.08",
+      "branch": "stable",
+      "useWaylandFlags": true,
+      "finishArgs": [
+        "--socket=wayland",
+        "--socket=fallback-x11",
+        "--share=ipc",
+        "--device=dri",
+        "--share=network",
+        "--talk-name=org.freedesktop.Flatpak",
+        "--talk-name=org.freedesktop.secrets",
+        "--talk-name=org.kde.kwalletd5",
+        "--talk-name=org.kde.kwalletd6",
+        "--filesystem=xdg-data/applications:create",
+        "--filesystem=xdg-data/Gravitas:create"
+      ]
     },
     "asarUnpack": [
       "node_modules/7zip-bin/**"
