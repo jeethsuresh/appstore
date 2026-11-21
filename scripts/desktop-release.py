@@ -12,7 +12,7 @@ import urllib.request
 
 ROOT = Path(__file__).resolve().parents[1]
 REPO = "jeethsuresh/appstore"
-TARGETS = {(platform, arch) for platform in ("macos", "windows", "linux") for arch in ("x64", "arm64")}
+TARGETS = {(platform, arch, "") for platform in ("macos", "windows", "linux") for arch in ("x64", "arm64")} | {("linux", "x64", "flatpak")}
 
 
 def validate():
@@ -40,18 +40,22 @@ def stage(directory):
     artifacts = []
     found = set()
     for file in sorted(directory.iterdir()):
-        match = re.fullmatch(r"PrivateStore-" + re.escape(package["version"]) + r"-(mac|win|linux)-(x64|x86_64|arm64|aarch64)\.(zip|AppImage)", file.name)
+        match = re.fullmatch(r"PrivateStore-" + re.escape(package["version"]) + r"-(mac|win|linux)-(x64|x86_64|arm64|aarch64)\.(zip|AppImage|flatpak)", file.name)
         if not match:
             continue
         platform = {"mac": "macos", "win": "windows", "linux": "linux"}[match[1]]
         arch = {"x86_64": "x64", "aarch64": "arm64"}.get(match[2], match[2])
-        if (platform, arch) in found or (match[3] == "AppImage") != (platform == "linux"):
+        format = "flatpak" if match[3] == "flatpak" else ""
+        target = (platform, arch, format)
+        if target not in TARGETS or target in found or (match[3] in ("AppImage", "flatpak")) != (platform == "linux"):
             raise ValueError("duplicate or incompatible desktop package")
-        found.add((platform, arch))
+        found.add(target)
         entry = {"macos": package["productName"] + ".app", "windows": package["productName"] + ".exe", "linux": file.name}[platform]
         artifacts.append(dict(platform=platform, arch=arch, file=file.name, entry=entry, sha256=sha256(file), size=file.stat().st_size))
+        if format:
+            artifacts[-1].update(format=format, entry=package["build"]["appId"])
     if found != TARGETS:
-        raise ValueError(f"all six desktop targets must be present; missing {TARGETS - found}")
+        raise ValueError(f"all seven desktop targets must be present; missing {TARGETS - found}")
     manifest = {**changelog, "artifacts": artifacts}
     if len((json.dumps(manifest, indent=2) + "\n").encode()) > 64 * 1024:
         raise ValueError("desktop release manifest exceeds the ingestion size limit")
@@ -127,7 +131,7 @@ def publish(directory):
         if asset["size"] != file.stat().st_size or asset.get("digest") != "sha256:" + sha256(file):
             raise ValueError("GitHub upload checksum/size verification failed: " + file.name)
     api(f"/repos/{REPO}/releases/{release['id']}", "PATCH", {"draft": False, "make_latest": "false"})
-    print("Published " + tag + " with six verified platform builds")
+    print("Published " + tag + " with seven verified desktop packages")
 
 
 if __name__ == "__main__":

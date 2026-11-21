@@ -10,6 +10,7 @@ const { STORE_URL, target, validID, atomicJSON, readJSON, artifactFor, updateAva
 const credentials = require('./core.cjs');
 const { installPackage, executable, createShortcut } = require('./installer.cjs');
 const { requireFreeSpace, installError } = require('./install-storage.cjs');
+const flatpak = require('./flatpak.cjs');
 const version = require('./package.json');
 const { CredentialVault } = require('./credential-vault.cjs');
 const { BrokerEngine, serveBroker, validateSession, brokerLoginFor } = require('./broker.cjs');
@@ -21,7 +22,7 @@ if (!app.requestSingleInstanceLock()) app.quit();
 
 let window, loginWindow, credential, catalog = [], installed = {}, settings = { autoUpdate: true }, busy = false, checking = false, error = '', progress = null, pendingSelf = null, secureStorage = false;
 const current = target();
-let statePath, sessionPath, root, brokerServer, brokerEngine, authGeneration = 0;
+let statePath, sessionPath, root, brokerServer, brokerEngine, hostDataHome, flatpakScope, authGeneration = 0;
 let stateWrites = Promise.resolve();
 const vault = new CredentialVault({
   read: () => credential,
@@ -65,7 +66,7 @@ async function refresh(runUpdates = false) {
   checking = true; error = ''; publish();
   try {
     const route = credential ? '/v1/apps' : '/v1/desktop/apps';
-    const incoming = (await (await api(`${route}?platform=${current.platform}&arch=${current.arch}`)).json()).apps;
+    const incoming = (await (await api(`${route}?platform=${current.platform}&arch=${current.arch}${flatpak.enabled() ? '&format=flatpak' : ''}`)).json()).apps;
     catalog = incoming.concat(catalog.filter(a => installed[a.id] && !incoming.some(next => next.id === a.id)).map(a => ({ ...a, unlisted: true })));
     await persist();
     // Only this running binary's source version determines whether the store
@@ -126,26 +127,29 @@ async function install(id) {
   if (busy) throw new Error('Another installation is in progress.');
   const selected = catalog.find(a => a.id === id);
   if (!selected) throw new Error('App not found for this computer.');
-  const artifact = artifactFor(selected, current);
+  const installTarget = id === 'appstore' ? flatpak.selfTarget(current) : current;
+  const artifact = artifactFor(selected, installTarget);
   const previous = installed[id];
   if ((id === 'appstore' ? version.versionCode : previous?.versionCode || 0) >= selected.desktopRelease.versionCode) throw new Error('This app is already up to date.');
   if (previous?.versionCode === selected.desktopRelease.versionCode && id === 'appstore') { pendingSelf = previous; publish(); return; }
   busy = true; error = ''; progress = { id, fraction: 0, phase: 'Downloading' }; publish();
   let directory;
   try {
-    const temp = app.getPath('temp');
+    const temp = flatpak.enabled() ? app.getPath('userData') : app.getPath('temp');
     await requireFreeSpace(temp, artifact.size, 'download this app');
     directory = await fs.mkdtemp(path.join(temp, 'private-store-'));
     const download = path.join(directory, artifact.file);
-    const response = await api(releasePath(selected, current), { signal: AbortSignal.timeout(20 * 60 * 1000) });
+    const response = await api(releasePath(selected, installTarget), { signal: AbortSignal.timeout(20 * 60 * 1000) });
     let lastPublish = 0;
     await downloadVerified(response, download, artifact, fraction => {
       progress = { id, fraction, phase: 'Downloading' };
       if (Date.now() - lastPublish > 150) { publish(); lastPublish = Date.now(); }
     });
     progress = { id, fraction: 1, phase: 'Installing' }; publish();
-    const next = await installPackage({ app: selected, archive: download, root, current });
-    await createShortcut({ app: selected, installed: next, home: os.homedir(), fetchLogo: net.fetch.bind(net) });
+    const next = artifact.format === 'flatpak'
+      ? await flatpak.installSelf({ app: selected, archive: download, current, scope: flatpakScope })
+      : await installPackage({ app: selected, archive: download, root, current });
+    if (next.format !== 'flatpak') await createShortcut({ app: selected, installed: next, home: os.homedir(), env: hostDataHome ? { ...process.env, XDG_DATA_HOME: hostDataHome } : process.env, fetchLogo: net.fetch.bind(net) });
     await persist({ id, record: next });
   } catch (e) { throw installError(e); }
   finally {
@@ -165,6 +169,8 @@ async function launch(id) {
   const local = installed[id];
   if (local.platform === 'macos') {
     const result = await shell.openPath(local.entry); if (result) throw new Error(result);
+  } else if (flatpak.enabled()) {
+    await flatpak.launchHost(local.entry, [], path.dirname(local.entry));
   } else {
     await new Promise((resolve, reject) => {
       const child = spawn(local.entry, [], { detached: true, stdio: 'ignore', cwd: path.dirname(local.entry) });
@@ -174,6 +180,14 @@ async function launch(id) {
 }
 async function restart() {
   if (!pendingSelf) throw new Error('No store update is ready.');
+  if (flatpak.enabled()) {
+    if (pendingSelf.format !== 'flatpak' || !['--user', '--system'].includes(pendingSelf.scope)) throw new Error('A Flatpak update is required before restarting.');
+    app.releaseSingleInstanceLock();
+    try { await flatpak.launchHost('/usr/bin/flatpak', ['run', pendingSelf.scope, flatpak.ID]); }
+    catch (e) { app.requestSingleInstanceLock(); throw e; }
+    app.quit();
+    return;
+  }
   const execPath = await executable(pendingSelf);
   await fs.access(execPath);
   app.relaunch({ execPath, args: [] }); app.quit();
@@ -205,6 +219,10 @@ const actions = {
 app.whenReady().then(async () => {
   const directory = app.getPath('userData');
   await fs.mkdir(directory, { recursive: true, mode: 0o700 });
+  if (flatpak.enabled()) {
+    hostDataHome = await flatpak.dataHome(os.homedir());
+    flatpakScope = await flatpak.installationScope();
+  }
   statePath = path.join(directory, 'state.json'); sessionPath = path.join(directory, 'session.enc');
   root = path.join(directory, 'apps');
   const state = await readJSON(statePath, { installed: {}, settings, pendingSelf: null });
@@ -244,8 +262,9 @@ app.whenReady().then(async () => {
     const result = await dialog.showMessageBox(window, { signal, type: 'question', title: 'Sign in with Bazaar', message: `Sign in to ${new URL(appOrigin).host}?`, detail: `Use ${account} from Bazaar for ${appOrigin}.\n\nOnly your basic profile is shared. Approve only if you just asked an app to sign in to this service.`, buttons: ['Cancel', 'Sign in'], defaultId: 0, cancelId: 0, noLink: true });
     return result.response === 1;
   } });
-  const launch = { file: process.env.APPIMAGE || process.execPath, args: app.isPackaged ? [] : [__dirname] };
-  brokerServer = await serveBroker({ launch, authorize: (request, signal) => brokerEngine.authorize(request, signal) });
+  const launch = flatpak.enabled() ? await flatpak.brokerLauncher(directory, flatpakScope) : { file: process.env.APPIMAGE || process.execPath, args: app.isPackaged ? [] : [__dirname] };
+  const brokerFile = hostDataHome ? path.join(hostDataHome, 'Gravitas', 'Private Store', 'broker-v1.json') : undefined;
+  brokerServer = await serveBroker({ file: brokerFile, launch, authorize: (request, signal) => brokerEngine.authorize(request, signal) });
   app.on('activate', () => { if (!BrowserWindow.getAllWindows().length) createWindow(); });
   setInterval(() => refresh(true).catch(e => { error = e.message; publish(); }), 6 * 60 * 60 * 1000).unref();
 }).catch(e => { console.error(e); app.quit(); });

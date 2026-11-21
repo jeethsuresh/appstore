@@ -29,6 +29,7 @@ const maxDesktopManifest = 64 << 10
 type DesktopArtifact struct {
 	Platform string `json:"platform"`
 	Arch     string `json:"arch"`
+	Format   string `json:"format,omitempty"`
 	File     string `json:"file"`
 	Entry    string `json:"entry"`
 	SHA256   string `json:"sha256"`
@@ -73,22 +74,38 @@ func parseDesktopManifest(data []byte, tag string) (*DesktopRelease, error) {
 	if _, err := changelogNotes(notes, APKInfo{VersionName: rel.Version, VersionCode: rel.VersionCode}); err != nil {
 		return nil, err
 	}
-	if len(rel.Artifacts) == 0 || len(rel.Artifacts) > 6 {
-		return nil, errors.New("desktop release requires 1–6 targets")
+	if len(rel.Artifacts) == 0 || len(rel.Artifacts) > 7 {
+		return nil, errors.New("desktop release requires 1–7 targets")
 	}
 	seen := map[string]bool{}
 	for _, a := range rel.Artifacts {
-		key := a.Platform + "/" + a.Arch
+		key := a.Platform + "/" + a.Arch + "/" + a.Format
 		if !validTarget(a.Platform, a.Arch) || seen[key] || !desktopFilename.MatchString(a.File) || !hexDigest.MatchString(a.SHA256) || a.Size <= 0 || a.Size > maxDesktopAsset || !desktopFilename.MatchString(a.Entry) {
 			return nil, errors.New("invalid or duplicate desktop artifact")
 		}
-		if (a.Platform == "macos" && (!(strings.HasSuffix(a.File, ".zip") || strings.HasSuffix(a.File, ".dmg")) || !strings.HasSuffix(a.Entry, ".app"))) || (a.Platform == "windows" && (!(strings.HasSuffix(a.File, ".zip") || strings.HasSuffix(a.File, ".exe")) || !strings.HasSuffix(a.Entry, ".exe"))) || (a.Platform == "linux" && !(strings.HasSuffix(a.File, ".zip") || (strings.HasSuffix(a.File, ".AppImage") && a.Entry == a.File))) {
+		flatpak := a.Format == "flatpak" && a.Platform == "linux" && a.Arch == "x64" && strings.HasSuffix(a.File, ".flatpak") && flatpakAppID.MatchString(a.Entry)
+		if a.Format != "" && !flatpak {
+			return nil, errors.New("unsupported desktop package format")
+		}
+		if !flatpak && ((a.Platform == "macos" && (!(strings.HasSuffix(a.File, ".zip") || strings.HasSuffix(a.File, ".dmg")) || !strings.HasSuffix(a.Entry, ".app"))) || (a.Platform == "windows" && (!(strings.HasSuffix(a.File, ".zip") || strings.HasSuffix(a.File, ".exe")) || !strings.HasSuffix(a.Entry, ".exe"))) || (a.Platform == "linux" && !(strings.HasSuffix(a.File, ".zip") || (strings.HasSuffix(a.File, ".AppImage") && a.Entry == a.File)))) {
 			return nil, errors.New("unsupported desktop package format")
 		}
 		seen[key] = true
 	}
 	rel.Tag = tag
 	return &rel, nil
+}
+
+var flatpakAppID = regexp.MustCompile(`^[A-Za-z][A-Za-z0-9_]*(\.[A-Za-z][A-Za-z0-9_-]*){2,}$`)
+
+// Keep the default response compatible with clients that require one artifact
+// per platform/architecture. Only a Flatpak Store requests its own variant;
+// managed apps retain their existing native packages and update paths.
+func desktopFormat(r *http.Request, appID string) string {
+	if appID == "appstore" && r.URL.Query().Get("format") == "flatpak" {
+		return "flatpak"
+	}
+	return ""
 }
 
 // /latest can point at the other platform's release. Search published releases
@@ -415,7 +432,7 @@ func (s *Server) desktopCatalog(w http.ResponseWriter, r *http.Request) {
 			}
 			selected.Artifacts = nil
 			for _, artifact := range rel.Artifacts {
-				if artifact.Platform == platform && artifact.Arch == arch {
+				if artifact.Platform == platform && artifact.Arch == arch && artifact.Format == desktopFormat(r, a.ID) {
 					selected.Artifacts = append(selected.Artifacts, artifact)
 				}
 			}
@@ -443,7 +460,7 @@ func (s *Server) desktopDownload(w http.ResponseWriter, r *http.Request) {
 				break
 			}
 			for _, artifact := range rel.Artifacts {
-				if artifact.Platform == r.PathValue("platform") && artifact.Arch == r.PathValue("arch") {
+				if artifact.Platform == r.PathValue("platform") && artifact.Arch == r.PathValue("arch") && artifact.Format == desktopFormat(r, a.ID) {
 					s.serveDesktopArtifact(w, r, artifact)
 					return
 				}
@@ -488,7 +505,7 @@ func (s *Server) desktopBootstrap(w http.ResponseWriter, r *http.Request) {
 				break
 			}
 			for _, artifact := range rel.Artifacts {
-				if artifact.Platform == r.PathValue("platform") && artifact.Arch == r.PathValue("arch") {
+				if artifact.Platform == r.PathValue("platform") && artifact.Arch == r.PathValue("arch") && artifact.Format == desktopFormat(r, a.ID) {
 					s.serveDesktopArtifact(w, r, artifact)
 					return
 				}

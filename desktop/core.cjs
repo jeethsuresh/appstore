@@ -17,12 +17,14 @@ function artifactFor(app, current = target()) {
   if (!validID(app.id)) throw new Error('Invalid app identity.');
   const release = app.desktopRelease;
   if (!release || !Number.isSafeInteger(release.versionCode) || release.versionCode < 1 || !/^\d+\.\d+\.\d+$/.test(release.version)) throw new Error('Invalid release version.');
-  const artifacts = release.artifacts.filter(a => a.platform === current.platform && a.arch === current.arch);
+  const artifacts = release.artifacts.filter(a => a.platform === current.platform && a.arch === current.arch && (a.format || '') === (current.format || ''));
   if (artifacts.length !== 1) throw new Error('No compatible release for this computer.');
   const a = artifacts[0];
   const safeName = name => typeof name === 'string' && /^[A-Za-z0-9][A-Za-z0-9._ -]{0,180}$/.test(name);
   if (!safeName(a.file) || !safeName(a.entry) || !/^[a-f0-9]{64}$/.test(a.sha256) || !Number.isSafeInteger(a.size) || a.size < 1 || a.size > 2 ** 31) throw new Error('Invalid download metadata.');
-  if (a.platform === 'linux' ? !(a.file.endsWith('.zip') || (a.file.endsWith('.AppImage') && a.entry === a.file)) : !(a.file.endsWith('.zip') || a.file.endsWith(a.platform === 'macos' ? '.dmg' : '.exe')) || !a.entry.endsWith(a.platform === 'macos' ? '.app' : '.exe')) throw new Error('Unsupported desktop package.');
+  if (a.format === 'flatpak') {
+    if (app.id !== 'appstore' || a.platform !== 'linux' || a.arch !== 'x64' || !a.file.endsWith('.flatpak') || a.entry !== 'cool.gravitas.privatestore') throw new Error('Unsupported Flatpak package.');
+  } else if (a.format || (a.platform === 'linux' ? !(a.file.endsWith('.zip') || (a.file.endsWith('.AppImage') && a.entry === a.file)) : !(a.file.endsWith('.zip') || a.file.endsWith(a.platform === 'macos' ? '.dmg' : '.exe')) || !a.entry.endsWith(a.platform === 'macos' ? '.app' : '.exe'))) throw new Error('Unsupported desktop package.');
   return a;
 }
 function updateAvailable(app, installed) {
@@ -74,6 +76,6 @@ async function downloadVerified(response, destination, artifact, progress = () =
 }
 function releasePath(app, current = target()) {
   artifactFor(app, current);
-  return `/v1/desktop/releases/${app.id}/${app.desktopRelease.versionCode}/${current.platform}/${current.arch}`;
+  return `/v1/desktop/releases/${app.id}/${app.desktopRelease.versionCode}/${current.platform}/${current.arch}` + (current.format ? '?format=' + encodeURIComponent(current.format) : '');
 }
 module.exports = { STORE_URL, target, validID, artifactFor, updateAvailable, atomicJSON, readJSON, downloadVerified, releasePath, saveCredential, loadCredential };

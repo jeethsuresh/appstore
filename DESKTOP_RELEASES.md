@@ -7,6 +7,9 @@ are not needed. The first release included Private Store, RSS Reader and Email
 on the operating systems/processors for which they have published binaries.
 Apps without published desktop builds are not advertised as installable.
 
+Linux x86-64 also has a Flatpak target, including SteamOS. All six existing
+portable packages, including both Linux AppImages, remain available.
+
 ## One catalog, independent platforms
 
 Existing entries with `packageName`, `assetName` and `certificateSha256` stay
@@ -22,6 +25,9 @@ No separate mobile/desktop app lists or platform arrays are required. Only
 verified release artifacts determine supported desktop operating systems and
 processors. `/v1/apps` without platform parameters remains the Android catalog;
 desktop requests require `platform=macos|windows|linux&arch=x64|arm64`.
+Flatpak Bazaar adds `format=flatpak` to select its own Flatpak artifact. This
+only changes the `appstore` listing; managed apps keep their native packages.
+Omitting `format` retains the existing one-artifact-per-target API contract.
 For Mac distribution, set `macOSNotarizedFrom` to the desktop version code of
 the first release verified for Developer ID and Apple notarization. Wait until
 that release is ingested before enabling the cutoff. Earlier Mac releases stay
@@ -106,6 +112,11 @@ are immutable. When migrating a legacy app to a manifest, continue increasing
 its existing inferred version code. Android codes and desktop codes remain
 independent. Release selection looks for matching assets, so a desktop tag
 never displaces the latest Android update.
+An additional Linux x64 artifact may set `"format":"flatpak"`, name a `.flatpak`
+bundle, and use the Flatpak application ID as `entry`. Bazaar uses the permanent
+ID `cool.gravitas.privatestore` and the `stable` branch. Artifact download and
+bootstrap URLs add `?format=flatpak`; the existing authentication, size/SHA-256
+checks and all-or-nothing release ingestion apply to this artifact too.
 Within each desktop channel, discovery selects the highest stable numeric
 `major.minor.patch` version among the first 200 releases, regardless of GitHub's
 list order. Explicit tag syncs still select only the requested tag.
@@ -162,6 +173,44 @@ catalog is cached so installed apps can still be opened during an outage.
 The 0.1.5 Mac bundles keep app resources unpacked so that 0.1.4 can install the
 update. The 0.1.5 installer can extract packages that contain an Electron ASAR.
 
+### Flatpak installation and updates
+
+Download the x86-64 `.flatpak` bundle from the signed-in desktop downloads page
+and open it with Discover. For a per-user command-line installation:
+
+```sh
+flatpak remote-add --user --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
+flatpak install --user ./PrivateStore-0.1.13-linux-x86_64.flatpak
+flatpak run cool.gravitas.privatestore
+```
+
+The package uses Freedesktop 25.08 and the matching Electron BaseApp/Zypak.
+Flatpak supplies GPU runtime extensions for Bazaar's own UI. Installed apps and
+games run on the host through `flatpak-spawn --host`, using the host session's
+environment and drivers. Sandbox library paths and XDG overrides are not
+forwarded to those processes. Existing versioned installs, native app updates,
+desktop shortcuts and broker sign-in continue to work.
+
+Bazaar's own Flatpak updates use its existing authenticated catalog, schedule,
+automatic-update setting and verified-download checks. They do not depend on
+publishing Bazaar to Flathub. The verified bundle is staged in persistent app
+storage, then installed transactionally into the same user/system installation
+with `flatpak install --or-update --bundle`. The running version remains active
+until **Restart to update**, which starts the new Flatpak deployment. Failed
+transactions do not advance the installed version or pending restart. A system
+installation can require the operating system's normal authorization to update;
+per-user installation avoids administrator authorization. Named nondefault
+system installations are currently unsupported.
+
+Flatpak stores Bazaar's settings and credentials in its own per-user app data
+directory; updates retain that directory. A first Flatpak install is independent
+of an existing AppImage installation and does not migrate or delete its state.
+Host shortcuts and broker discovery use the host's XDG data location. The
+Flatpak explicitly grants host-command access for installing and launching
+software, plus access to those two integration directories. It is not a security
+boundary around the software Bazaar installs. The renderer retains its existing
+Electron sandbox and credential isolation.
+
 ## Merge, deploy and publish
 
 Increase `version` and `versionCode` in `desktop/package.json`, and update
@@ -173,7 +222,7 @@ release selection unchanged.
 `.github/workflows/ci.yml` runs backend and Android validation, desktop unit and
 Electron flow tests, and all six native packages on PRs. On main, deployment
 depends on all of those jobs. Desktop publishing also depends on those checks,
-collects all six packages and uses the signed Mac packages from the main-only
+collects all seven packages and uses the signed Mac packages from the main-only
 `macos-release` environment. Each Mac job verifies the Developer ID signature
 and stapled ticket after installing the ZIP, then smoke-tests the installed app.
 Publication validates the source changelog, uploads a draft with
@@ -192,10 +241,15 @@ npm test
 xvfb-run -a npm run test:e2e  # Linux
 npm start
 npm run package -- --linux --x64
+npm run package:flatpak  # Linux x86-64; requires flatpak-builder and the runtimes above
 cd ..
 python3 scripts/test-desktop-release.py
 python3 scripts/desktop-release.py validate
 ```
+
+Fedora build hosts should avoid Flatpak 1.18.2, whose `build-init --base`
+regression is fixed in 1.18.3. This concerns the build tools, not the minimum
+version required to install Bazaar. See [the upstream build issue](https://github.com/flatpak/flatpak/issues/6818).
 
 `tools/e2e/desktop.Dockerfile` supplies the Linux UI test dependencies. Desktop
 flow tests exercise discovery, Gravitas enrollment handoff, app pages,
@@ -204,6 +258,15 @@ package builds run for both architectures on each operating system. Linux
 package tests check native FUSE launch and the extraction fallback on both CPUs.
 Runtime tests on actual macOS/Windows machines remain useful before expanding
 native installer compatibility beyond the documented Electron formats.
+
+The additional `desktop-flatpak` CI job builds the x86-64 bundle and a disposable
+newer version. `node test/flatpak-smoke.cjs` installs the first package in a
+separate session, opens the packaged UI, installs and updates a native fixture,
+launches it on the host, applies the verified newer Flatpak and relaunches it.
+It verifies retained settings, broker discovery and isolation of library
+environment variables. A pre-existing user installation is never replaced by
+the test. Actual SteamOS hardware and GPU/game combinations require separate
+compatibility checks.
 
 Native Flutter Linux bundles can use ZIPs with an explicit root executable entry and adjacent `lib/` and `data/` directories. The same traversal, symlink, checksum and versioned-install checks apply to these ZIPs. River, Spacetime and Haven are universal catalog entries; Office, RSS Reader and Email are desktop-only.
 

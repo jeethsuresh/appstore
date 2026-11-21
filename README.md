@@ -145,7 +145,7 @@ See [the versioned protocol contract and integration](protocols/README.md) for G
 
 ## Desktop
 
-Bazaar also runs on macOS, Windows and Linux, with x64 and ARM64 packages, Gravitas sign-in, verified installations, app pages, changelogs, automatic app updates and self-update. See [desktop installation, catalog targeting and release publishing](DESKTOP_RELEASES.md). Existing Android entries remain mobile-only; `"desktop": true` adds compatible desktop releases, and desktop-only entries omit the Android package fields.
+Bazaar also runs on macOS, Windows and Linux, with x64 and ARM64 packages plus a Linux x86-64 Flatpak, Gravitas sign-in, verified installations, app pages, changelogs, automatic app updates and self-update. See [desktop installation, catalog targeting and release publishing](DESKTOP_RELEASES.md). Existing Android entries remain mobile-only; `"desktop": true` adds compatible desktop releases, and desktop-only entries omit the Android package fields.
 
 ### River account sign-in
 

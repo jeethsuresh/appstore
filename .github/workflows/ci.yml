@@ -168,8 +168,41 @@ jobs:
             desktop/dist/*.zip
             desktop/dist/*.AppImage
           if-no-files-found: error
+  desktop-flatpak:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: desktop/package-lock.json
+      - name: Install Flatpak build tools and runtimes
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y flatpak flatpak-builder
+          flatpak remote-add --user --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
+          flatpak install --user --noninteractive flathub org.freedesktop.Platform//25.08 org.freedesktop.Sdk//25.08 org.electronjs.Electron2.BaseApp//25.08
+      - run: npm ci
+        working-directory: desktop
+      - run: npm run package:flatpak
+        working-directory: desktop
+      - name: Build a newer package for the real Flatpak update test
+        working-directory: desktop
+        run: |
+          next="$(node -p 'const p=require("./package.json"); p.version.split(".").map((n,i)=>i===2?Number(n)+1:n).join(".")')"
+          code="$(node -p 'require("./package.json").versionCode+1')"
+          npm run package:flatpak -- --config.extraMetadata.version="$next" --config.extraMetadata.versionCode="$code" --config.directories.output=dist/flatpak-smoke
+      - name: Verify sandbox launch, host game launch, self-update and preserved data
+        run: xvfb-run -a node test/flatpak-smoke.cjs
+        working-directory: desktop
+      - uses: actions/upload-artifact@v4
+        with:
+          name: desktop-package-flatpak-x64
+          path: desktop/dist/*.flatpak
+          if-no-files-found: error
   desktop-release-check:
-    needs: desktop-packages
+    needs: [desktop-packages, desktop-flatpak]
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
@@ -178,7 +211,7 @@ jobs:
           pattern: desktop-package-*
           path: desktop/dist
           merge-multiple: true
-      - name: Require all six packages and generate verified release metadata
+      - name: Require all seven packages and generate verified release metadata
         run: python3 scripts/desktop-release.py stage
       - uses: actions/upload-artifact@v4
         with:
@@ -186,6 +219,7 @@ jobs:
           path: |
             desktop/dist/*.zip
             desktop/dist/*.AppImage
+            desktop/dist/*.flatpak
             desktop/dist/desktop-release.json
             desktop/dist/desktop-changelog.json
             desktop/dist/SHA256SUMS
