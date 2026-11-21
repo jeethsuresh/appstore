@@ -131,7 +131,7 @@ jobs:
       matrix:
         include:
           - {os: ubuntu-24.04, platform: linux, arch: x64}
-          - {os: ubuntu-24.04, platform: linux, arch: arm64}
+          - {os: ubuntu-24.04-arm, platform: linux, arch: arm64}
           - {os: macos-15-intel, platform: mac, arch: x64}
           - {os: macos-15, platform: mac, arch: arm64}
           - {os: windows-2022, platform: win, arch: x64}
@@ -157,7 +157,9 @@ jobs:
         working-directory: desktop
       - name: Verify Linux package installation and launch
         if: matrix.platform == 'linux'
-        run: xvfb-run -a node test/native-smoke.cjs ${{ matrix.arch }}
+        run: |
+          xvfb-run -a node test/native-smoke.cjs ${{ matrix.arch }}
+          xvfb-run -a node test/native-smoke.cjs ${{ matrix.arch }} --extract-appimage
         working-directory: desktop
       - uses: actions/upload-artifact@v4
         with:

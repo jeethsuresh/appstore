@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "version": "0.1.11",
-  "versionCode": 12,
+  "version": "0.1.12",
+  "versionCode": 13,
   "changes": [
-    "Install and Update show download progress in the same place on the app card and its detail page."
+    "Bazaar opens on Linux systems with FUSE 3, including SteamOS and Fedora setups that lack the old FUSE 2 library."
   ]
 }

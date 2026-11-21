@@ -121,10 +121,11 @@ traversal, escaping symlinks, writes through symlinks and oversized expansions.
 
 Download a compatible build at `https://apps.gravitas.cool/#desktop-store` after
 signing in. Extract ZIPs before launching on macOS/Windows. On Linux, make the
-AppImage executable; a working AppImage/FUSE runtime and Electron-compatible
-user namespaces are required. Published macOS builds use Apple Developer ID and
-carry a stapled Apple notarization ticket. Windows builds may require
-first-launch approval.
+AppImage executable. Bazaar uses a static AppImage runtime with FUSE 3 support
+starting in 0.1.12. On a system where FUSE mounting is unavailable, run the
+AppImage with `--appimage-extract-and-run`. Published macOS builds use Apple
+Developer ID and carry a stapled Apple notarization ticket. Windows builds may
+require first-launch approval.
 
 The macOS signer signs all thin/universal Mach-O files and nested bundles with
 the selected identity and secure timestamps. Binary data resources, including
@@ -199,9 +200,10 @@ python3 scripts/desktop-release.py validate
 `tools/e2e/desktop.Dockerfile` supplies the Linux UI test dependencies. Desktop
 flow tests exercise discovery, Gravitas enrollment handoff, app pages,
 installation, updates, self-update staging/relaunch handoff and settings. Native
-package builds run for both architectures on each operating system. Runtime
-tests on actual macOS/Windows machines remain useful before expanding native
-installer compatibility beyond the documented Electron formats.
+package builds run for both architectures on each operating system. Linux
+package tests check native FUSE launch and the extraction fallback on both CPUs.
+Runtime tests on actual macOS/Windows machines remain useful before expanding
+native installer compatibility beyond the documented Electron formats.
 
 Native Flutter Linux bundles can use ZIPs with an explicit root executable entry and adjacent `lib/` and `data/` directories. The same traversal, symlink, checksum and versioned-install checks apply to these ZIPs. River, Spacetime and Haven are universal catalog entries; Office, RSS Reader and Email are desktop-only.
 

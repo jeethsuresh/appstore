@@ -15,8 +15,10 @@ async function smoke() {
   deadline.unref();
   const current = target();
   const requireNotarization = process.argv.includes('--require-notarization');
+  const extractAppImage = process.argv.includes('--extract-appimage');
   if (process.argv[2] !== current.arch) {
     if (requireNotarization) throw new Error('The notarized release must be tested on its native architecture.');
+    if (current.platform === 'linux') throw new Error('The AppImage must be tested on its native architecture.');
     console.log('Cross-architecture package built; launch check requires a matching CPU.');
     return;
   }
@@ -36,9 +38,26 @@ async function smoke() {
       execFileSync('/usr/bin/codesign', ['--verify', '-R', '=' + requirement, installed.entry], { stdio: 'inherit' });
       execFileSync('/usr/bin/xcrun', ['stapler', 'validate', installed.entry], { stdio: 'inherit' });
     }
-    const launchEnv = { ...process.env, APPDATA: path.join(temporary, 'roaming'), APPIMAGE_EXTRACT_AND_RUN: '1', XDG_CONFIG_HOME: temporary, XDG_DATA_HOME: path.join(temporary, 'local') };
-    stage = 'launching the packaged Store'; console.log(stage);
-    const electron = await _electron.launch({ executablePath: await executable(installed), args: ['--no-sandbox'], env: launchEnv, timeout: 60000 });
+    const executablePath = await executable(installed);
+    const launchEnv = { ...process.env, APPDATA: path.join(temporary, 'roaming'), XDG_CONFIG_HOME: temporary, XDG_DATA_HOME: path.join(temporary, 'local') };
+    const linux = current.platform === 'linux';
+    if (linux) {
+      const runtime = execFileSync('file', ['-b', executablePath], { encoding: 'utf8' });
+      if (!/\b(?:statically linked|static-pie linked)\b/.test(runtime)) {
+        throw new Error('Expected a static AppImage runtime that can launch without the host FUSE 2 library: ' + runtime.trim());
+      }
+      delete launchEnv.APPIMAGE_EXTRACT_AND_RUN;
+      if (extractAppImage) launchEnv.APPIMAGE_EXTRACT_AND_RUN = '1';
+    }
+    stage = extractAppImage ? 'launching the AppImage by extraction' : 'launching the packaged Store';
+    console.log(stage);
+    const electron = await _electron.launch({
+      executablePath,
+      args: linux ? [] : ['--no-sandbox'],
+      chromiumSandbox: linux,
+      env: launchEnv,
+      timeout: 60000,
+    });
     try {
       stage = 'waiting for the native window'; console.log(stage);
       const page = await electron.firstWindow({ timeout: 30000 }); await page.waitForSelector('#content', { timeout: 30000 });
