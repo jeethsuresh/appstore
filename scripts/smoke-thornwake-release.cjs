@@ -26,7 +26,7 @@ function verifyFreight(report) {
 
 async function runInstalledGame(game, program, directory) {
   function run(args) {
-    const child = spawnSync(program, ['--headless', '--', ...args], { cwd: directory, encoding: 'utf8', timeout: 60000 });
+    const child = spawnSync(program, ['--headless', '--', ...args], { cwd: directory, env: { ...process.env, XDG_CONFIG_HOME: path.join(directory, 'config'), XDG_DATA_HOME: path.join(directory, 'data'), XDG_CACHE_HOME: path.join(directory, 'cache') }, encoding: 'utf8', timeout: 60000 });
     const output = (child.stdout || '') + (child.stderr || '');
     assert.equal(child.status, 0, output || child.error?.message);
     assert.doesNotMatch(output, /SCRIPT ERROR|Parse Error|Battle engine|ERROR:/);
@@ -52,7 +52,7 @@ async function smoke() {
   const release = path.resolve(process.argv[2]);
   const manifest = JSON.parse(await fs.readFile(path.join(release, 'desktop-release.json'), 'utf8'));
   const current = target();
-  assert.equal(current.platform, 'macos');
+  const unsigned = process.argv.includes('--unsigned');
   const asset = manifest.artifacts.find(a => a.platform === current.platform && a.arch === current.arch);
   assert.ok(asset);
   const archive = path.join(release, asset.file);
@@ -63,14 +63,17 @@ async function smoke() {
   try {
     const app = { id: game.id, name: game.name, desktopRelease: manifest };
     const installed = await installPackage({ app, archive, root: temp, current });
-    assert.equal(installed.entry, path.join(temp, game.id, String(manifest.versionCode), game.name + '.app'));
-    const appleIdentity = 'anchor apple generic and identifier "' + game.bundle + '" and certificate leaf[subject.OU] = "WV3J3848JR" and certificate leaf[field.1.2.840.113635.100.6.1.13] exists';
-    execFileSync('/usr/bin/codesign', ['--verify', '--deep', '--strict', installed.entry], { stdio: 'inherit' });
-    execFileSync('/usr/bin/codesign', ['--verify', '-R', '=' + appleIdentity, installed.entry], { stdio: 'inherit' });
-    execFileSync('/usr/bin/xcrun', ['stapler', 'validate', installed.entry], { stdio: 'inherit' });
-    execFileSync('/usr/sbin/spctl', ['--assess', '--type', 'execute', '--verbose=2', installed.entry], { stdio: 'inherit' });
+    assert.equal(installed.entry, path.join(temp, game.id, String(manifest.versionCode), asset.entry));
+    if (current.platform === 'macos' && !unsigned) {
+      const appleIdentity = 'anchor apple generic and identifier "' + game.bundle + '" and certificate leaf[subject.OU] = "WV3J3848JR" and certificate leaf[field.1.2.840.113635.100.6.1.13] exists';
+      execFileSync('/usr/bin/codesign', ['--verify', '--deep', '--strict', installed.entry], { stdio: 'inherit' });
+      execFileSync('/usr/bin/codesign', ['--verify', '-R', '=' + appleIdentity, installed.entry], { stdio: 'inherit' });
+      execFileSync('/usr/bin/xcrun', ['stapler', 'validate', installed.entry], { stdio: 'inherit' });
+      execFileSync('/usr/sbin/spctl', ['--assess', '--type', 'execute', '--verbose=2', installed.entry], { stdio: 'inherit' });
+    }
     const program = await executable(installed);
-    assert.equal(program, path.join(installed.entry, 'Contents', 'MacOS', game.name));
+    if (current.platform === 'macos') assert.equal(program, path.join(installed.entry, 'Contents', 'MacOS', game.name));
+    else assert.equal(program, installed.entry);
     await runInstalledGame(game, program, temp);
     console.log('Bazaar installed and launched verified ' + game.name + ' on ' + current.arch);
   } finally {

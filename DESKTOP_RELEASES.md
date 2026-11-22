@@ -44,34 +44,37 @@ reader. A signed-in Bazaar device uses `/v1/apps?platform=macos&arch=arm64`
 device credential to download it. Public catalog pages and legacy invite-only
 devices omit the listing.
 
-### Direct publishing of private macOS games
+### Direct publishing of native games
 
-A private desktop game can send a signed universal Godot archive directly from
-its release pipeline. To enable this source, configure a dedicated verifier
-in the Bazaar backend environment. Derive the setting name by uppercasing the
-catalog ID, replacing hyphens with underscores, and appending
-`_PUBLISH_TOKEN_SHA256`. For example, a listing called `sample-game` uses
-`SAMPLE_GAME_PUBLISH_TOKEN_SHA256`. The backend polls GitHub for all listings
-without a configured publisher.
+A configured native-game publisher can submit a complete Mac, Windows x64 and
+Linux x64 release directly from its build pipeline. Public versus signed-in
+catalog visibility is unchanged. Configure one dedicated
+`<UPPERCASE_APP_ID>_PUBLISH_TOKEN_SHA256` verifier per catalog app (replace
+hyphens with underscores). The pipeline holds the corresponding 32-byte random
+lowercase-hex token; the verifier is SHA-256 of that ASCII token without a
+newline. A token authorizes only its own app. Configuring a publisher makes it
+the release source instead of GitHub polling for that listing.
 
-The pipeline holds a fresh 32-byte random token encoded as lowercase hex. Set
-the backend verifier to the lowercase hex SHA-256 of that ASCII token, with
-no newline. Each private game requires its own verifier. The upload credential
-only authorizes publishing to the configured listing.
+POST a multipart request to `/v1/desktop/publish/<app-id>` with the token as a
+Bearer credential. Send `manifest` first, followed by one `archive` part per
+unique filename in manifest order. Each ZIP is bounded to 192 MiB. A complete
+release has four target records: Mac arm64 and x64 sharing the same signed
+universal ZIP, Windows x64 and Linux x64. The existing two-record universal-Mac
+upload remains supported for older publishers. Filenames use the catalog name
+without spaces, version, and `mac-universal.zip`, `win-x64.zip`, or
+`linux-x64.zip`. Entries use the catalog name followed by `.app`, `.exe`, or no
+extension, respectively. Native ZIPs include the matching named Godot PCK.
 
-Send a multipart POST to `/v1/desktop/publish/<app-id>` with a Bearer token.
-The first part, `manifest`, carries `desktop-release.json`. The second,
-`archive`, carries the ZIP named in the manifest, up to 192 MiB. The two macOS
-architecture records must reference one ZIP with the same size and SHA-256.
-The filename is the catalog name with spaces removed, followed by
-`-<version>-mac-universal.zip`. The ZIP contains the catalog name followed by
-`.app`, and the embedded executable and pack use that same product name.
+The backend checks every archive's size/SHA-256 and native executable/pack
+headers before publishing the entire release atomically. A failed or incomplete
+upload leaves the previous release discoverable. Mac signing, notarization and
+installed-game checks remain required in the protected publishing workflow.
+Windows/Linux packages are built and installed/tested on their actual OS.
 
-A first submission returns HTTP 201. A verified identical replay returns 200
-and can repair a missing cached archive. Both responses carry `appId`,
-`version`, `versionCode`, `sha256` and `size`. A modified or older version
-returns 409. The signing pipeline must verify the Developer ID signature,
-notarization and installed game before submitting its archive.
+Initial publication returns 201, and an identical verified replay returns 200
+and repairs missing cached files. Responses retain the legacy first-archive
+`appId`, `version`, `versionCode`, `sha256`, `size` fields and add the complete
+`artifacts` list. Changed or older versions return 409.
 
 Existing Electron releases can be ingested without upstream changes: assets
 named `*-mac-arm64.dmg`, `*-win-x64.exe` and `*-linux-x86_64.AppImage` (also
@@ -274,21 +277,25 @@ Desktop Bazaar also supplies foreground Gravitas app sign-in. See
 [DESKTOP_SIGN_IN.md](DESKTOP_SIGN_IN.md) for the protocol, account upgrade and
 reusable Dart/Electron helpers.
 
-## Thornwake
+## Native Railyard games
 
-Thornwake is a separate, macOS-only desktop listing. Its shipped packages are
-universal builds from Rail Yard. Bazaar discovers them in the Appstore
-repository under `thornwake-desktop-vX.Y.Z`, using the same manifest and
-download verification as its other desktop listings.
+Thornwake (RTS), Ember Rest (RPG), and Railyard FPS retain their existing Bazaar
+app IDs, versions and update paths. The private Railyard repository builds
+Godot packages for Mac (Apple Silicon and Intel), Windows x64 and Linux x64.
+Mac packages are Developer ID signed, notarized and tested on both CPUs.
+Windows and Linux releases are installed through the same Bazaar installer and
+run headlessly before publication. Linux native libraries are built on Ubuntu
+22.04 for compatibility with SteamOS-era system libraries; the games use the
+host drivers when launched from Bazaar's Flatpak.
 
-Update `desktop/thornwake-changelog.json` with the game version, its numeric
-version code (`major * 1000000 + minor * 1000 + patch`), and user-facing notes.
-The publisher validates and copies these notes into the release manifest.
+The Railyard main-only workflow publishes private immutable releases and
+transfers their complete manifests/archives directly to Bazaar. Each game has
+its own publisher token. Railyard FPS remains signed-in-only; Thornwake and
+Ember Rest keep their existing catalog visibility. `scripts/native-games.json`
+in Railyard declares independent versions and changelogs. Increase the affected
+game version for a new release. Existing versions are restored and verified
+for idempotent transfer retries, never overwritten.
 
-Stage the headlessly tested universal app ZIP as `Thornwake-unsigned.zip` on
-a draft with that tag. Dispatch **Sign and publish Thornwake** on main with
-the version and SHA-256 of the staged ZIP. The workflow signs both
-architectures in the existing macOS release environment, notarizes and
-staples the app, tests the installed build headlessly, and publishes the
-verified ZIP and desktop manifest. The draft input ZIP is removed before
-publication.
+`desktop/thornwake-changelog.json` remains the matching changelog consumed by
+the shared Mac signer. The older manual **Sign and publish Thornwake** workflow
+is retained for recovery of its older universal-Mac release path.
