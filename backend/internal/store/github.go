@@ -67,7 +67,7 @@ func (s *Server) github(ctx context.Context, path, accept string) (*http.Respons
 	return res, nil
 }
 func (s *Server) Sync(ctx context.Context, a App, tag string) error {
-	if s.cfg.DesktopPublisherHashes[a.ID] != "" && a.DesktopRequiresSignIn {
+	if s.cfg.DesktopPublisherHashes[a.ID] != "" {
 		return nil
 	}
 	ctx, cancel := context.WithTimeout(ctx, 8*time.Minute)

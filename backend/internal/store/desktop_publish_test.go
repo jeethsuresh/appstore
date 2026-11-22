@@ -20,16 +20,16 @@ const samplePublishPath = "/v1/desktop/publish/sample-game"
 
 var sampleGame = App{ID: "sample-game", Name: "Sample Game", Repo: "example/sample", Desktop: true, DesktopRequiresSignIn: true, DesktopReleaseTagPrefix: "sample-", MacOSNotarizedFrom: 4000}
 
-func TestDesktopPublisherSettingsAreScopedToPrivateListings(t *testing.T) {
+func TestDesktopPublisherSettingsAreScopedToConfiguredDesktopListings(t *testing.T) {
 	second := sampleGame
 	second.ID, second.Name = "another-game", "Another Game"
 	public := sampleGame
 	public.ID, public.DesktopRequiresSignIn = "public-game", false
 	apps := []App{sampleGame, second, public}
-	settings := map[string]string{"SAMPLE_GAME_PUBLISH_TOKEN_SHA256": hash("first"), "PUBLIC_GAME_PUBLISH_TOKEN_SHA256": hash("ignored")}
+	settings := map[string]string{"SAMPLE_GAME_PUBLISH_TOKEN_SHA256": hash("first"), "PUBLIC_GAME_PUBLISH_TOKEN_SHA256": hash("public")}
 	read := func(k string) string { return settings[k] }
 	publishers, err := DesktopPublishers(apps, read)
-	if err != nil || len(publishers) != 1 || publishers[sampleGame.ID] != hash("first") {
+	if err != nil || len(publishers) != 2 || publishers[sampleGame.ID] != hash("first") || publishers[public.ID] != hash("public") {
 		t.Fatalf("unexpected desktop publishers: count=%d err=%v", len(publishers), err)
 	}
 	for _, invalid := range []string{"invalid", hash("first")} {
