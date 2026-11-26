@@ -6,7 +6,7 @@ permissions:
 jobs:
   android:
     name: WebView Android API ${{ matrix.api }}
-    runs-on: ubuntu-24.04
+    runs-on: gravitas-linux
     timeout-minutes: 35
     strategy:
       fail-fast: false

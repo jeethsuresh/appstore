@@ -9,7 +9,7 @@ jobs:
   backend:
     outputs:
       digest: ${{ steps.image.outputs.digest }}
-    runs-on: ubuntu-24.04
+    runs-on: gravitas-linux
     permissions:
       contents: read
       packages: write
@@ -46,7 +46,7 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
   android:
-    runs-on: ubuntu-24.04
+    runs-on: gravitas-linux
     steps:
       - uses: actions/checkout@v4
       - name: Check catalog package visibility before building
@@ -100,7 +100,7 @@ jobs:
           name: private-store-debug
           path: android/app/build/outputs/apk/debug/app-debug.apk
   desktop:
-    runs-on: ubuntu-24.04
+    runs-on: gravitas-linux
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -130,7 +130,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - {os: ubuntu-24.04, platform: linux, arch: x64}
+          - {os: gravitas-linux, platform: linux, arch: x64}
           - {os: ubuntu-24.04-arm, platform: linux, arch: arm64}
           - {os: macos-15-intel, platform: mac, arch: x64}
           - {os: macos-15, platform: mac, arch: arm64}
@@ -169,7 +169,7 @@ jobs:
             desktop/dist/*.AppImage
           if-no-files-found: error
   desktop-flatpak:
-    runs-on: ubuntu-24.04
+    runs-on: gravitas-linux
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -203,7 +203,7 @@ jobs:
           if-no-files-found: error
   desktop-release-check:
     needs: [desktop-packages, desktop-flatpak]
-    runs-on: ubuntu-24.04
+    runs-on: gravitas-linux
     steps:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
@@ -226,7 +226,7 @@ jobs:
           if-no-files-found: error
   desktop-plan:
     if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
-    runs-on: ubuntu-24.04
+    runs-on: gravitas-linux
     outputs:
       publish: ${{ steps.release.outputs.publish }}
     steps:
@@ -279,7 +279,7 @@ jobs:
   desktop-publish:
     if: github.ref == 'refs/heads/main' && needs.desktop-plan.outputs.publish == 'true'
     needs: [backend, android, desktop, desktop-release-check, desktop-plan, desktop-sign, webview]
-    runs-on: ubuntu-24.04
+    runs-on: gravitas-linux
     permissions:
       contents: write
     steps:
@@ -310,7 +310,7 @@ jobs:
   deploy:
     if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
     needs: [backend, android, desktop, desktop-release-check, webview]
-    runs-on: ubuntu-24.04
+    runs-on: gravitas-linux
     timeout-minutes: 15
     environment:
       name: gravitas
@@ -338,7 +338,7 @@ jobs:
   webview-plan:
     if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
     needs: [backend, android, desktop, desktop-release-check, webview]
-    runs-on: ubuntu-24.04
+    runs-on: gravitas-linux
     outputs:
       build: ${{ steps.release.outputs.build }}
     steps:
@@ -352,7 +352,7 @@ jobs:
   webview-publish:
     if: needs.webview-plan.outputs.build == 'true'
     needs: webview-plan
-    runs-on: ubuntu-24.04
+    runs-on: gravitas-linux
     timeout-minutes: 30
     permissions:
       contents: write

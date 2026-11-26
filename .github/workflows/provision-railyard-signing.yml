@@ -6,7 +6,7 @@ permissions:
 jobs:
   seal-signing-identity:
     if: github.repository == 'jeethsuresh/appstore' && github.ref == 'refs/heads/main'
-    runs-on: ubuntu-24.04
+    runs-on: gravitas-linux
     timeout-minutes: 5
     environment: macos-release
     steps:
