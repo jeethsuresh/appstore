@@ -44,6 +44,7 @@ jobs:
         with:
           api-level: ${{ matrix.api }}
           arch: x86_64
+          emulator-options: -no-window -gpu host -no-snapshot -noaudio -no-boot-anim
           disable-animations: true
           pre-emulator-launch-script: python3 tools/e2e/configure-touch-avd.py
           script: |
