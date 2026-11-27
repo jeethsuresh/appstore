@@ -18,7 +18,7 @@ concurrency:
 jobs:
   intake:
     if: github.ref == 'refs/heads/main'
-    runs-on: ubuntu-24.04
+    runs-on: gravitas-linux
     permissions:
       contents: write
     timeout-minutes: 10
@@ -104,7 +104,7 @@ jobs:
         run: node scripts/smoke-thornwake-release.cjs release
   publish:
     needs: smoke
-    runs-on: ubuntu-24.04
+    runs-on: gravitas-linux
     permissions:
       contents: write
     timeout-minutes: 10
